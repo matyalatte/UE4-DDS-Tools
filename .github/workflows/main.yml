@@ -1,0 +1,75 @@
+name: pack
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+  
+env:
+  ZIP_NAME: UE4-DDS-Tools
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+    
+      - name: Check tag
+        run: |
+          if [[ ${{ github.ref }} == refs/tags/v* ]]; then
+            VERSION=-$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+          else
+            VERSION=""
+          fi
+          echo "REPO_VERSION=$VERSION" >> $GITHUB_ENV
+        shell: bash
+        
+      - uses: actions/checkout@v2
+      
+      - name: Copy files
+        run: |
+          mkdir -p ../release/python
+          curl -OL https://www.python.org/ftp/python/3.9.12/python-3.9.12-embed-amd64.zip
+          unzip -d python-3.9.12-embed-amd64 python-3.9.12-embed-amd64.zip
+          cd python-3.9.12-embed-amd64
+          cp python.exe ../../release/python
+          cp python39.dll ../../release/python
+          cp python39.zip ../../release/python
+          cd ../
+          cp -r src ../release
+          cp bat/* ../release
+        shell: bash
+
+      - name: Archive Release for python
+        uses: thedoctor0/zip-release@master
+        with:
+          directory: '../release'
+          type: 'zip'
+          filename: '${{ env.ZIP_NAME }}.zip'
+          exclusions: '*.git* .gitignore'
+          
+      - name: Create Release Draft
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: |
+            Changelog
+            - First Change
+            - Second Change
+          draft: true
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset-python
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ../release/${{ env.ZIP_NAME }}.zip
+          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}.zip
+          asset_content_type: application/zip
