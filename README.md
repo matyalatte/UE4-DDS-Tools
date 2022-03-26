@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # UE4-DDS-Tools
-Texture modding tools for UE4 games<br>
-All you need is drop files or folders on batch files.<br>
+Texture modding tools for UE4 games.<br>
+You can inject dds files into UE4 assets.<br>
 
 ## Features
 
@@ -17,7 +17,7 @@ All you need is drop files or folders on batch files.<br>
 - UE4.18 games
 - UE4.19 games
 
-If you want me to add support for your game, please contact me with discord.
+If you want me to add support for your game, please contact me with [discord](https://discord.gg/Qx2Ff3MByF).
 
 ## Supported Formats
 
