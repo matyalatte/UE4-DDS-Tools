@@ -1,4 +1,4 @@
-name: pack
+name: packaging
 
 on:
   push:
@@ -38,6 +38,10 @@ jobs:
           cd ../
           cp -r src ../release
           cp bat/* ../release
+          cp changelog.txt ../release
+          cp README.md ../release
+          cp LICENSE ../release
+
         shell: bash
 
       - name: Archive Release for python

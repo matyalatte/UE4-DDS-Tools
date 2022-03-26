@@ -1,3 +1,4 @@
+[![discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/Qx2Ff3MByF)
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -15,6 +16,8 @@ All you need is drop files or folders on batch files.<br>
 - FF7R
 - UE4.18 games
 - UE4.19 games
+
+If you want me to add support for your game, please contact me with discord.
 
 ## Supported Formats
 
