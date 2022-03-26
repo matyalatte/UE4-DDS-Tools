@@ -1,0 +1,16 @@
+*__pycache__
+python
+*.exe
+*.dll
+*test*
+*.dds
+*.uasset
+*.uexp
+*.ubulk
+*removed
+*injected
+*workspace
+*.bat
+!bat/*.bat
+*sh
+*zip

@@ -1,0 +1,32 @@
+ver 0.2.0
+- Add support for UE4.18 and UE4.19 games
+
+ver 0.1.7
+- Add support for .DDS
+- Add feature to specify files in txt
+- Bug fix (fixed an error when loading some assets)
+
+ver 0.1.6
+- Add support for BC7, DXT5/BC3, BC1
+- Remove header files
+
+ver 0.1.5
+- Ignore sign when importing BC6H
+- Add support for B8G8R8A8(sRGB)
+
+ver 0.1.4
+ - Add support for BC6H(unsigned)
+ - Add support for any size mipmaps (no need to use power of 2 as height and width)
+
+ver 0.1.3
+ - Add export function
+ - Bugfix
+
+ver 0.1.2
+ - Add support for ATI1 and ATI2
+
+ver 0.1.1
+ - Allow an folder as input.
+
+ver 0.1.0
+ - Initial version
