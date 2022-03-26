@@ -33,6 +33,24 @@ If you want me to add support for your game, please contact me with discord.
 ## Download
 Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
 
+## Setup
+You need to specify the UE4 version of your game.<br>
+Open `./src/config.json` with notepad and edit the version.<br>
+`ff7r`, `4.18`, and `4.19` are available.<br>
+![config.json](https://user-images.githubusercontent.com/69258547/160256947-391f72e1-b7c1-49d2-bdd7-8834c1d6418d.png)
+
+## Basic Usage
+1. Drop `.uexp` onto `1_copy_uasset*.bat`.<br>
+   The asset will be copied in `./workspace/uasset`.<br>
+
+2. Drop `.dds` onto `2_inject_dds*.bat`.<br>
+   A new asset will be generated in `./injected`.<br>
+
+## Advanced Usage
+You can inject multiple assets at the same time.<br>
+See here for the details.<br>
+[Advanced Usage · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-tools/wiki/Advanced-Usage)
+
 ## Batch files
 - `1_copy_uasset*.bat`<br>
     Make or clear `./workspace`.<br>
@@ -48,3 +66,15 @@ Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-
 - `_parse*.bat`<br>
     Parse files.<br>
     You can check the format with this batch file.
+
+## FAQ
+
+### I got the `UE4 requires BC6H(unsigned)...` warning. What should I do?
+There are two types of BC6H: `signed` and `unsigned`.<br>
+And you should use the `unsigned` format.<br>
+See here for the details.<br>
+[How to Inject .HDR textures · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-tools/wiki/How-to-Inject-.HDR-textures)
+
+### I got the `Mipmaps should have power of 2 as...` warning. What should I do?
+Change its width and height to power of 2.<br>
+Or export dds without mipmaps.
