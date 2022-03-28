@@ -37,7 +37,7 @@ Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-
 ## Setup
 You need to specify the UE4 version of your game.<br>
 Open `./src/config.json` with notepad and edit the version.<br>
-`4.27`, `4.19`, `4.18`, `ff7r`, and  are available.<br>
+`4.27`, `4.19`, `4.18`, and `ff7r` are available.<br>
 ![config.json](https://user-images.githubusercontent.com/69258547/160256947-391f72e1-b7c1-49d2-bdd7-8834c1d6418d.png)
 
 ## Basic Usage
