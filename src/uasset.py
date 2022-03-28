@@ -109,9 +109,18 @@ class UassetImport: #28 bytes
         f.write(import_.bin3)
 
     def name_imports(imports, name_list):
+        texture_type=None
         for import_ in imports:
             import_.name=name_list[import_.name_id]
             import_.class_name=name_list[import_.class_id]
+            if import_.name=='Texture2D':
+                texture_type='2D'
+            if import_.name=='TextureCube':
+                texture_type='Cube'
+            
+        if texture_type is None:
+            raise RuntimeError('Not texture assets!')
+        return texture_type
 
     def print(self, padding=2):
         pad=' '*padding
@@ -119,8 +128,8 @@ class UassetImport: #28 bytes
         print(pad+'  class: '+self.class_name)
 
 class UassetExport: #104 bytes
-    KNOWN_EXPORTS=['EndEmissiveColorUserData', 'SQEX_BonamikAssetUserData', 'SQEX_KineDriver_AssetUserData', 'SkelMeshBoneAttributeRedirectorUserData', 'BodySetup']
-    IGNORE=[True, True, True, True, True]
+    KNOWN_EXPORTS=[]
+    IGNORE=[]
     #'BodySetup'
     def __init__(self, f):
         self.bin1=f.read(16)
@@ -150,15 +159,17 @@ class UassetExport: #104 bytes
     def name_exports(exports, name_list, file_name):
         for export in exports:
             name=name_list[export.name_id]
+            export.id=-1
+            export.ignore=False
 
-            if name in UassetExport.KNOWN_EXPORTS:
-                export.id=UassetExport.KNOWN_EXPORTS.index(name)
-                export.ignore=UassetExport.IGNORE[export.id]
-            elif name in file_name:
-                export.id=-1
-                export.ignore=False
-            else:
-                raise RuntimeError('Unsupported exports. ({}, {})'.format(name, file_name))
+            #if name in UassetExport.KNOWN_EXPORTS:
+            #    export.id=UassetExport.KNOWN_EXPORTS.index(name)
+            #    export.ignore=UassetExport.IGNORE[export.id]
+            #elif name in file_name:
+            #    export.id=-1
+            #    export.ignore=False
+            #else:
+            #    raise RuntimeError('Unsupported exports. ({}, {})'.format(name, file_name))
 
             export.name=name
 
@@ -207,7 +218,7 @@ class Uasset:
         self.bin2=f.read(self.header.import_offset-offset)
 
         self.imports=read_array(f, UassetImport.read, len=self.header.import_num)
-        UassetImport.name_imports(self.imports, self.name_list)
+        self.texture_type = UassetImport.name_imports(self.imports, self.name_list)
         if verbose:
             print('Import')
             for import_ in self.imports:

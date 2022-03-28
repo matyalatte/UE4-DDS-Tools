@@ -4,7 +4,7 @@ from texture_asset import TextureUasset, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
-TOOL_VERSION='0.2.0'
+TOOL_VERSION='0.2.1'
 
 #get arguments
 def get_args():

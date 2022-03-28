@@ -23,12 +23,13 @@ def get_dds_format(form):
 class DDSHeader:
     MAGIC = b'\x44\x44\x53\x20'
 
-    def __init__(self, width, height, mipmap_num, format_name):
+    def __init__(self, width, height, mipmap_num, format_name, texture_type):
         self.width = width
         self.height = height
         self.mipmap_num = mipmap_num
         self.format_name = format_name
         self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
+        self.texture_type = texture_type
 
     #read header
     def read(f):
@@ -45,21 +46,25 @@ class DDSHeader:
         read_const_uint32(f, 32)     #PfSize==32
         f.seek(4, 1)                 #PfFlags==4
         fourCC=f.read(4).decode()    #FourCC
-        f.seek(40, 1)                #BitCount, BitMask
-                                     #Caps, Caps2, ReservedCaps[2], Reserved2
+        f.seek(24, 1)                #BitCount, BitMask, caps2
+        f.seek(1, 1)                 #caps2
+        cube_flag = read_uint8(f)==254
+        f.seek(2, 1)
+        f.seek(12, 1)                 #ReservedCaps[2], Reserved2
         
         #DXT10 header
         if fourCC=='DX10':
             dxgi_format=read_uint32(f)      #dxgiFormat
-            l = read_uint32_array(f, len=3) #resourceDimension==3
-            check(l, [3,0,1])               #miscFlag==0
-                                            #arraySize==1
+            read_const_uint32(f, 3)         #resourceDimension==3
+            f.seek(4, 1)                    #miscFlag==0 or 4 (0 for 2D textures, 4 for Cube maps)
+            read_const_uint32(f, 1)         #arraySize==1
+                                            
             f.seek(4, 1)                    #miscFlag2
         else:
             dxgi_format=fourCC
         
         format_name = get_dds_format(dxgi_format)
-        return DDSHeader(width, height, mipmap_num, format_name)
+        return DDSHeader(width, height, mipmap_num, format_name, ['2D', 'Cube'][cube_flag])
 
     #write header
     def write(f, header):
@@ -83,14 +88,14 @@ class DDSHeader:
         write_uint32(f, header.width)
 
         #PitchOrLinearSize
-        write_uint32(f, int(header.width*header.height*header.byte_per_pixel))
+        write_uint32(f, int(header.width*header.height*header.byte_per_pixel*(1+(header.texture_type=='Cube')*5)))
 
         write_uint32(f, 1) #Depth
         write_uint32(f, mipmap_num)
 
         #Reserved1[11]
         write_null_array(f, 9)
-        f.write('FF7R'.encode())
+        f.write('MATY'.encode())
         write_null(f)
 
         write_uint32(f, 32) #PfSize==32
@@ -104,12 +109,16 @@ class DDSHeader:
         write_uint8(f, (mipmap_num>1)*64)
         write_uint8(f, 0)
 
-        write_null_array(f ,4) #caps2, reservedCaps, reserved2
+        write_uint8(f, 0) #caps2
+        write_uint8(f, 254*(header.texture_type=='Cube'))
+        write_uint16(f, 0)
+
+        write_null_array(f ,3) #reservedCaps, reserved2
 
         #write dxt10 header
         if fourCC=='DX10':
             write_uint32(f, dxgi_format)
-            write_uint32_array(f, [3,0,1])
+            write_uint32_array(f, [3,4*(header.texture_type=='Cube'),1])
             write_uint32(f, 0)
 
     def print(self):
@@ -117,6 +126,7 @@ class DDSHeader:
         print('  width: {}'.format(self.width))
         print('  format: {}'.format(self.format_name))
         print('  mipmap num: {}'.format(self.mipmap_num))
+        print('texture type: {}'.format(self.texture_type))
         #print('  byte per pixel: {}'.format(self.byte_per_pixel))
 
 class DDS:
@@ -136,41 +146,48 @@ class DDS:
 
             mipmap_num = header.mipmap_num
             byte_per_pixel = header.byte_per_pixel
-            height = header.height
-            width = header.width
-            mipmap_data = []
+            
+            mipmap_data = [b'']*mipmap_num
             mipmap_size = []
             _width, _height = 0,0
 
             #read mipmaps
-            for i in range(mipmap_num):
-                #mipmap sizes are multiples of 4
-                _width=width
-                _height=height
-                if byte_per_pixel<4:
-                    if height%4!=0:
-                        _height+=4-height%4
-                    if width%4!=0:
-                        _width+=4-width%4
+            for j in range(1+(header.texture_type=='Cube')*5):
+                height = header.height
+                width = header.width
+                for i in range(mipmap_num):
+                    #mipmap sizes are multiples of 4
+                    _width=width
+                    _height=height
+                    if byte_per_pixel<4:
+                        if height%4!=0:
+                            _height+=4-height%4
+                        if width%4!=0:
+                            _width+=4-width%4
 
-                #read mipmap data
-                size = _height*_width*byte_per_pixel
-                if size!=int(size):
-                    raise RuntimeError('The size of mipmap data is not int. This is unexpected.')
-                data = f.read(int(size))
-                #print mipmap info
-                if verbose:
+                    #read mipmap data
+                    size = _height*_width*byte_per_pixel
+                    if size!=int(size):
+                        raise RuntimeError('The size of mipmap data is not int. This is unexpected.')
+                    data = f.read(int(size))
+                    #
+                    #store mipmap data
+                    mipmap_data[i]=b''.join([mipmap_data[i], data])
+                    if j==0:
+                        mipmap_size.append([int(_width), int(_height)])
+                    height = height//2
+                    width = width//2
+                    if byte_per_pixel<4:
+                        width = max(4, width)
+                        height = max(4, height)
+
+            if verbose:
+                for i in range(mipmap_num):
+                    #print mipmap info
                     print('  Mipmap {}'.format(i))
-                    print('    size (w, h): ({}, {})'.format(_width, _height))
+                    width, height = mipmap_size[i]
+                    print('    size (w, h): ({}, {})'.format(width, height))
 
-                #store mipmap data
-                mipmap_data.append(data)
-                mipmap_size.append([int(_width), int(_height)])
-                height = height//2
-                width = width//2
-                if byte_per_pixel<4:
-                    width = max(4, width)
-                    height = max(4, height)
 
             header.print()
             check(f.tell(), get_size(f), msg='Parse Failed. This is unexpected.')
@@ -180,7 +197,7 @@ class DDS:
     #texture asset to dds
     def asset_to_DDS(asset):
         #make dds header
-        header = DDSHeader(0, 0, 0, asset.format_name)
+        header = DDSHeader(0, 0, 0, asset.format_name, asset.texture_type)
 
         mipmap_data=[]
         mipmap_size=[]
@@ -213,5 +230,11 @@ class DDS:
             DDSHeader.write(f, self.header)
 
             #write mipmap data
-            for d in self.mipmap_data:
-                f.write(d)
+            if self.header.texture_type=='2D':
+                for d in self.mipmap_data:
+                    f.write(d)
+            else:
+                for i in range(6):
+                    for d in self.mipmap_data:
+                        stride = len(d)//6
+                        f.write(d[i*stride:(i+1)*stride])
