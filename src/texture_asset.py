@@ -6,7 +6,9 @@ BYTE_PER_PIXEL = {
     'DXT1/BC1': 0.5,
     'DXT5/BC3': 1,
     'BC4/ATI1': 0.5,
+    'BC4(signed)': 0.5,
     'BC5/ATI2': 1,
+    'BC5(signed)': 1, 
     'BC6H(unsigned)': 1,
     'BC6H(signed)': 1,
     'BC7': 1,
@@ -499,12 +501,14 @@ class TextureUasset:
         print('  mipmap: {} -> 1'.format(old_mipmap_num))
 
     def inject_dds(self, dds):
-        
-        if dds.header.format_name.split('(')[0] not in self.format_name:
+        if '(signed)' in dds.header.format_name:
+            raise RuntimeError('UE4 requires unsigned format but your dds is {}.'.format(dds.header.format_name))
+
+        if dds.header.format_name!=self.format_name:
             raise RuntimeError('The format does not match. ({}, {})'.format(self.type, dds.header.format_name))
 
         if dds.header.texture_type!=self.texture_type:
-            raise RuntimeError('Texture tyep does not match. ({}, {})'.format(self.texture_type, dds.header.texture_type))
+            raise RuntimeError('Texture type does not match. ({}, {})'.format(self.texture_type, dds.header.texture_type))
         
         max_width, max_height = self.get_max_size()
         old_size = (max_width, max_height)
@@ -541,8 +545,7 @@ class TextureUasset:
         print('dds has been injected.')
         print('  size: {} -> {}'.format(old_size, new_size))
         print('  mipmap: {} -> {}'.format(old_mipmap_num, new_mipmap_num))
-        if dds.header.format_name=='BC6H(signed)':
-            print('Warning: UE4 requires BC6H(unsigned) but your dds is BC6H(signed).')
+        
         if new_mipmap_num>1 and (not is_power_of_2(max_width) or not is_power_of_2(max_height)):
             print('Warning: Mipmaps should have power of 2 as its width and height. ({}, {})'.format(max_width, max_height))
         if new_mipmap_num>1 and old_mipmap_num==1:

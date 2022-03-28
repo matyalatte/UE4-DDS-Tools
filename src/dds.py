@@ -2,11 +2,14 @@ import os
 from io_util import *
 from texture_asset import BYTE_PER_PIXEL
 
+#https://docs.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
 DDS_FORMAT = {
-    'DXT1/BC1': ['DXT1', 71, 72],     #DXGI_FORMAT_BC1_TYPELESS
-    'DXT5/BC3': ['DXT5', 77, 78],     #DXGI_FORMAT_BC3_TYPELESS	
+    'DXT1/BC1': ['DXT1', 71],         #DXGI_FORMAT_BC1_UNORM
+    'DXT5/BC3': ['DXT5', 77],         #DXGI_FORMAT_BC3_UNORM
     'BC4/ATI1': [80, 'ATI1', 'BC4U'], #DXGI_FORMAT_BC4_UNORM
+    'BC4(signed)': [81],              #DXGI_FORMAT_BC4_SNORM
     'BC5/ATI2': [83, 'ATI2', 'BC5U'], #DXGI_FORMAT_BC5_UNORM
+    'BC5(signed)': [84],              #DXGI_FORMAT_BC5_SNORM
     'BC6H(unsigned)': [95],           #DXGI_FORMAT_BC6H_UF16
     'BC6H(signed)': [96],             #DXGI_FORMAT_BC6H_SF16
     'BC7': [98, 99],                  #DXGI_FORMAT_BC7_TYPELESS
@@ -170,7 +173,7 @@ class DDS:
                     if size!=int(size):
                         raise RuntimeError('The size of mipmap data is not int. This is unexpected.')
                     data = f.read(int(size))
-                    #
+                    
                     #store mipmap data
                     mipmap_data[i]=b''.join([mipmap_data[i], data])
                     if j==0:
