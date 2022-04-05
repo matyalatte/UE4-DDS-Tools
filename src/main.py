@@ -3,16 +3,19 @@ from io_util import mkdir, compare
 from texture_asset import TextureUasset, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
+#from gui import App
 
-TOOL_VERSION='0.2.1'
+TOOL_VERSION = '0.2.2'
+UE_VERSIONS = ['4.27', '4.19', '4.18', 'ff7r', 'bloodstained']
 
 #get arguments
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='.uasset, .uexp, .ubulk, or a folder')
-    parser.add_argument('--save_folder', default='output', type=str, help='save folder')    
-    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, or remove_mipmaps')    
+    parser.add_argument('--save_folder', default='output', type=str, help='save folder')
+    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, remove_mipmaps, gui are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
+    parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
     return args
 
@@ -25,7 +28,7 @@ def get_config():
     return config
 
 #parse dds or uasset
-def parse(folder, file, save_folder, version, clear=True):
+def parse(folder, file, save_folder, version, force, clear=True):
     file = os.path.join(folder, file)
     if file[-3:] in ['dds', 'DDS']:
         DDS.load(file, verbose=True)
@@ -33,7 +36,7 @@ def parse(folder, file, save_folder, version, clear=True):
         TextureUasset(file, version=version, verbose=True)
 
 #check if the tool can read and write a file correctly.
-def valid(folder, file, save_folder, version, clear=True):
+def valid(folder, file, save_folder, version, force, clear=True):
 
     #make or clear workspace
     save_folder = 'workspace/valid'
@@ -67,7 +70,7 @@ def valid(folder, file, save_folder, version, clear=True):
             compare(ubulk_name, new_ubulk_name)
 
 #copy uasset to workspace
-def copy_uasset(folder, file, save_folder, version, clear=True):
+def copy_uasset(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     TextureUasset(src_file, version=version) #check if the asset can parse
 
@@ -95,10 +98,10 @@ def copy_uasset(folder, file, save_folder, version, clear=True):
         print('copy: {} -> {}'.format(ubulk_name, new_ubulk_name))
 
 #inject dds into the asset copied to workspace
-def inject_dds(folder, file, save_folder, version, clear=True):
+def inject_dds(folder, file, save_folder, version, force, clear=True):
     uasset_folder = 'workspace/uasset'
     if not os.path.exists(uasset_folder):
-        raise RuntimeError('Uasset Not Found.')
+        raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
 
     #determine which file should be injected
     file_list = get_file_list_rec(uasset_folder)
@@ -107,7 +110,7 @@ def inject_dds(folder, file, save_folder, version, clear=True):
         if f[-4:]=='uexp':
             uexp_list.append(f)
     if len(uexp_list)==0:
-        raise RuntimeError('Uasset Not Found.')
+        raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
     elif len(uexp_list)==1:
         uasset_base=uexp_list[0]
     else:
@@ -128,11 +131,11 @@ def inject_dds(folder, file, save_folder, version, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, uasset_base)
     dds = DDS.load(src_file)
-    texture.inject_dds(dds)
+    texture.inject_dds(dds, force=force)
     texture.save(new_file)
 
 #export uasset as dds
-def export_as_dds(folder, file, save_folder, version, clear=True):
+def export_as_dds(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     new_file=os.path.splitext(new_file)[0]+'.dds'
@@ -142,7 +145,7 @@ def export_as_dds(folder, file, save_folder, version, clear=True):
     dds.save(new_file)
 
 #remove mipmaps from uasset
-def remove_mipmaps(folder, file, save_folder, version, clear=True):
+def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     print(save_folder)
@@ -172,43 +175,58 @@ if __name__=='__main__':
     file = args.file
     save_folder = args.save_folder
     mode = args.mode
-    if args.version is not None:
-        version = args.version
-    if version is None:
-        version = '4.18'
-    print('UE version: {}'.format(version))
+    force = args.force
 
-    try:
-        if mode not in mode_functions:
-            raise RuntimeError('Unsupported mode. {}'.format(mode))
-        func = mode_functions[mode]
+    if force:
+        raise RuntimeError('force injection is unsupported yet')
 
-        if os.path.isfile(file) and file[-3:]!='txt':
-            #if input is a file
-            folder = os.path.dirname(file)
-            file = os.path.basename(file)
-            func(folder, file, save_folder, version)
+    if mode=='gui':
+        raise RuntimeError('gui is unsupported yet')
+        print("mode: GUI")
+        #app = App()
+        #app.run()
 
-        else:
-            if os.path.isfile(file):
-                #if input file is txt (file list)
-                folder, file_list = get_file_list_from_txt(file)
-                func= [copy_uasset, inject_dds]
-                inject=0
-                for file in file_list:
-                    func[inject](folder, file, save_folder, version)
-                    inject = not inject
-            else:
-                #if input is a folder
-                folder = file
-                clear=True
-                folder, file_list = get_file_list_from_folder(file)
-                for file in file_list:
-                    if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
-                        func(folder, file, save_folder, version, clear=clear)
-                        clear=False
-        print('Success!')
+    else:
+        if args.version is not None:
+            version = args.version
+        if version is None:
+            version = '4.18'
         
-    except Exception as e:
-        print(traceback.format_exc()[:-1])
+        print('UE version: {}'.format(version))
+
+        try:
+            if mode not in mode_functions:
+                raise RuntimeError('Unsupported mode. {}'.format(mode))
+            if version not in UE_VERSIONS:
+                raise RuntimeError('Unsupported version. {}'.format(version))
+            func = mode_functions[mode]
+
+            if os.path.isfile(file) and file[-3:]!='txt':
+                #if input is a file
+                folder = os.path.dirname(file)
+                file = os.path.basename(file)
+                func(folder, file, save_folder, version, force)
+
+            else:
+                if os.path.isfile(file):
+                    #if input file is txt (file list)
+                    folder, file_list = get_file_list_from_txt(file)
+                    func= [copy_uasset, inject_dds]
+                    inject=0
+                    for file in file_list:
+                        func[inject](folder, file, save_folder, version, force)
+                        inject = not inject
+                else:
+                    #if input is a folder
+                    folder = file
+                    clear=True
+                    folder, file_list = get_file_list_from_folder(file)
+                    for file in file_list:
+                        if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
+                            func(folder, file, save_folder, version, force, clear=clear)
+                            clear=False
+            print('Success!')
+        
+        except Exception as e:
+            print(traceback.format_exc()[:-1])
 

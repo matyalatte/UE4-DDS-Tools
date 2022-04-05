@@ -106,7 +106,13 @@ class TextureUasset:
     UBULK_FLAG = [[72, 1281], [72, 66817]]
     
     def __init__(self, file_path, version='ff7r', verbose=False):
+        if version=='bloodstained':
+            version='4.27'
+            self.bloodstained=True
+        else:
+            self.bloodstained=False
         self.version = version
+        
 
         if not os.path.isfile(file_path):
             raise RuntimeError('Not File. ({})'.format(file_path))
@@ -126,9 +132,10 @@ class TextureUasset:
                 self.read_uexp_ff7r(f)
             else:
                 self.read_uexp(f)
-            self.none_name_id = read_uint64(f)
-            if self.version=='4.27':
+            if self.version=='4.27' and (not self.bloodstained):
                 read_null(f)
+            self.none_name_id = read_uint64(f)
+            
             foot=f.read()
 
             check(foot, TextureUasset.UNREAL_SIGNATURE)
@@ -163,6 +170,7 @@ class TextureUasset:
         f.seek(offset)
         self.unk = f.read(s)
         self.type_name_id = read_uint64(f)
+        self.offset_to_end_offset = f.tell()
         end_offset = read_uint32(f) #Offset to end of uexp?
         f.seek(8, 1) #original width and height
         self.cube_flag = read_uint16(f)
@@ -230,9 +238,12 @@ class TextureUasset:
         check(i, len(uexp_map_data))
 
     def read_uexp(self, f):
-        top_name = self.name_list[read_uint32(f)]
+        first_property_id = read_uint32(f)
+        if first_property_id>=len(self.name_list):
+            raise RuntimeError('list index out of range. Make sure UE4 version is correct in ./src/config.json.')
+        first_property = self.name_list[first_property_id]
         f.seek(0)
-        if top_name=='ImportedSize':
+        if first_property=='ImportedSize':
             self.bin1 = f.read(49)
             self.original_width = read_uint32(f)
             self.original_height = read_uint32(f)
@@ -246,6 +257,7 @@ class TextureUasset:
         f.seek(offset)
         self.unk = f.read(s)
         self.type_name_id = read_uint64(f)
+        self.offset_to_end_offset = f.tell()
         end_offset = read_uint32(f) #Offset to end of uexp?
         if self.version=='4.27':
             read_null(f)
@@ -280,13 +292,13 @@ class TextureUasset:
             read_const_uint32(f, map_size)
             offset = read_uint64(f) #Offset to start of Mipmap Data
 
-            if TextureUasset.UBULK_FLAG[self.version=='4.27'].index(ubulk_flag)==0:
+            if TextureUasset.UBULK_FLAG[self.version=='4.27' and not self.bloodstained].index(ubulk_flag)==0:
                 self.uexp_map_data.append(f.read(map_size))
 
             width=read_uint32(f)
             height=read_uint32(f)
 
-            if TextureUasset.UBULK_FLAG[self.version=='4.27'].index(ubulk_flag)==0:
+            if TextureUasset.UBULK_FLAG[self.version=='4.27' and not self.bloodstained].index(ubulk_flag)==0:
                 self.uexp_map_meta.append(MipmapMetadata(0, None, [width, height], True))
             else:
                 self.ubulk_map_meta.append(MipmapMetadata(map_size, None, [width, height], False))
@@ -338,11 +350,15 @@ class TextureUasset:
                 self.write_uexp_ff7r(f)
             else:
                 self.write_uexp(f)
-            write_uint64(f, self.none_name_id)
-            if self.version=='4.27':
+            if self.version=='4.27' and (not self.bloodstained):
                 write_null(f)
+            
+            write_uint64(f, self.none_name_id)
+            
             f.write(TextureUasset.UNREAL_SIGNATURE)
             size = f.tell()
+            f.seek(self.offset_to_end_offset)
+            write_uint32(f, self.uasset_size+size-12)
 
         if self.has_ubulk:
             with open(ubulk_name, 'wb') as f:
@@ -370,10 +386,7 @@ class TextureUasset:
         f.write(self.unk)
         write_uint64(f, self.type_name_id)
 
-        new_end_offset = self.offset + uexp_map_data_size + uexp_map_num*32 + 16
-        if self.has_ubulk:
-            new_end_offset += ubulk_map_num*32
-        write_uint32(f, new_end_offset)
+        write_uint32(f, 0) #write dummy offset. (rewrite it later)
         write_uint32(f, self.original_width)
         write_uint32(f, self.original_height)
         write_uint16(f, self.cube_flag)
@@ -431,8 +444,7 @@ class TextureUasset:
             self.original_width =max_width
         f.write(self.unk)
         write_uint64(f, self.type_name_id)
-        new_end_offset = self.uasset_size+f.tell() + uexp_map_data_size+29+len(self.type)+ubulk_map_num*32 + (uexp_map_num+ubulk_map_num+2)*(self.version=='4.27')*4
-        write_uint32(f, new_end_offset)
+        write_uint32(f, 0) #write dummy offset. (rewrite it later)
         if self.version=='4.27':
             write_null(f)
         
@@ -444,15 +456,16 @@ class TextureUasset:
         write_str(f, self.type)
         write_null(f)
         write_uint32(f, uexp_map_num+ubulk_map_num)
-        if self.version=='4.27':
+        if self.version=='4.27' and not self.bloodstained:
             offset = 0
         else:
+            new_end_offset = self.uasset_size+f.tell() + uexp_map_data_size+ubulk_map_num*32 + (uexp_map_num+ubulk_map_num)*(self.version=='4.27')*4
             offset = -new_end_offset-8
 
         if self.has_ubulk:
             for data, meta in zip(self.ubulk_map_data, self.ubulk_map_meta):
                 write_uint32(f, 1)
-                write_uint32(f, TextureUasset.UBULK_FLAG[self.version=='4.27'][1])
+                write_uint32(f, TextureUasset.UBULK_FLAG[self.version=='4.27' and not self.bloodstained][1])
                 data_size = len(data)
                 write_uint32(f, data_size)
                 write_uint32(f, data_size)
@@ -465,7 +478,7 @@ class TextureUasset:
             
         for data, meta in zip(self.uexp_map_data, self.uexp_map_meta):
             write_uint32(f, 1)
-            write_uint32(f, TextureUasset.UBULK_FLAG[self.version=='4.27'][0])
+            write_uint32(f, TextureUasset.UBULK_FLAG[self.version=='4.27' and not self.bloodstained][0])
             write_uint32(f, len(data))
             write_uint32(f, len(data))
             write_uint64(f, self.uasset.size+f.tell()+8)
@@ -500,16 +513,31 @@ class TextureUasset:
         print('mipmaps have been removed.')
         print('  mipmap: {} -> 1'.format(old_mipmap_num))
 
-    def inject_dds(self, dds):
+    def inject_dds(self, dds, force=False):
         if '(signed)' in dds.header.format_name:
             raise RuntimeError('UE4 requires unsigned format but your dds is {}.'.format(dds.header.format_name))
 
-        if dds.header.format_name!=self.format_name:
+        if dds.header.format_name!=self.format_name and not force:
             raise RuntimeError('The format does not match. ({}, {})'.format(self.type, dds.header.format_name))
 
         if dds.header.texture_type!=self.texture_type:
             raise RuntimeError('Texture type does not match. ({}, {})'.format(self.texture_type, dds.header.texture_type))
         
+        def get_key_from_value(d, val):
+            keys = [k for k, v in d.items() if v == val]
+            if keys:
+                return keys[0]
+            return None
+
+        if force:
+            self.format_name = dds.header.format_name
+            new_type = get_key_from_value(self.format_name)
+            self.uasset_size+=len(new_type)-len(self.type)
+            self.type = new_type
+            self.name_list[self.type_name_id]=self.type
+            self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
+            
+
         max_width, max_height = self.get_max_size()
         old_size = (max_width, max_height)
         uexp_map_num, ubulk_map_num = self.get_mipmap_num()
