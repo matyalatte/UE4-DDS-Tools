@@ -64,7 +64,8 @@ def get_base_folder(p):
     return directory, folder
 
 def get_file_list_from_folder(folder):
-    file_list = sorted(os.listdir(folder))
+    #file_list = sorted(os.listdir(folder))
+    file_list = get_file_list_rec(folder)
     directory, folder = get_base_folder(folder)
     file_list = [os.path.join(folder, file) for file in file_list]
     return directory, file_list
