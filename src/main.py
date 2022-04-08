@@ -11,6 +11,7 @@ UE_VERSIONS = ['4.27', '4.19', '4.18', 'ff7r', 'bloodstained']
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='.uasset, .uexp, .ubulk, or a folder')
+    parser.add_argument('dds_file', nargs='?', help='dds')
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
     parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, and remove_mipmaps are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
@@ -169,6 +170,7 @@ if __name__=='__main__':
     #get arguments
     args = get_args()
     file = args.file
+    dds_file = args.dds_file
     save_folder = args.save_folder
     mode = args.mode
     force = args.force
@@ -181,16 +183,16 @@ if __name__=='__main__':
     
     print('UE version: {}'.format(version))
 
-    try:
-        mode_functions = {
-            'valid': valid,
-            'copy_uasset': copy_uasset,
-            'inject': inject_dds,
-            'remove_mipmaps': remove_mipmaps,
-            'parse': parse,
-            'export': export_as_dds,
-        }
+    mode_functions = {
+        'valid': valid,
+        'copy_uasset': copy_uasset,
+        'inject': inject_dds,
+        'remove_mipmaps': remove_mipmaps,
+        'parse': parse,
+        'export': export_as_dds,
+    }
 
+    def main(file, mode):
         #cehck configs
         if mode not in mode_functions:
             raise RuntimeError('Unsupported mode. ({})'.format(mode))
@@ -225,8 +227,17 @@ if __name__=='__main__':
                     if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
                         func(folder, file, save_folder, version, force, clear=clear)
                         clear=False
-        print('Success!')
-    
-    except Exception as e:
-        print(traceback.format_exc()[:-1])
-
+    if os.path.isfile(save_folder):
+        raise RuntimeError("Output path is not a folder.")
+    if file=="":
+        raise RuntimeError("Specify files.")
+    if file[-4:]==".txt" and os.path.isfile(file):
+        main(file, mode)
+    if dds_file is None:
+        main(file, mode)
+    elif dds_file=="":
+        raise RuntimeError("Specify dds file.")
+    else:
+        main(file, "copy_uasset")
+        main(dds_file, "inject")
+    print('Success!')

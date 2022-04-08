@@ -1,3 +1,9 @@
+ver 0.2.3
+- Added support for GUI
+- Made folder loader recursive
+- Modified data structure
+- Improved readability
+
 ver 0.2.2
 - Added support for Bloodstained
 
