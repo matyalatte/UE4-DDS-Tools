@@ -45,6 +45,8 @@ def get_all_file_path(file):
         raise RuntimeError('Not Uasset. ({})'.format(file))
     return [base_name + ext for ext in EXT]
 
+VERSION_ERR_MSG = 'Make sure you specified UE4 version is correctly.'
+
 #texture class for ue4
 class Utexture:
     UNREAL_SIGNATURE = b'\xC1\x83\x2A\x9E'
@@ -71,8 +73,8 @@ class Utexture:
         #read .uexp
         with open(uexp_name, 'rb') as f:
             self.read_uexp(f)
-            if self.version=='4.27':
-                read_null(f)
+            if self.version in ['4.25', '4.27']:
+                read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
             check(self.end_offset, f.tell()+self.uasset_size)
             self.none_name_id = read_uint64(f)
             
@@ -109,7 +111,7 @@ class Utexture:
         else:
             first_property_id = read_uint32(f)
             if first_property_id>=len(self.name_list):
-                raise RuntimeError('list index out of range. Make sure UE4 version is correct in ./src/config.json.')
+                raise RuntimeError('list index out of range. ' + VERSION_ERR_MSG)
             first_property = self.name_list[first_property_id]
             f.seek(0)
             if first_property=='ImportedSize':
@@ -132,19 +134,19 @@ class Utexture:
         self.type_name_id = read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = read_uint32(f) #Offset to end of uexp?
-        if self.version in ['4.27', 'bloodstained']:
-            read_null(f)
+        if self.version in ['4.25', '4.27', 'bloodstained']:
+            read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
         f.seek(8, 1) #original width and height
         self.cube_flag = read_uint16(f)
         self.unk_int = read_uint16(f)
         if self.cube_flag==1:
             if self.texture_type!='2D':
-                raise RuntimeError('Unexpected error')
+                raise RuntimeError('Unexpected error! Please report it to the developer.')
         elif self.cube_flag==6:
             if self.texture_type!='Cube':
-                raise RuntimeError('Uenxpected error')
+                raise RuntimeError('Unexpected error! Please report it to the developer.')
         else:
-            raise RuntimeError('Unexpected error')        
+            raise RuntimeError('Not a cube flag! ' + VERSION_ERR_MSG)
         self.type = read_str(f)
         if self.version=='ff7r' and self.unk_int==Utexture.UBULK_FLAG[1]:
             read_null(f)
@@ -181,11 +183,15 @@ class Utexture:
             check(i, len(self.uexp_mip_bulk.data))
 
     #get max size of uexp mips
-    def get_max_size(self):
+    def get_max_uexp_size(self):
         for mip in self.mipmaps:
             if mip.uexp:
                 break
         return mip.width, mip.height
+
+    #get max size of mips
+    def get_max_size(self):
+        return self.mipmaps[0].width, self.mipmaps[0].height
 
     #get number of mipmaps
     def get_mipmap_num(self):
@@ -210,7 +216,7 @@ class Utexture:
         with open(uexp_name, 'wb') as f:
             
             self.write_uexp(f)
-            if self.version=='4.27':
+            if self.version in ['4.25', '4.27']:
                 write_null(f)
             
             write_uint64(f, self.none_name_id)
@@ -234,7 +240,7 @@ class Utexture:
 
     def write_uexp(self, f):
         #get mipmap info
-        max_width, max_height = self.get_max_size()
+        max_width, max_height = self.get_max_uexp_size()
         uexp_map_num, ubulk_map_num = self.get_mipmap_num()
         uexp_map_data_size = 0
         for mip in self.mipmaps:
@@ -257,7 +263,7 @@ class Utexture:
         #write meta data
         write_uint64(f, self.type_name_id)
         write_uint32(f, 0) #write dummy offset. (rewrite it later)
-        if self.version in ['4.27', 'bloodstained']:
+        if self.version in ['4.25', '4.27', 'bloodstained']:
             write_null(f)
         
         write_uint32(f, self.original_width)
@@ -281,7 +287,7 @@ class Utexture:
             for mip in self.mipmaps:
                 if mip.uexp:
                     uexp_bulk = b''.join([uexp_bulk, mip.data])
-            size = self.get_max_size()
+            size = self.get_max_uexp_size()
             self.uexp_mip_bulk=Umipmap('ff7r_bulk')
             self.uexp_mip_bulk.update(uexp_bulk, size, True)
             self.uexp_mip_bulk.offset=self.uasset_size+f.tell()+24
@@ -293,7 +299,13 @@ class Utexture:
         if self.version in ['4.27', 'ff7r']:
             offset = 0
         else:
-            new_end_offset = self.uasset_size+f.tell() + uexp_map_data_size+ubulk_map_num*32 + (len(self.mipmaps))*(self.version=='bloodstained')*4
+            new_end_offset = \
+                self.uasset_size + \
+                f.tell() + \
+                uexp_map_data_size + \
+                ubulk_map_num*32 + \
+                (len(self.mipmaps))*(self.version in ['4.25', 'bloodstained'])*4 + \
+                (self.version=='4.25')*4
             offset = -new_end_offset-8
         #write mipmaps
         for mip in self.mipmaps:
@@ -361,6 +373,8 @@ class Utexture:
         _, ubulk_map_num = self.get_mipmap_num()
         if ubulk_map_num==0:
             self.has_ubulk=False
+        if self.version=="ff7r":
+            self.unk_int=Utexture.UBULK_FLAG[self.has_ubulk]
         new_mipmap_num = len(self.mipmaps)
 
         print('dds has been injected.')

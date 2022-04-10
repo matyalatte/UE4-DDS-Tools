@@ -14,6 +14,7 @@ You can inject dds files into UE4 assets.<br>
 ## Supported Games
 
 - UE4.27 games
+- UE4.25 games
 - UE4.19 games
 - UE4.18 games
 - FF7R

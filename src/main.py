@@ -5,7 +5,7 @@ from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
 TOOL_VERSION = '0.2.3'
-UE_VERSIONS = ['4.27', '4.19', '4.18', 'ff7r', 'bloodstained']
+UE_VERSIONS = ['4.27', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
 
 #get arguments
 def get_args():
@@ -15,7 +15,7 @@ def get_args():
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
     parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, and remove_mipmaps are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
-    parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
+    #parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
     return args
 
@@ -156,8 +156,6 @@ def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
     texture.remove_mipmaps()
     texture.save(new_file)
 
-
-
 #main
 if __name__=='__main__':
     print('UE4 DDS Tools ver{} by Matyalatte'.format(TOOL_VERSION))
@@ -173,8 +171,8 @@ if __name__=='__main__':
     dds_file = args.dds_file
     save_folder = args.save_folder
     mode = args.mode
-    force = args.force
-
+    #force = args.force
+    force = False
     
     if args.version is not None:
         version = args.version
