@@ -4,8 +4,8 @@ from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
-TOOL_VERSION = '0.2.3'
-UE_VERSIONS = ['4.27', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
+TOOL_VERSION = '0.2.4'
+UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
 
 #get arguments
 def get_args():

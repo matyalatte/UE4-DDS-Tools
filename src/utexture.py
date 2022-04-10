@@ -53,6 +53,8 @@ class Utexture:
     UBULK_FLAG = [0, 16384]
     
     def __init__(self, file_path, version='ff7r', verbose=False):
+        if version=='4.26':
+            version='4.27'
         self.version = version
         
         if not os.path.isfile(file_path):

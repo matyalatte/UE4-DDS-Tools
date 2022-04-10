@@ -3,6 +3,7 @@
         {
         "name": "UE4-DDS-Tools",
         "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version="],
+        "button": "Inject",
         "components": [
             {
                 "type": "file",
@@ -21,12 +22,8 @@
             {
                 "type": "choice",
                 "label": "UE4 version",
-                "items": ["4.27", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
-                "default": 4
-            },
-            {
-                "type": "button",
-                "label": "Inject"
+                "items": ["4.27", "4.26", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
+                "default": 5
             }
         ]
         }

@@ -1,6 +1,10 @@
+ver 0.2.4
+- Added support for UE4.25 games
+- Added support for UE4.26 games
+- Minor updates for GUI
+
 ver 0.2.3
 - Added support for GUI
-- Added support for UE4.25 games
 - Made folder loader recursive
 - Modified data structure
 - Improved readability
