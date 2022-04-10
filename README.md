@@ -35,39 +35,13 @@ If you want me to add support for your game, please contact me with [discord](ht
 ## Download
 Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
 
-## Setup
-You need to specify the UE4 version of your game.<br>
-Open `./src/config.json` with notepad and edit the version.<br>
-`4.27`, `4.26`, `4.25`, `4.19`, `4.18`, `ff7r`, and `bloodstained` are available.<br>
-![config.json](https://user-images.githubusercontent.com/69258547/160256947-391f72e1-b7c1-49d2-bdd7-8834c1d6418d.png)
+## How to Use
+[How to Use · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use)
 
-## Basic Usage
-1. Drop `.uexp` onto `1_copy_uasset*.bat`.<br>
-   The asset will be copied in `./workspace/uasset`.<br>
-
-2. Drop `.dds` onto `2_inject_dds*.bat`.<br>
-   A new asset will be generated in `./injected`.<br>
-
-## Advanced Usage
-You can inject multiple assets at the same time.<br>
-See here for the details.<br>
-[Advanced Usage · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-tools/wiki/Advanced-Usage)
-
-## Batch files
-- `1_copy_uasset*.bat`<br>
-    Make or clear `./workspace`.<br>
-    Then, copy an asset to workspace.
-
-- `2_inject_dds*.bat`<br>
-    Inject dds into the asset copied to workspace.<br>
-    A new asset will be generated in `./injected`.
-
-- `_export_as_dds*.bat`<br>
-    Export texture assets as dds.<br>
-
-- `_parse*.bat`<br>
-    Parse files.<br>
-    You can check the format with this batch file.
+## License
+* The files in this repository are licensed under [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
+* We use [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) for GUI. It is licensed under [wxWindows Library Licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt).
+* We use [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is licensed under [PSF license](https://docs.python.org/3/license.html).
 
 ## FAQ
 
