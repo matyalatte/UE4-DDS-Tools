@@ -1,24 +1,25 @@
 import os, argparse, shutil, traceback, json
 from io_util import mkdir, compare
-from texture_asset import TextureUasset, get_all_file_path
+from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
-#from gui import App
 
-TOOL_VERSION = '0.2.2'
-UE_VERSIONS = ['4.27', '4.19', '4.18', 'ff7r', 'bloodstained']
+TOOL_VERSION = '0.2.4'
+UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
 
 #get arguments
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='.uasset, .uexp, .ubulk, or a folder')
+    parser.add_argument('dds_file', nargs='?', help='dds')
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
-    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, remove_mipmaps, gui are available.')
+    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, and remove_mipmaps are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
-    parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
+    #parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
     return args
 
+#get config
 def get_config():
     json_path = os.path.join(os.path.dirname(__file__), 'config.json')
     if not os.path.exists(json_path):
@@ -27,15 +28,15 @@ def get_config():
         config = json.load(f)
     return config
 
-#parse dds or uasset
+#parse mode (parse dds or uasset)
 def parse(folder, file, save_folder, version, force, clear=True):
     file = os.path.join(folder, file)
     if file[-3:] in ['dds', 'DDS']:
         DDS.load(file, verbose=True)
     else:
-        TextureUasset(file, version=version, verbose=True)
+        Utexture(file, version=version, verbose=True)
 
-#check if the tool can read and write a file correctly.
+#valid mode (check if the tool can read and write a file correctly.)
 def valid(folder, file, save_folder, version, force, clear=True):
 
     #make or clear workspace
@@ -60,7 +61,7 @@ def valid(folder, file, save_folder, version, force, clear=True):
     else:
         #read and write uasset
         uasset_name, uexp_name, ubulk_name = get_all_file_path(src_file)
-        texture = TextureUasset(src_file, version=version, verbose=True)
+        texture = Utexture(src_file, version=version, verbose=True)
         new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file)
 
         #compare and remove files
@@ -69,10 +70,10 @@ def valid(folder, file, save_folder, version, force, clear=True):
         if new_ubulk_name is not None:
             compare(ubulk_name, new_ubulk_name)
 
-#copy uasset to workspace
+#copy mode (copy uasset to workspace)
 def copy_uasset(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
-    TextureUasset(src_file, version=version) #check if the asset can parse
+    Utexture(src_file, version=version) #check if the asset can parse
 
     #make or clear workspace
     save_folder = 'workspace/uasset'
@@ -97,7 +98,7 @@ def copy_uasset(folder, file, save_folder, version, force, clear=True):
         shutil.copy(ubulk_name, new_ubulk_name)
         print('copy: {} -> {}'.format(ubulk_name, new_ubulk_name))
 
-#inject dds into the asset copied to workspace
+#inject mode (inject dds into the asset copied to workspace)
 def inject_dds(folder, file, save_folder, version, force, clear=True):
     uasset_folder = 'workspace/uasset'
     if not os.path.exists(uasset_folder):
@@ -125,7 +126,7 @@ def inject_dds(folder, file, save_folder, version, force, clear=True):
 
     #read uasset
     uasset_file = os.path.join(uasset_folder, uasset_base)
-    texture = TextureUasset(uasset_file, version=version)
+    texture = Utexture(uasset_file, version=version)
 
     #read and inject dds
     src_file = os.path.join(folder, file)
@@ -134,99 +135,107 @@ def inject_dds(folder, file, save_folder, version, force, clear=True):
     texture.inject_dds(dds, force=force)
     texture.save(new_file)
 
-#export uasset as dds
+#export mode (export uasset as dds)
 def export_as_dds(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     new_file=os.path.splitext(new_file)[0]+'.dds'
 
-    texture = TextureUasset(src_file, version=version)
+    texture = Utexture(src_file, version=version)
     dds = DDS.asset_to_DDS(texture)
     dds.save(new_file)
 
-#remove mipmaps from uasset
+#remove mode (remove mipmaps from uasset)
 def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     print(save_folder)
     print(file)
     print(new_file)
-    texture = TextureUasset(src_file, version=version)
+    texture = Utexture(src_file, version=version)
     texture.remove_mipmaps()
     texture.save(new_file)
-
-mode_functions = {'valid': valid,
-         'copy_uasset': copy_uasset,
-         'inject': inject_dds,
-         'remove_mipmaps': remove_mipmaps,
-         'parse': parse,
-         'export': export_as_dds,
-         }
 
 #main
 if __name__=='__main__':
     print('UE4 DDS Tools ver{} by Matyalatte'.format(TOOL_VERSION))
 
+    #get config
     config = get_config()
     if 'version' in config:
         version = config['version']
 
+    #get arguments
     args = get_args()
     file = args.file
+    dds_file = args.dds_file
     save_folder = args.save_folder
     mode = args.mode
-    force = args.force
+    #force = args.force
+    force = False
+    
+    if args.version is not None:
+        version = args.version
+    if version is None:
+        version = '4.18'
+    
+    print('UE version: {}'.format(version))
 
-    if force:
-        raise RuntimeError('force injection is unsupported yet')
+    mode_functions = {
+        'valid': valid,
+        'copy_uasset': copy_uasset,
+        'inject': inject_dds,
+        'remove_mipmaps': remove_mipmaps,
+        'parse': parse,
+        'export': export_as_dds,
+    }
 
-    if mode=='gui':
-        raise RuntimeError('gui is unsupported yet')
-        print("mode: GUI")
-        #app = App()
-        #app.run()
+    def main(file, mode):
+        #cehck configs
+        if mode not in mode_functions:
+            raise RuntimeError('Unsupported mode. ({})'.format(mode))
+        if version not in UE_VERSIONS:
+            raise RuntimeError('Unsupported version. ({})'.format(version))
+        if force:
+            raise RuntimeError('force injection is unsupported yet')
 
-    else:
-        if args.version is not None:
-            version = args.version
-        if version is None:
-            version = '4.18'
-        
-        print('UE version: {}'.format(version))
+        func = mode_functions[mode]
 
-        try:
-            if mode not in mode_functions:
-                raise RuntimeError('Unsupported mode. {}'.format(mode))
-            if version not in UE_VERSIONS:
-                raise RuntimeError('Unsupported version. {}'.format(version))
-            func = mode_functions[mode]
+        if os.path.isfile(file) and file[-3:]!='txt':
+            #if input is a file
+            folder = os.path.dirname(file)
+            file = os.path.basename(file)
+            func(folder, file, save_folder, version, force)
 
-            if os.path.isfile(file) and file[-3:]!='txt':
-                #if input is a file
-                folder = os.path.dirname(file)
-                file = os.path.basename(file)
-                func(folder, file, save_folder, version, force)
-
+        else:
+            if os.path.isfile(file):
+                #if input file is txt (file list)
+                folder, file_list = get_file_list_from_txt(file)
+                func= [copy_uasset, inject_dds]
+                inject=0
+                for file in file_list:
+                    func[inject](folder, file, save_folder, version, force)
+                    inject = not inject
             else:
-                if os.path.isfile(file):
-                    #if input file is txt (file list)
-                    folder, file_list = get_file_list_from_txt(file)
-                    func= [copy_uasset, inject_dds]
-                    inject=0
-                    for file in file_list:
-                        func[inject](folder, file, save_folder, version, force)
-                        inject = not inject
-                else:
-                    #if input is a folder
-                    folder = file
-                    clear=True
-                    folder, file_list = get_file_list_from_folder(file)
-                    for file in file_list:
-                        if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
-                            func(folder, file, save_folder, version, force, clear=clear)
-                            clear=False
-            print('Success!')
-        
-        except Exception as e:
-            print(traceback.format_exc()[:-1])
-
+                #if input is a folder
+                folder = file
+                clear=True
+                folder, file_list = get_file_list_from_folder(file)
+                for file in file_list:
+                    if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
+                        func(folder, file, save_folder, version, force, clear=clear)
+                        clear=False
+    if os.path.isfile(save_folder):
+        raise RuntimeError("Output path is not a folder.")
+    if file=="":
+        raise RuntimeError("Specify files.")
+    if file[-4:]==".txt" and os.path.isfile(file):
+        main(file, mode)
+    if dds_file is None:
+        main(file, mode)
+    elif dds_file=="":
+        raise RuntimeError("Specify dds file.")
+    else:
+        main(file, "copy_uasset")
+        main(dds_file, "inject")
+    print('Success!')

@@ -10,7 +10,7 @@ env:
   ZIP_NAME: UE4-DDS-Tools
 
 jobs:
-  build:
+  packaging:
     runs-on: windows-2022
     steps:
     
@@ -35,12 +35,19 @@ jobs:
           cp python.exe ../../release/python
           cp python39.dll ../../release/python
           cp python39.zip ../../release/python
+          cp libffi-7.dll ../../release/python
+          cp _ctypes.pyd ../../release/python
+          cp LICENSE.txt ../../release/python
           cd ../
           cp -r src ../release
           cp bat/* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/v0.0.1/SimpleCommandRunner-v0.0.1.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-v0.0.1.zip
+          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
+          cp gui_definition.json ../release
 
         shell: bash
 

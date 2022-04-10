@@ -1,190 +1,128 @@
-
 from io_util import *
+import ctypes as c
 
-class UassetHeader:
+#classes for .uasset
+
+#header of .uasset
+class UassetHeader(c.LittleEndianStructure):
     HEAD = b'\xC1\x83\x2A\x9E'
+    _pack_=1
+    _fields_ = [ #193 bytes
+        ("head", c.c_char*4), #Unreal Header (193,131,42,158)
+        ("version", c.c_int32), #-version-1=6
+        ("null", c.c_ubyte*16),
+        ("file_size", c.c_uint32), #size of .uasset
+        ("str_length", c.c_uint32), #5
+        ("none", c.c_char*5), #'None '
+        ("unk", c.c_char*4),
+        ("name_count", c.c_uint32),
+        ("name_offset", c.c_uint32),
+        ("null2", c.c_ubyte*8),
+        ("export_count", c.c_uint32),
+        ("export_offset", c.c_uint32),
+        ("import_count", c.c_uint32),
+        ("import_offset", c.c_uint32),
+        ("end_to_export", c.c_uint32),
+        ("null3", c.c_ubyte*16),
+        ("guid_hash", c.c_char*16),
+        ("unk2", c.c_uint32),
+        ("padding_count", c.c_uint32),
+        ("name_count2", c.c_uint32), #name count again?
+        ("null4", c.c_ubyte*36),
+        ("unk3", c.c_uint64),
+        ("padding_offset", c.c_uint32), #file data offset - 4
+        ("file_length", c.c_uint32), #.uasset + .uexp - 4
+        ("null5", c.c_ubyte*12),
+        ("file_data_count", c.c_uint32),
+        ("file_data_offset", c.c_uint32)
+    ]
 
-    def __init__(self, f):
-        head=f.read(4)
-        check(head, UassetHeader.HEAD, f, 'NOT a uasset file.')
-        self.version=-read_int32(f)-1
-        check(self.version, 6, f, 'Unsupported version. (version {})'.format(self.version))
-        read_null_array(f, 4, 'Parse Failed.')
-        self.file_size=read_uint32(f)
-        none=read_str(f)
-        check(none, 'None', f, 'Parse Failed.')
-        self.unk_ary=read_uint8_array(f, len=4)
-
-        self.name_num = read_uint32(f)
-        self.name_offset = read_uint32(f)
-        check(self.name_offset, 193, f, 'Parse Failed.')
-        read_null_array(f, 2, 'Parse Failed.')
-
-        self.export_num = read_uint32(f)
-        self.export_offset = read_uint32(f)
-        self.import_num = read_uint32(f)
-        self.import_offset = read_uint32(f)
-        self.unk1=f.read(4)
-        read_null_array(f, 4, 'Parse Failed.')
-
-        self.guid_hash=f.read(16)
-
-        self.unk2=f.read(8)
-
-        name_num=read_uint32(f)
-        check(name_num, self.name_num, f, 'Parse Failed.')
-        read_null_array(f, 9, 'Parse Failed.')
-        self.unk3=f.read(4)
-        read_null(f, 'Parse Failed.')
-        self.padding_offset = read_uint32(f)
-        self.file_length=read_uint32(f)
-        read_null_array(f, 3, 'Parse Failed.')
-        self.unk4=f.read(4)
-        self.file_data_offset = read_uint32(f)
-
-    def read(f):
-        return UassetHeader(f)
-    
-    def write(f, header):
-        f.write(UassetHeader.HEAD)
-        write_int32(f, -(header.version+1))
-        write_null_array(f, 4)
-        write_uint32(f, header.file_size)
-        write_str(f, 'None')
-        write_uint8_array(f, header.unk_ary)
-        write_uint32(f, header.name_num)
-        write_uint32(f, header.name_offset)
-        write_null_array(f, 2)
-        write_uint32(f, header.export_num)
-        write_uint32(f, header.export_offset)
-        write_uint32(f, header.import_num)
-        write_uint32(f, header.import_offset)
-        f.write(header.unk1)
-        write_null_array(f, 4)
-        f.write(header.guid_hash)
-        f.write(header.unk2)
-        write_uint32(f, header.name_num)
-        write_null_array(f, 9)
-        f.write(header.unk3)
-        write_null(f)
-        write_uint32(f, header.padding_offset)
-        write_uint32(f, header.file_length)
-        write_null_array(f, 3)
-        f.write(header.unk4)
-        write_uint32(f, header.file_data_offset)
-
+    def check(self):
+        check(self.head, UassetHeader.HEAD)
+        check(-self.version-1, 6)
 
     def print(self):
         print('Header info')
-        print('  version: {}'.format(self.version))
         print('  file size: {}'.format(self.file_size))
-        print('  number of names: {}'.format(self.name_num))
-        print('  name directory offset: {}'.format(self.name_offset))
-        print('  number of exports: {}'.format(self.export_num))
+        print('  number of names: {}'.format(self.name_count))
+        print('  name directory offset: 193')
+        print('  number of exports: {}'.format(self.export_count))
         print('  export directory offset: {}'.format(self.export_offset))
-        print('  number of imports: {}'.format(self.import_num))
+        print('  number of imports: {}'.format(self.import_count))
         print('  import directory offset: {}'.format(self.import_offset))
-        print('  guid hash: {}'.format(self.guid_hash))
+        print('  end offset of export: {}'.format(self.end_to_export))
         print('  padding offset: {}'.format(self.padding_offset))
         print('  file length (uasset+uexp-4): {}'.format(self.file_length))
+        print('  file data count: {}'.format(self.file_data_count))
         print('  file data offset: {}'.format(self.file_data_offset))
 
-class UassetImport: #28 bytes
-    def __init__(self, f):
-        self.bin1=f.read(8)
-        self.class_id=read_uint32(f)
-        self.bin2=f.read(8)
-        self.name_id=read_uint32(f)
-        self.bin3=f.read(4)
-        self.material=False
+#import data of .uasset
+class UassetImport(c.LittleEndianStructure): 
+    _pack_=1
+    _fields_ = [ #28 bytes
+        ("parent_dir_id", c.c_uint64),
+        ("class_id", c.c_uint64),
+        ("parent_import_id", c.c_int32),
+        ("name_id", c.c_uint64),
+    ]
 
-    def read(f):
-        return UassetImport(f)
-    
-    def write(f, import_):
-        f.write(import_.bin1)
-        write_uint32(f, import_.class_id)
-        f.write(import_.bin2)
-        write_uint32(f, import_.name_id)
-        f.write(import_.bin3)
-
-    def name_imports(imports, name_list):
-        texture_type=None
-        for import_ in imports:
-            import_.name=name_list[import_.name_id]
-            import_.class_name=name_list[import_.class_id]
-            if import_.name=='Texture2D':
-                texture_type='2D'
-            if import_.name=='TextureCube':
-                texture_type='Cube'
-            
-        if texture_type is None:
-            raise RuntimeError('Not texture assets!')
-        return texture_type
+    def name_import(self, name_list):
+        self.name = name_list[self.name_id]
+        self.class_name = name_list[self.class_id]
+        self.parent_dir = name_list[self.parent_dir_id]
+        return self.name
 
     def print(self, padding=2):
-        pad=' '*padding
+        pad = ' '*padding
         print(pad+self.name)
         print(pad+'  class: '+self.class_name)
+        print(pad+'  parent dir: '+self.parent_dir)
+        #print(pad+'  parent import: '+parent)
 
-class UassetExport: #104 bytes
-    KNOWN_EXPORTS=[]
-    IGNORE=[]
-    #'BodySetup'
-    def __init__(self, f):
-        self.bin1=f.read(16)
-        self.name_id=read_uint32(f)
-        self.bin2=f.read(8)
-        self.size=read_uint32(f)
-        read_null(f)
-        self.offset=read_uint32(f)
-        self.bin3=f.read(64)
+def name_imports(imports, name_list):
+    import_names = list(map(lambda x: x.name_import(name_list), imports))
+    #import_parent = [import_names[-import_.parent_import_id-1] for import_ in imports]
 
-    def read(f):
-        return UassetExport(f)
-    
-    def write(f, export):
-        f.write(export.bin1)
-        write_uint32(f, export.name_id)
-        f.write(export.bin2)
-        write_uint32(f, export.size)
-        write_null(f)
-        write_uint32(f, export.offset)
-        f.write(export.bin3)
+    if 'Texture2D' in import_names:
+        texture_type='2D'
+    elif 'TextureCube' in import_names:
+        texture_type='Cube'
+    else:
+        raise RuntimeError('Not texture assets!')
+            
+    return texture_type
+
+#export data of .uasset
+class UassetExport(c.LittleEndianStructure): 
+    _pack_=1
+    _fields_ = [ #104 bytes
+        ("class_id", c.c_int32),
+        ("null", c.c_uint32),
+        ("import_id", c.c_int32),
+        ("null2", c.c_uint32),
+        ("name_id", c.c_uint64),
+        ("unk_int", c.c_uint32),
+        ("size", c.c_uint64),
+        ("offset", c.c_uint32),
+        ("unk", c.c_ubyte*64),
+    ]
 
     def update(self, size, offset):
         self.size=size
         self.offset=offset
 
-    def name_exports(exports, name_list, file_name):
-        for export in exports:
-            name=name_list[export.name_id]
-            export.id=-1
-            export.ignore=False
-
-            #if name in UassetExport.KNOWN_EXPORTS:
-            #    export.id=UassetExport.KNOWN_EXPORTS.index(name)
-            #    export.ignore=UassetExport.IGNORE[export.id]
-            #elif name in file_name:
-            #    export.id=-1
-            #    export.ignore=False
-            #else:
-            #    raise RuntimeError('Unsupported exports. ({}, {})'.format(name, file_name))
-
-            export.name=name
-
-    def read_uexp(self, f):
-        self.bin=f.read(self.size)
-
-    def write_uexp(self, f):
-        f.write(self.bin)
+    def name_export(self, imports, name_list):
+        self.name = name_list[self.name_id]
+        self.class_name = imports[-self.class_id-1].name
+        self.import_name = imports[-self.import_id-1].name
 
     def print(self, padding=2):
         pad=' '*padding
         print(pad+self.name)
+        print(pad+'  class: {}'.format(self.class_name))
+        print(pad+'  import: {}'.format(self.import_name))
         print(pad+'  size: {}'.format(self.size))
         print(pad+'  offset: {}'.format(self.offset))
-
 
 class Uasset:
 
@@ -196,59 +134,97 @@ class Uasset:
             print('Loading '+uasset_file+'...')
 
         self.file=os.path.basename(uasset_file)[:-7]
-        f=open(uasset_file, 'rb')
-        self.size=get_size(f)
-        self.header=UassetHeader.read(f)
-        self.bin1 = f.read(self.header.name_offset-193)
-        if verbose:
-            print('size: {}'.format(self.size))
-            self.header.print()
-            print('Name list')
-        
-        self.name_list = []
-        self.flag_list = []
-        for i in range(self.header.name_num):
-            name = read_str(f)
-            flag = f.read(4)
+        with open(uasset_file, 'rb') as f:
+            self.size=get_size(f)
+
+            #read header
+            self.header=UassetHeader()
+            f.readinto(self.header)
+            self.header.check()
             if verbose:
-                print('  {}: {}'.format(i, name))
-            self.name_list.append(name)
-            self.flag_list.append(flag)
-        offset=f.tell()
-        self.bin2=f.read(self.header.import_offset-offset)
+                self.header.print()
+                print('Name list')
 
-        self.imports=read_array(f, UassetImport.read, len=self.header.import_num)
-        self.texture_type = UassetImport.name_imports(self.imports, self.name_list)
-        if verbose:
-            print('Import')
-            for import_ in self.imports:
-                import_.print()
+            #read name table
+            def read_names(f, i):
+                name = read_str(f)
+                hash = f.read(4)
+                if verbose:
+                    print('  {}: {}'.format(i, name))
+                return name, hash
+            names = [read_names(f, i) for i in range(self.header.name_count)]
+            self.name_list = [x[0] for x in names]
+            self.hash_list = [x[1] for x in names]
 
-        offset=f.tell()
-        self.bin3=f.read(self.header.export_offset-offset)
-        self.exports=read_array(f, UassetExport.read, len=self.header.export_num)
-        UassetExport.name_exports(self.exports, self.name_list, self.file)
+            #read imports
+            self.imports=read_struct_array(f, UassetImport, len=self.header.import_count)
+            self.texture_type = name_imports(self.imports, self.name_list)
+            if verbose:
+                print('Import')
+                list(map(lambda x: x.print(), self.imports))
 
-        if verbose:
-            print('Export')
-            for export in self.exports:
-                export.print()
+            #read exports
+            self.exports=read_struct_array(f, UassetExport, len=self.header.export_count)
+            list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
+            if verbose:
+                print('Export')
+                list(map(lambda x: x.print(), self.exports))
 
-        self.bin4=f.read()
-        f.close()
+            #file data ids
+            read_null_array(f, self.header.padding_count)
+            check(self.header.padding_offset, f.tell())
+            read_null(f)
+            check(self.header.file_data_offset, f.tell())
+            self.file_data_ids = read_int32_array(f, len=self.header.file_data_count)
+            
+            '''
+            for i in self.file_data_ids:
+                if i<0:
+                    i = -i-1
+                    print(self.imports[i].name)
+                else:
+                    print(self.name_list[i])
+            '''
+            
+            check(f.tell(), self.size)
     
     def save(self, file, uexp_size):
-        self.header.file_length=uexp_size+self.size-4
         print('save :' + file)
         with open(file, 'wb') as f:
-            UassetHeader.write(f, self.header)
-            f.write(self.bin1)
-            for name, flag in zip(self.name_list, self.flag_list):
-                write_str(f, name)
-                f.write(flag)
+            #skip header part
+            f.seek(193)
 
-            f.write(self.bin2)
-            write_array(f, self.imports, UassetImport.write)                
-            f.write(self.bin3)
-            write_array(f, self.exports, UassetExport.write)
-            f.write(self.bin4)
+            #write name table
+            for name, hash in zip(self.name_list, self.hash_list):
+                write_str(f, name)
+                f.write(hash)
+
+            #write imports
+            self.header.import_offset = f.tell()
+            list(map(lambda x: f.write(x), self.imports))
+
+            #skip exports part
+            self.header.export_offset = f.tell()
+            f.seek(len(self.exports)*104, 1)
+
+            #file data ids
+            write_null_array(f, self.header.padding_count+1)
+            self.header.padding_offset = f.tell()-4
+            self.header.file_data_offset = f.tell()
+            write_int32_array(f, self.file_data_ids)
+            self.header.uasset_size = f.tell()
+            self.header.file_length=uexp_size+self.header.uasset_size-4
+            self.header.name_count = len(self.name_list)
+            self.header.name_count2 = len(self.name_list)
+
+            #write header
+            f.seek(0)
+            f.write(self.header)
+
+            #write exports
+            f.seek(self.header.export_offset)
+            offset = self.header.uasset_size
+            for export in self.exports:
+                export.update(export.size, offset)
+                offset+=export.size
+            list(map(lambda x: f.write(x), self.exports))

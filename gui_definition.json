@@ -1,0 +1,31 @@
+{
+    "gui": [
+        {
+        "name": "UE4-DDS-Tools",
+        "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version="],
+        "button": "Inject",
+        "components": [
+            {
+                "type": "file",
+                "label": "Uexp file (Drop or select .uexp)",
+                "extension": "uexp files | *.uexp"
+            },
+            {
+                "type": "file",
+                "label": "DDS file (Drop or select .dds)",
+                "extension": "dds files (*.dds;*.DDS)| *.dds;*.DDS"
+            },
+            {
+                "type": "folder",
+                "label": "Output path (Drop or select a folder)"
+            },
+            {
+                "type": "choice",
+                "label": "UE4 version",
+                "items": ["4.27", "4.26", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
+                "default": 5
+            }
+        ]
+        }
+    ]
+}

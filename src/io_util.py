@@ -1,4 +1,4 @@
-import os
+import os, struct
 
 def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
@@ -10,7 +10,7 @@ def get_size(file):
     file.seek(pos)
     return size
 
-def check(actual, expected, f=None, msg=''):
+def check(actual, expected, f=None, msg='Parse failed.'):
     if actual!=expected:
         if f is not None:
             print('offset: {}'.format(f.tell()))
@@ -48,17 +48,27 @@ def read_array(file, read_func, len=None):
     ary=[read_func(file) for i in range(len)]
     return ary
 
+st_list = ['b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'f', 'd']
+st_size = [1, 1, 2, 2, 4, 4, 8, 8, 4, 8]
+def read_num_array(file, st, len=None):
+    if st not in st_list:
+        raise RuntimeError('Structure not found. {}'.format(st))
+    if len is None:
+        len = read_uint32(file)
+    bin = file.read(st_size[st_list.index(st)]*len)
+    return list(struct.unpack(st*len, bin))
+
 def read_uint32_array(file, len=None):
-    return read_array(file, read_uint32, len=len)
+    return read_num_array(file, 'I', len=len)
 
 def read_uint16_array(file, len=None):
-    return read_array(file, read_uint16, len=len)
+    return read_num_array(file, 'H', len=len)
 
 def read_uint8_array(file, len=None):
-    return read_array(file, read_uint8, len=len)
+    return read_num_array(file, 'B', len=len)
 
 def read_int32_array(file, len=None):
-    return read_array(file, read_int32, len=len)
+    return read_num_array(file, 'i', len=len)
 
 def read_str(file):
     num = read_uint32(file)
@@ -78,6 +88,13 @@ def read_null(f, msg='Not NULL!'):
 def read_null_array(f, len, msg='Not NULL!'):
     null=read_uint32_array(f, len=len)
     check(null, [0]*len, f, msg)
+
+def read_struct_array(f, obj, len=None):
+    if len is None:
+        len = read_uint32(f)
+    objects = [obj() for i in range(len)]
+    list(map(lambda x: f.readinto(x), objects))
+    return objects
 
 def write_uint64(file, n):
     bin = n.to_bytes(8, byteorder="little")
