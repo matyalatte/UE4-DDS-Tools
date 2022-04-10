@@ -44,6 +44,9 @@ jobs:
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/v0.0.1/SimpleCommandRunner-v0.0.1.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-v0.0.1.zip
+          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
 
         shell: bash
 
