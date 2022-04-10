@@ -45,7 +45,7 @@ def get_all_file_path(file):
         raise RuntimeError('Not Uasset. ({})'.format(file))
     return [base_name + ext for ext in EXT]
 
-VERSION_ERR_MSG = 'Make sure you specified UE4 version is correctly.'
+VERSION_ERR_MSG = 'Make sure you specified UE4 version correctly.'
 
 #texture class for ue4
 class Utexture:
@@ -105,6 +105,8 @@ class Utexture:
             while (b not in [b'\x03', b'\x05']):
                 f.read(1)
                 b = f.read(1)
+                if f.tell()>1000:
+                    raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
             s = f.tell()
             f.seek(0)
             self.bin1=f.read(s)
@@ -128,6 +130,8 @@ class Utexture:
         b = f.read(8)
         while (b!=b'\x01\x00\x01\x00\x01\x00\x00\x00'):
             b=b''.join([b[1:], f.read(1)])
+            if f.tell()>1000:
+                    raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
         s=f.tell()-offset
         f.seek(offset)        
         self.unk = f.read(s)

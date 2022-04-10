@@ -140,7 +140,7 @@ class DDS:
     #load dds file
     def load(file, verbose=False):
         if file[-3:] not in ['dds', 'DDS']:
-            raise RuntimeError('Not DDS.')
+            raise RuntimeError('Not DDS. ({})'.format(file))
         print('load: ' + file)
         with open(file, 'rb') as f:
             #read header
