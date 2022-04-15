@@ -1,10 +1,14 @@
-import os, argparse, shutil, traceback, json, time
+#std libs
+import os, argparse, shutil, json, time
+from contextlib import redirect_stdout
+
+#my scripts
 from io_util import mkdir, compare
 from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
-TOOL_VERSION = '0.2.4'
+TOOL_VERSION = '0.2.5'
 UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
 
 #get arguments
@@ -13,7 +17,7 @@ def get_args():
     parser.add_argument('file', help='.uasset, .uexp, .ubulk, or a folder')
     parser.add_argument('dds_file', nargs='?', help='dds')
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
-    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, and remove_mipmaps are available.')
+    parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, remove_mipmaps, and check are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
     #parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
@@ -156,6 +160,26 @@ def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
     texture.remove_mipmaps()
     texture.save(new_file)
 
+#confirm mode (check)
+def check_version(folder, file, save_folder, version, force, clear=True):
+    print('Running valid mode with each version...')
+    passed_version = []
+    for v in UE_VERSIONS:
+        try:
+            with redirect_stdout(open(os.devnull, 'w')):
+                valid(folder, file, save_folder, v, force, clear=True)
+            print('  {}: Passed'.format(v))
+            passed_version.append(v)
+        except:
+            print('  {}: Failed'.format(v))
+    if len(passed_version)==0:
+        print('Failed for all supported versions. You can not mod the asset with this tool.')
+    elif len(passed_version)==1:
+        print('The version is {}.'.format(passed_version[0]))
+    else:
+        s = '{}'.format(passed_version)[1:-1].replace("'", "")
+        print('Found some versions can handle the asset. ({})'.format(s))
+
 #main
 if __name__=='__main__':
     start_time = time.time()
@@ -190,6 +214,7 @@ if __name__=='__main__':
         'remove_mipmaps': remove_mipmaps,
         'parse': parse,
         'export': export_as_dds,
+        'check': check_version
     }
 
     def main(file, mode):
@@ -233,13 +258,15 @@ if __name__=='__main__':
     if file=="":
         raise RuntimeError("Specify files.")
     if file[-4:]==".txt" and os.path.isfile(file):
+        print('Mode: {}'.format(mode))
         main(file, mode)
     if dds_file is None:
+        print('Mode: {}'.format(mode))
         main(file, mode)
     elif dds_file=="":
         raise RuntimeError("Specify dds file.")
     else:
+        print('Mode: inject')
         main(file, "copy_uasset")
         main(dds_file, "inject")
-
     print('Success! Run time (s): {}'.format(time.time()-start_time))

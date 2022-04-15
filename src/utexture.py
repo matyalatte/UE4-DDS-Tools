@@ -401,9 +401,9 @@ class Utexture:
                 print('  Mipmap {}'.format(i))
                 mip.print(padding=4)
                 i+=1
-        if self.bin1 is not None:
-            print('  original_width: {}'.format(self.original_width))
-            print('  original_height: {}'.format(self.original_height))
+        max_width, max_height = self.get_max_size()
+        print('  max width: {}'.format(max_width))
+        print('  max height: {}'.format(max_height))
         print('  format: {}'.format(self.type))
         print('  texture type: {}'.format(self.texture_type))
         print('  mipmap num: {}'.format(len(self.mipmaps)))

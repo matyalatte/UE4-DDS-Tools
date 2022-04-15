@@ -10,12 +10,12 @@ You can inject dds files into UE4 assets.<br>
 
 - Inject any size DDS and any number of mipmaps.
 - Export assets as DDS.
+- Check the UE versions of assets.
 
-## Supported Games
-
-- UE4.25 ~ 4.27 games
-- UE4.19 games
-- UE4.18 games
+## Supported UE versions
+- UE4.25 ~ 4.27
+- UE4.19
+- UE4.18
 - FF7R
 - Bloodstained (UE4.27)
 

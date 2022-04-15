@@ -1,4 +1,5 @@
 ver 0.2.5
+- Added check mode (You can check which versions are the same format as your assets)
 - Fixed an error when loading assets corrupted by name table editing
 - Modified comparison function
 
