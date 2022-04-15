@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.2.4
+# UE4-DDS-Tools ver0.2.5
 Texture modding tools for UE4 games.<br>
 You can inject dds files into UE4 assets.<br>
 

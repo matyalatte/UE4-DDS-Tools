@@ -1,3 +1,7 @@
+ver 0.2.5
+- Fixed an error when loading assets corrupted by name table editing
+- Modified comparison function
+
 ver 0.2.4
 - Added support for UE4.25 games
 - Added support for UE4.26 games

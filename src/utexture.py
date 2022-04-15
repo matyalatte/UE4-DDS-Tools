@@ -77,7 +77,7 @@ class Utexture:
             self.read_uexp(f)
             if self.version in ['4.25', '4.27']:
                 read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-            check(self.end_offset, f.tell()+self.uasset_size)
+            #check(self.end_offset, f.tell()+self.uasset_size)
             self.none_name_id = read_uint64(f)
             
             foot=f.read()

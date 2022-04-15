@@ -1,4 +1,4 @@
-import os, argparse, shutil, traceback, json
+import os, argparse, shutil, traceback, json, time
 from io_util import mkdir, compare
 from utexture import Utexture, get_all_file_path
 from dds import DDS
@@ -158,6 +158,8 @@ def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
 
 #main
 if __name__=='__main__':
+    start_time = time.time()
+    
     print('UE4 DDS Tools ver{} by Matyalatte'.format(TOOL_VERSION))
 
     #get config
@@ -225,6 +227,7 @@ if __name__=='__main__':
                     if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
                         func(folder, file, save_folder, version, force, clear=clear)
                         clear=False
+
     if os.path.isfile(save_folder):
         raise RuntimeError("Output path is not a folder.")
     if file=="":
@@ -238,4 +241,5 @@ if __name__=='__main__':
     else:
         main(file, "copy_uasset")
         main(dds_file, "inject")
-    print('Success!')
+
+    print('Success! Run time (s): {}'.format(time.time()-start_time))
