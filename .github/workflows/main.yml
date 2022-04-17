@@ -46,7 +46,7 @@ jobs:
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/v0.0.1/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
           unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
           cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
           cp gui_definition.json ../release
