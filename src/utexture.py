@@ -77,7 +77,7 @@ class Utexture:
             self.read_uexp(f)
             if self.version in ['4.25', '4.27']:
                 read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-            check(self.end_offset, f.tell()+self.uasset_size)
+            #check(self.end_offset, f.tell()+self.uasset_size)
             self.none_name_id = read_uint64(f)
             
             foot=f.read()
@@ -401,9 +401,9 @@ class Utexture:
                 print('  Mipmap {}'.format(i))
                 mip.print(padding=4)
                 i+=1
-        if self.bin1 is not None:
-            print('  original_width: {}'.format(self.original_width))
-            print('  original_height: {}'.format(self.original_height))
+        max_width, max_height = self.get_max_size()
+        print('  max width: {}'.format(max_width))
+        print('  max height: {}'.format(max_height))
         print('  format: {}'.format(self.type))
         print('  texture type: {}'.format(self.texture_type))
         print('  mipmap num: {}'.format(len(self.mipmaps)))

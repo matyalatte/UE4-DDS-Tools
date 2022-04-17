@@ -8,6 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
+  GUI_VERSION: v0.0.2
 
 jobs:
   packaging:
@@ -40,12 +41,13 @@ jobs:
           cp LICENSE.txt ../../release/python
           cd ../
           cp -r src ../release
-          cp bat/* ../release
+          cp bat/_check* ../release
+          cp bat/_export* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/v0.0.1/SimpleCommandRunner-v0.0.1.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-v0.0.1.zip
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
           cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
           cp gui_definition.json ../release
 

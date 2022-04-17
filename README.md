@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.2.4
+# UE4-DDS-Tools ver0.2.5
 Texture modding tools for UE4 games.<br>
 You can inject dds files into UE4 assets.<br>
 
@@ -10,12 +10,12 @@ You can inject dds files into UE4 assets.<br>
 
 - Inject any size DDS and any number of mipmaps.
 - Export assets as DDS.
+- Check the UE versions of assets.
 
-## Supported Games
-
-- UE4.25 ~ 4.27 games
-- UE4.19 games
-- UE4.18 games
+## Supported UE versions
+- UE4.25 ~ 4.27
+- UE4.19
+- UE4.18
 - FF7R
 - Bloodstained (UE4.27)
 

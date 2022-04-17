@@ -1,3 +1,10 @@
+ver 0.2.5
+- Added check mode (You can check which versions are the same format as your assets)
+- Added check mode and export mode to GUI
+- Fixed an error when loading assets corrupted by name table editing
+- Modified comparison function
+- Minor updates for GUI
+
 ver 0.2.4
 - Added support for UE4.25 games
 - Added support for UE4.26 games

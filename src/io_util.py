@@ -10,7 +10,7 @@ def get_size(file):
     file.seek(pos)
     return size
 
-def check(actual, expected, f=None, msg='Parse failed.'):
+def check(actual, expected, f=None, msg='Parse failed. This is unexpected.'):
     if actual!=expected:
         if f is not None:
             print('offset: {}'.format(f.tell()))
@@ -165,16 +165,15 @@ def compare(file1,file2):
     f1.close()
     f2.close()
 
+    if f1_size==f2_size and f1_bin==f2_bin:
+        print('Same data!')
+        return
+
     i=-1
     for b1, b2 in zip(f1_bin, f2_bin):
         i+=1
         if b1!=b2:
             break
-  
-    if i==size-1:
-        print('Same data!')
-    else:
-        raise RuntimeError('Not same :{}'.format(i))
 
-    if f1_size!=f2_size:
-        raise RuntimeError('Not same size. ({}, {})'.format(f1_size, f2_size))
+    raise RuntimeError('Not same :{}'.format(i))
+    

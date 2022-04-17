@@ -1,31 +1,81 @@
 {
     "gui": [
         {
-        "name": "UE4-DDS-Tools",
-        "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version="],
-        "button": "Inject",
-        "components": [
-            {
-                "type": "file",
-                "label": "Uexp file (Drop or select .uexp)",
-                "extension": "uexp files | *.uexp"
-            },
-            {
-                "type": "file",
-                "label": "DDS file (Drop or select .dds)",
-                "extension": "dds files (*.dds;*.DDS)| *.dds;*.DDS"
-            },
-            {
-                "type": "folder",
-                "label": "Output path (Drop or select a folder)"
-            },
-            {
-                "type": "choice",
-                "label": "UE4 version",
-                "items": ["4.27", "4.26", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
-                "default": 5
-            }
-        ]
+            "name": "Inject",
+            "label": "UE4-DDS-Tools (Inject mode)",
+            "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version="],
+            "button": "Inject",
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uexp file (Drop or select .uexp)",
+                    "extension": "uexp files | *.uexp"
+                },
+                {
+                    "type": "file",
+                    "label": "DDS file (Drop or select .dds)",
+                    "extension": "dds files (*.dds;*.DDS)| *.dds;*.DDS"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output path (Drop or select a folder)"
+                },
+                {
+                    "type": "choice",
+                    "label": "UE4 version",
+                    "items": ["4.27", "4.26", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
+                    "default": 5
+                }
+            ]
+        },
+        {
+            "name": "Export as dds",
+            "label": "UE4-DDS-Tools (Export mode)",
+            "command": ["python\\python.exe src\\main.py \"", "\" --mode=export --save_folder=\"", "\" --version="],
+            "button": "Export",
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uexp file (Drop or select .uexp)",
+                    "extension": "uexp files | *.uexp"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output path (Drop or select a folder)"
+                },
+                {
+                    "type": "choice",
+                    "label": "UE4 version",
+                    "items": ["4.27", "4.26", "4.25", "4.19", "4.18", "ff7r", "bloodstained"],
+                    "default": 5
+                }
+            ]
+        },
+        {
+            "name": "Check version",
+            "label": "UE4-DDS-Tools (Check mode)",
+            "command": ["python\\python.exe src\\main.py \"", "\" --mode=check"],
+            "button": "Check",
+            "show_last_line": true,
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uexp file (Drop or select .uexp)",
+                    "extension": "uexp files | *.uexp"
+                }
+            ]
+        }
+    ],
+    "help": [
+        {
+            "type": "url",
+            "label": "README (git repo)",
+            "url": "github.com/matyalatte/UE4-DDS-Tools"
+        },
+        {
+            "type": "url",
+            "label": "How to Use (wiki)",
+            "url": "github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use"
         }
     ]
 }
