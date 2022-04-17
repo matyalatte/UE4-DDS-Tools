@@ -269,4 +269,5 @@ if __name__=='__main__':
         print('Mode: inject')
         main(file, "copy_uasset")
         main(dds_file, "inject")
-    print('Success! Run time (s): {}'.format(time.time()-start_time))
+    if mode!="check":
+        print('Success! Run time (s): {}'.format(time.time()-start_time))
