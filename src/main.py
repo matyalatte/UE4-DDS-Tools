@@ -8,8 +8,8 @@ from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
-TOOL_VERSION = '0.2.5'
-UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', 'ff7r', 'bloodstained']
+TOOL_VERSION = '0.2.6'
+UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', '4.15', 'ff7r', 'bloodstained']
 
 #get arguments
 def get_args():
@@ -70,14 +70,15 @@ def valid(folder, file, save_folder, version, force, clear=True):
 
         #compare and remove files
         compare(uasset_name, new_uasset_name)
-        compare(uexp_name, new_uexp_name)
+        if new_uexp_name is not None:
+            compare(uexp_name, new_uexp_name)
         if new_ubulk_name is not None:
             compare(ubulk_name, new_ubulk_name)
 
 #copy mode (copy uasset to workspace)
 def copy_uasset(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
-    Utexture(src_file, version=version) #check if the asset can parse
+    #Utexture(src_file, version=version) #check if the asset can parse
 
     #make or clear workspace
     save_folder = 'workspace/uasset'
@@ -95,9 +96,10 @@ def copy_uasset(folder, file, save_folder, version, force, clear=True):
     if folder not in ['.', ''] and not os.path.exists(folder):
         mkdir(folder)
     shutil.copy(uasset_name, new_uasset_name)
-    shutil.copy(uexp_name, new_uexp_name)
     print('copy: {} -> {}'.format(uasset_name, new_uasset_name))
-    print('copy: {} -> {}'.format(uexp_name, new_uexp_name))
+    if os.path.exists(uexp_name):
+        shutil.copy(uexp_name, new_uexp_name)
+        print('copy: {} -> {}'.format(uexp_name, new_uexp_name))
     if os.path.exists(ubulk_name):
         shutil.copy(ubulk_name, new_ubulk_name)
         print('copy: {} -> {}'.format(ubulk_name, new_ubulk_name))
@@ -110,23 +112,23 @@ def inject_dds(folder, file, save_folder, version, force, clear=True):
 
     #determine which file should be injected
     file_list = get_file_list_rec(uasset_folder)
-    uexp_list=[]
+    uasset_list=[]
     for f in file_list:
-        if f[-4:]=='uexp':
-            uexp_list.append(f)
-    if len(uexp_list)==0:
+        if f[-6:]=='uasset':
+            uasset_list.append(f)
+    if len(uasset_list)==0:
         raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
-    elif len(uexp_list)==1:
-        uasset_base=uexp_list[0]
+    elif len(uasset_list)==1:
+        uasset_base=uasset_list[0]
     else:
         dds_base = os.path.splitext(os.path.basename(file))[0]
-        uexp_base_list = [os.path.basename(file) for file in uexp_list]
-        if dds_base+'.uexp' not in uexp_base_list:
+        uasset_base_list = [os.path.basename(file) for file in uasset_list]
+        if dds_base+'.uasset' not in uasset_base_list:
             raise RuntimeError('The same name asset as dds not found. {}'.format(dds_base))
-        id = uexp_base_list.index(dds_base+'.uexp')
+        id = uasset_base_list.index(dds_base+'.uasset')
         if id<0:
-            raise RuntimeError('Uasset Not Found ({})'.format(os.path.join(uasset_folder, dds_base+'.uexp')))
-        uasset_base=uexp_list[id]
+            raise RuntimeError('Uasset Not Found ({})'.format(os.path.join(uasset_folder, dds_base+'.uasset')))
+        uasset_base=uasset_list[id]
 
     #read uasset
     uasset_file = os.path.join(uasset_folder, uasset_base)
@@ -199,6 +201,7 @@ if __name__=='__main__':
     mode = args.mode
     #force = args.force
     force = False
+    ubulk_threshold = 256
     
     if args.version is not None:
         version = args.version
@@ -249,7 +252,7 @@ if __name__=='__main__':
                 clear=True
                 folder, file_list = get_file_list_from_folder(file)
                 for file in file_list:
-                    if file[-4:]=='uexp' or file[-3:] in ['dds', 'DDS']:
+                    if file[-6:]=='uasset' or file[-3:] in ['dds', 'DDS']:
                         func(folder, file, save_folder, version, force, clear=clear)
                         clear=False
 

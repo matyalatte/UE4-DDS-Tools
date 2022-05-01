@@ -23,6 +23,7 @@ class Umipmap(c.LittleEndianStructure):
 
     def update(self, data, size, uexp):
         self.uexp=uexp
+        self.meta=False
         self.data_size=len(data)
         self.data_size2=len(data)
         self.data = data
@@ -35,7 +36,8 @@ class Umipmap(c.LittleEndianStructure):
     def read(f, version):
         mip = Umipmap(version)
         f.readinto(mip)
-        mip.uexp = mip.ubulk_flag!=1281
+        mip.uexp = mip.ubulk_flag not in [1025, 1281]
+        mip.meta = mip.ubulk_flag==32
         if mip.uexp:
             mip.data = f.read(mip.data_size)
         mip.width = read_uint32(f)
@@ -57,16 +59,19 @@ class Umipmap(c.LittleEndianStructure):
 
     def write(self, f, uasset_size):
         if self.uexp:
-            self.ubulk_flag=72 - 40*(self.version=='ff7r') - 8*(self.version=='ff7r_bulk')
+            if self.meta:
+                self.ubulk_flag=32
+            else:
+                self.ubulk_flag=72 if self.version!='ff7r' else 64
             self.unk_flag = 0
         else:
-            self.ubulk_flag=1281
+            self.ubulk_flag=1281 if self.version!='4.15' else 1025
             self.unk_flag = self.version in ['4.27', 'ff7r']
-        if self.uexp and self.version=='ff7r':
+        if self.uexp and self.meta:
             self.data_size=0
             self.data_size2=0
         f.write(self)
-        if self.uexp and self.version!='ff7r':
+        if self.uexp and not self.meta:
             f.write(self.data)
 
         write_uint32(f, self.width)

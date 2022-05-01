@@ -4,9 +4,9 @@ import os
 format
 
 1st line: folder path
-2nd line: uexp
+2nd line: uasset
 3rd line: dds
-4th line: uexp
+4th line: uasset
 5th line: dds
     :      :
 
@@ -18,15 +18,15 @@ example
 if file_list.txt is
 
 foo/bar/
-uexp/a.uexp
+uexp/a.uasset
 dds/d.dds
-test/ppp.uexp
+test/ppp.uasset
 b/ttt.dds
 
 then DDS tool will inject
 
-foo/bar/dds/d.dds into foo/bar/uexp/a.uexp
-foo/bar/b/ttt.dds into foo/bar/test/ppp.uexp
+foo/bar/dds/d.dds into foo/bar/uexp/a.uasset
+foo/bar/b/ttt.dds into foo/bar/test/ppp.uasset
 '''
 
 def remove_quotes(l):

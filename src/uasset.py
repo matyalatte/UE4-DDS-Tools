@@ -33,7 +33,7 @@ class UassetHeader(c.LittleEndianStructure):
         ("padding_offset", c.c_uint32), #file data offset - 4
         ("file_length", c.c_uint32), #.uasset + .uexp - 4
         ("null5", c.c_ubyte*12),
-        ("file_data_count", c.c_uint32),
+        ("file_data_count", c.c_int32),
         ("file_data_offset", c.c_uint32)
     ]
 
@@ -63,7 +63,8 @@ class UassetImport(c.LittleEndianStructure):
         ("parent_dir_id", c.c_uint64),
         ("class_id", c.c_uint64),
         ("parent_import_id", c.c_int32),
-        ("name_id", c.c_uint64),
+        ("name_id", c.c_uint32),
+        ("unk", c.c_uint32),
     ]
 
     def name_import(self, name_list):
@@ -124,6 +125,38 @@ class UassetExport(c.LittleEndianStructure):
         print(pad+'  size: {}'.format(self.size))
         print(pad+'  offset: {}'.format(self.offset))
 
+class UassetExportOld(c.LittleEndianStructure):
+    _pack_=1
+    _fields_ = [ #100 bytes
+        ("class_id", c.c_int32),
+        ("null", c.c_uint32),
+        ("import_id", c.c_int32),
+        ("null2", c.c_uint32),
+        ("name_id", c.c_uint32),
+        ("unk_int", c.c_uint32),
+        ("unk_int2", c.c_uint32),
+        ("size", c.c_uint32), #int64 to int32
+        ("offset", c.c_uint32),
+        ("unk", c.c_ubyte*60),
+    ]
+    def update(self, size, offset):
+        self.size=size
+        self.offset=offset
+
+    def name_export(self, imports, name_list):
+        print(self.name_id)
+        self.name = name_list[self.name_id]
+        self.class_name = imports[-self.class_id-1].name
+        self.import_name = imports[-self.import_id-1].name
+
+    def print(self, padding=2):
+        pad=' '*padding
+        print(pad+self.name)
+        print(pad+'  class: {}'.format(self.class_name))
+        print(pad+'  import: {}'.format(self.import_name))
+        print(pad+'  size: {}'.format(self.size))
+        print(pad+'  offset: {}'.format(self.offset))
+
 class Uasset:
 
     def __init__(self, uasset_file, verbose=False):
@@ -135,12 +168,13 @@ class Uasset:
 
         self.file=os.path.basename(uasset_file)[:-7]
         with open(uasset_file, 'rb') as f:
-            self.size=get_size(f)
 
             #read header
             self.header=UassetHeader()
             f.readinto(self.header)
             self.header.check()
+            self.nouexp = self.header.file_data_count==-1
+            self.size=self.header.file_size
             if verbose:
                 self.header.print()
                 print('Name list')
@@ -164,18 +198,22 @@ class Uasset:
                 list(map(lambda x: x.print(), self.imports))
 
             #read exports
-            self.exports=read_struct_array(f, UassetExport, len=self.header.export_count)
+            if self.nouexp:
+                self.exports=read_struct_array(f, UassetExportOld, len=self.header.export_count)
+            else:
+                self.exports=read_struct_array(f, UassetExport, len=self.header.export_count)
             list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
+            
             if verbose:
                 print('Export')
                 list(map(lambda x: x.print(), self.exports))
-
             #file data ids
             read_null_array(f, self.header.padding_count)
             check(self.header.padding_offset, f.tell())
             read_null(f)
-            check(self.header.file_data_offset, f.tell())
-            self.file_data_ids = read_int32_array(f, len=self.header.file_data_count)
+            if not self.nouexp:
+                check(self.header.file_data_offset, f.tell())
+                self.file_data_ids = read_int32_array(f, len=self.header.file_data_count)
             
             '''
             for i in self.file_data_ids:
@@ -205,13 +243,16 @@ class Uasset:
 
             #skip exports part
             self.header.export_offset = f.tell()
-            f.seek(len(self.exports)*104, 1)
+            list(map(lambda x: f.write(x), self.exports))
 
             #file data ids
-            write_null_array(f, self.header.padding_count+1)
-            self.header.padding_offset = f.tell()-4
+            write_null_array(f, self.header.padding_count)
+            self.header.padding_offset = f.tell()
+
+            write_null(f)
             self.header.file_data_offset = f.tell()
-            write_int32_array(f, self.file_data_ids)
+            if not self.nouexp:
+                write_int32_array(f, self.file_data_ids)
             self.header.uasset_size = f.tell()
             self.header.file_length=uexp_size+self.header.uasset_size-4
             self.header.name_count = len(self.name_list)
