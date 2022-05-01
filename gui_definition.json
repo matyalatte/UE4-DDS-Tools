@@ -97,8 +97,8 @@
                 {
                     "type": "checks",
                     "label": "Options",
-                    "items": ["no mipmaps", "resize to a power of 2 for width and height"],
-                    "values": ["-m 1 ", "-pow2 "]
+                    "items": ["No mipmaps", "Resize to a power of 2 for width and height", "BC5 to .png or .tga"],
+                    "values": ["-m 1 ", "-pow2 ", "-f rgba -reconstructz "]
                 }
             ]
         }
