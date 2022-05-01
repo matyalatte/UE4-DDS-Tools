@@ -46,6 +46,7 @@
                 },
                 {
                     "type": "choice",
+                    "label": "UE4 version",
                     "items": ["4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.18 ~ 4.19", "4.15", "ff7r"],
                     "values": ["4.26", "4.23", "4.20", "4.18", "4.15", "ff7r"],
                     "default": 5
@@ -65,23 +66,63 @@
                     "extension": "uasset files | *.uasset"
                 }
             ]
+        },
+        {
+            "label": "Convert",
+            "window_name": "Texconv",
+            "command": ["texconv\\texconv.exe -r:keep \"", "\" -o \"", "\" -f", " -y "],
+            "button": "Convert",
+            "show_last_line": true,
+            "components": [
+                {
+                    "type": "text",
+                    "label": "Converts textures with texconv."
+                },
+                {
+                    "type": "file",
+                    "label": "Texture file. (You can use * or ? to specify multiple files.)",
+                    "extension": "any files | *"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output path"
+                },
+                {
+                    "type": "choice",
+                    "label": "Convert to",
+                    "items": [".png", ".tga", ".hdr", "DXT1", "DXT5", "BC4U", "BC5U", "BC6HU", "BC7U", "B8G8R8A8", "FloatRGBA16"],
+                    "values": ["t png", "t tga", "t hdr", " DXT1", " DXT5", " BC4_UNORM", " BC5_UNORM", " BC6H_UF16", " BC7_UNORM", "B8G8R8A8_UNORM_SRGB", "R16G16B16A16_FLOAT"],
+                    "default": 1
+                },
+                {
+                    "type": "checks",
+                    "label": "Options",
+                    "items": ["no mipmaps", "resize to a power of 2 for width and height"],
+                    "values": ["-m 1 ", "-pow2 "]
+                }
+            ]
         }
     ],
     "help": [
         {
             "type": "url",
-            "label": "README (git repo)",
+            "label": "README",
             "url": "github.com/matyalatte/UE4-DDS-Tools"
         },
         {
             "type": "url",
-            "label": "How to Use (wiki)",
+            "label": "How to Use",
             "url": "github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use"
         },
         {
             "type": "url",
             "label": "About Simple Command Runner",
             "url": "https://github.com/matyalatte/Simple-Command-Runner"
+        },
+        {
+            "type": "url",
+            "label": "About Texconv",
+            "url": "https://github.com/microsoft/DirectXTex/wiki/Texconv"
         }
     ]
 }

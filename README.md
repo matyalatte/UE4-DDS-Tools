@@ -11,6 +11,7 @@ You can inject dds files into UE4 assets.<br>
 - Inject any size DDS and any number of mipmaps.
 - Export assets as DDS.
 - Check the UE versions of assets.
+- Convert textures with [texconv](https://github.com/microsoft/DirectXTex/wiki/Texconv)
 
 ## Supported UE versions
 - UE4.18 ~ 4.27
@@ -39,6 +40,7 @@ Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-
 * The files in this repository are licensed under [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
 * We use [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) for GUI. It is licensed under [wxWindows Library Licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt).
 * We use [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is licensed under [PSF license](https://docs.python.org/3/license.html).
+* We use [texconv](https://github.com/microsoft/DirectXTex/wiki/Texconv) as a texture converter. It is licensed under [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
 
 ## FAQ
 

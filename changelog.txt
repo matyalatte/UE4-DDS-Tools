@@ -1,5 +1,6 @@
 ver 0.2.6
 - Added support for 4.15, 4.20~4.24
+- Added support for texconv to GUI
 
 ver 0.2.5
 - Added check mode (You can check which versions are the same format as your assets)

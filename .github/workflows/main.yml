@@ -9,6 +9,8 @@ on:
 env:
   ZIP_NAME: UE4-DDS-Tools
   GUI_VERSION: v0.0.3
+  PYTHON_VERSION: 3.9.12
+  TEXCONV_VERSION: mar2022
 
 jobs:
   packaging:
@@ -27,30 +29,43 @@ jobs:
         
       - uses: actions/checkout@v2
       
-      - name: Copy files
+      - name: Download embeddable python
         run: |
           mkdir -p ../release/python
-          curl -OL https://www.python.org/ftp/python/3.9.12/python-3.9.12-embed-amd64.zip
-          unzip -d python-3.9.12-embed-amd64 python-3.9.12-embed-amd64.zip
-          cd python-3.9.12-embed-amd64
+          curl -OL https://www.python.org/ftp/python/${{env.PYTHON_VERSION}}/python-${{env.PYTHON_VERSION}}-embed-amd64.zip
+          unzip -d python-${{env.PYTHON_VERSION}}-embed-amd64 python-${{env.PYTHON_VERSION}}-embed-amd64.zip
+          cd python-${{env.PYTHON_VERSION}}-embed-amd64
           cp python.exe ../../release/python
           cp python39.dll ../../release/python
           cp python39.zip ../../release/python
           cp libffi-7.dll ../../release/python
           cp _ctypes.pyd ../../release/python
           cp LICENSE.txt ../../release/python
-          cd ../
+        shell: bash
+
+      - name: Download Simple Command Runner
+        run: |
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
+          cp gui_definition.json ../release
+        shell: bash
+
+      - name: Download texconv
+        run: |
+          curl -OL https://github.com/microsoft/DirectXTex/releases/download/${{env.TEXCONV_VERSION}}/texconv.exe
+          mkdir -p ../release/texconv
+          cp texconv.exe ../release/texconv
+        shell: bash
+      
+      - name: Copy files
+        run: |
           cp -r src ../release
           cp bat/_check* ../release
           cp bat/_export* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
-          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
-          cp gui_definition.json ../release
-
         shell: bash
 
       - name: Archive Release for python
