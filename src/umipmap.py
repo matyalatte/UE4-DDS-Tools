@@ -14,7 +14,7 @@ class Umipmap(c.LittleEndianStructure):
         #data, c_ubyte*
         #width, c_uint32
         #height, c_uint32
-        #if version==4.27 or bloodstained:
+        #if version==4.27 or 20:
         #   null, c_uint32
     ]
 
@@ -42,7 +42,7 @@ class Umipmap(c.LittleEndianStructure):
             mip.data = f.read(mip.data_size)
         mip.width = read_uint32(f)
         mip.height = read_uint32(f)
-        if version in ['4.25', '4.27', 'bloodstained']:
+        if version in ['4.25', '4.27', '4.20']:
             read_const_uint32(f, 1)
         check(mip.one, 1)
         check(mip.data_size, mip.data_size2)
@@ -76,5 +76,5 @@ class Umipmap(c.LittleEndianStructure):
 
         write_uint32(f, self.width)
         write_uint32(f, self.height)
-        if self.version in ['4.25', '4.27', 'bloodstained']:
+        if self.version in ['4.25', '4.27', '4.20']:
             write_uint32(f, 1)

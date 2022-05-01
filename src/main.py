@@ -9,7 +9,7 @@ from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 
 TOOL_VERSION = '0.2.6'
-UE_VERSIONS = ['4.27', '4.26', '4.25', '4.19', '4.18', '4.15', 'ff7r', 'bloodstained']
+UE_VERSIONS = ['4.27', '4.26', '4.25', '4.24', '4.23', '4.22', '4.21', '4.20', '4.19', '4.18', '4.15', 'ff7r']
 
 #get arguments
 def get_args():
@@ -201,7 +201,6 @@ if __name__=='__main__':
     mode = args.mode
     #force = args.force
     force = False
-    ubulk_threshold = 256
     
     if args.version is not None:
         version = args.version

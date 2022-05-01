@@ -55,6 +55,10 @@ class Utexture:
     def __init__(self, file_path, version='ff7r', verbose=False):
         if version=='4.26':
             version='4.27'
+        if version in ['4.23', '4.24']:
+            version='4.25'
+        if version in ['4.21', '4.22']:
+            version='4.20'
         self.version = version
         
         if not os.path.isfile(file_path):
@@ -66,8 +70,12 @@ class Utexture:
         #read .uasset
         self.uasset = Uasset(uasset_name)
         self.nouexp = self.uasset.nouexp
-        if self.version=='4.15' and not self.nouexp:
-            raise RuntimeError('Uexp should not exist.')
+        if self.version=='4.15':
+            if not self.nouexp:
+                raise RuntimeError('Uexp should not exist.')
+        elif self.nouexp:
+            raise RuntimeError('Uexp should exist.')
+
 
         if len(self.uasset.exports)!=1:
             raise RuntimeError('Unexpected number of exports')
@@ -162,7 +170,7 @@ class Utexture:
         self.type_name_id = read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = read_uint32(f) #Offset to end of uexp?
-        if self.version in ['4.25', '4.27', 'bloodstained']:
+        if self.version in ['4.25', '4.27', '4.20']:
             read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
         f.seek(8, 1) #original width and height
         self.cube_flag = read_uint16(f)
@@ -316,7 +324,7 @@ class Utexture:
         #write meta data
         write_uint64(f, self.type_name_id)
         write_uint32(f, 0) #write dummy offset. (rewrite it later)
-        if self.version in ['4.25', '4.27', 'bloodstained']:
+        if self.version in ['4.25', '4.27', '4.20']:
             write_null(f)
         
         write_uint32(f, self.original_width)
@@ -358,7 +366,7 @@ class Utexture:
                 f.tell() + \
                 uexp_map_data_size + \
                 ubulk_map_num*32 + \
-                (len(self.mipmaps))*(self.version in ['4.25', 'bloodstained'])*4 + \
+                (len(self.mipmaps))*(self.version in ['4.25', '4.20'])*4 + \
                 (self.version=='4.25')*4
             offset = -new_end_offset-8
         #write mipmaps
