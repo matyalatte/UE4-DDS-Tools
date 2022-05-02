@@ -62,7 +62,6 @@ jobs:
         run: |
           cp -r src ../release
           cp bat/_check* ../release
-          cp bat/_export* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release

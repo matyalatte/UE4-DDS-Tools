@@ -7,9 +7,12 @@ from io_util import mkdir, compare
 from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
+import texconv
 
-TOOL_VERSION = '0.2.6'
-UE_VERSIONS = ['4.27', '4.26', '4.25', '4.24', '4.23', '4.22', '4.21', '4.20', '4.19', '4.18', '4.15', 'ff7r']
+TOOL_VERSION = '0.3.0'
+UE_VERSIONS = ['4.' + str(i+15) for i in range(13)] + ['ff7r'] #4.15~4.27, ff7r
+TEXTURES = ['dds', 'tga', 'hdr', 'bmp', 'jpg', 'png']
+TEXTURES += [fmt.upper() for fmt in TEXTURES]
 
 #get arguments
 def get_args():
@@ -19,6 +22,7 @@ def get_args():
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
     parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, remove_mipmaps, and check are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
+    parser.add_argument('--export_as', default='dds', type=str, help='format to export. dds, tga, png, jpg, and bmp is available.')
     #parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
     return args
@@ -33,15 +37,15 @@ def get_config():
     return config
 
 #parse mode (parse dds or uasset)
-def parse(folder, file, save_folder, version, force, clear=True):
+def parse(folder, file, save_folder, version, export_as, clear=True):
     file = os.path.join(folder, file)
-    if file[-3:] in ['dds', 'DDS']:
+    if file[-3:].lower()=='dds':
         DDS.load(file, verbose=True)
     else:
         Utexture(file, version=version, verbose=True)
 
 #valid mode (check if the tool can read and write a file correctly.)
-def valid(folder, file, save_folder, version, force, clear=True):
+def valid(folder, file, save_folder, version, export_as, clear=True):
 
     #make or clear workspace
     save_folder = 'workspace/valid'
@@ -54,7 +58,7 @@ def valid(folder, file, save_folder, version, force, clear=True):
     src_file = os.path.join(folder, file)
     new_file=os.path.join(save_folder, file)
     
-    if file[-3:] in ['dds', 'DDS']:
+    if file[-3:].lower()=='dds':
         #read and write dds
         dds = DDS.load(src_file)
         dds.save(new_file)
@@ -76,7 +80,7 @@ def valid(folder, file, save_folder, version, force, clear=True):
             compare(ubulk_name, new_ubulk_name)
 
 #copy mode (copy uasset to workspace)
-def copy_uasset(folder, file, save_folder, version, force, clear=True):
+def copy_uasset(folder, file, save_folder, version, export_as, clear=True):
     src_file = os.path.join(folder, file)
     #Utexture(src_file, version=version) #check if the asset can parse
 
@@ -105,10 +109,13 @@ def copy_uasset(folder, file, save_folder, version, force, clear=True):
         print('copy: {} -> {}'.format(ubulk_name, new_ubulk_name))
 
 #inject mode (inject dds into the asset copied to workspace)
-def inject_dds(folder, file, save_folder, version, force, clear=True):
+def inject_dds(folder, file, save_folder, version, export_as, clear=True):
     uasset_folder = 'workspace/uasset'
     if not os.path.exists(uasset_folder):
         raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
+    if file[-3:] not in TEXTURES:
+        raise RuntimeError('Can not inject uasset into uasset.')
+
 
     #determine which file should be injected
     file_list = get_file_list_rec(uasset_folder)
@@ -137,22 +144,41 @@ def inject_dds(folder, file, save_folder, version, force, clear=True):
     #read and inject dds
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, uasset_base)
-    dds = DDS.load(src_file)
-    texture.inject_dds(dds, force=force)
+    if src_file[-3:].lower()=='dds':
+        dds = DDS.load(src_file)
+    else:
+        mkdir('workspace/dds')
+        temp_dds = os.path.join('workspace/dds', os.path.splitext(os.path.basename(src_file))[0]+'.dds')
+        texconv.convert_to_dds(src_file, temp_dds, texture.format_name, texture.texture_type, nomip=len(texture.mipmaps)<=1)
+        dds = DDS.load(temp_dds)
+        os.remove(temp_dds)
+
+    texture.inject_dds(dds, force=False)
     texture.save(new_file)
 
 #export mode (export uasset as dds)
-def export_as_dds(folder, file, save_folder, version, force, clear=True):
+def export_as_dds(folder, file, save_folder, version, export_as, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     new_file=os.path.splitext(new_file)[0]+'.dds'
 
     texture = Utexture(src_file, version=version)
     dds = DDS.asset_to_DDS(texture)
-    dds.save(new_file)
+    if export_as=='dds':
+        dds.save(new_file)
+    else:
+        mkdir('workspace/dds')
+        temp_dds = os.path.join('workspace/dds', os.path.splitext(os.path.basename(file))[0]+'.dds')
+        
+        dds.save(temp_dds)
+        texconv.convert_dds(temp_dds, new_file, export_as, texture.format_name, texture.texture_type)
+        os.remove(temp_dds)
+        
+
+
 
 #remove mode (remove mipmaps from uasset)
-def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
+def remove_mipmaps(folder, file, save_folder, version, export_as, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     print(save_folder)
@@ -163,13 +189,13 @@ def remove_mipmaps(folder, file, save_folder, version, force, clear=True):
     texture.save(new_file)
 
 #confirm mode (check)
-def check_version(folder, file, save_folder, version, force, clear=True):
+def check_version(folder, file, save_folder, version, export_as, clear=True):
     print('Running valid mode with each version...')
     passed_version = []
     for v in UE_VERSIONS:
         try:
             with redirect_stdout(open(os.devnull, 'w')):
-                valid(folder, file, save_folder, v, force, clear=True)
+                valid(folder, file, save_folder, v, export_as, clear=True)
             print('  {}: Passed'.format(v))
             passed_version.append(v)
         except:
@@ -199,6 +225,7 @@ if __name__=='__main__':
     dds_file = args.dds_file
     save_folder = args.save_folder
     mode = args.mode
+    export_as = args.export_as
     #force = args.force
     force = False
     
@@ -227,6 +254,12 @@ if __name__=='__main__':
             raise RuntimeError('Unsupported version. ({})'.format(version))
         if force:
             raise RuntimeError('force injection is unsupported yet')
+        if export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
+            raise RuntimeError('Unsupported format to export ({})'.format(export_as))
+        if export_as!='dds' and not texconv.texconv_exist():
+            raise RuntimeError('texconv not fould. put texconv.exe in texconv folder.')
+
+
 
         func = mode_functions[mode]
 
@@ -234,7 +267,7 @@ if __name__=='__main__':
             #if input is a file
             folder = os.path.dirname(file)
             file = os.path.basename(file)
-            func(folder, file, save_folder, version, force)
+            func(folder, file, save_folder, version, export_as)
 
         else:
             if os.path.isfile(file):
@@ -243,7 +276,7 @@ if __name__=='__main__':
                 func= [copy_uasset, inject_dds]
                 inject=0
                 for file in file_list:
-                    func[inject](folder, file, save_folder, version, force)
+                    func[inject](folder, file, save_folder, version, export_as)
                     inject = not inject
             else:
                 #if input is a folder
@@ -251,8 +284,8 @@ if __name__=='__main__':
                 clear=True
                 folder, file_list = get_file_list_from_folder(file)
                 for file in file_list:
-                    if file[-6:]=='uasset' or file[-3:] in ['dds', 'DDS']:
-                        func(folder, file, save_folder, version, force, clear=clear)
+                    if file[-6:]=='uasset' or file[-3:] in TEXTURES:
+                        func(folder, file, save_folder, version, export_as, clear=clear)
                         clear=False
 
     if os.path.isfile(save_folder):

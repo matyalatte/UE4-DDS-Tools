@@ -4,17 +4,17 @@
 
 # UE4-DDS-Tools ver0.2.6
 Texture modding tools for UE4 games.<br>
-You can inject dds files into UE4 assets.<br>
+You can inject texture files (.dds, .tga, .hdr, etc.) into UE4 assets.<br>
 
 ## Features
 
-- Inject any size DDS and any number of mipmaps.
-- Export assets as DDS.
-- Check the UE versions of assets.
+- Inject any size DDS and any number of mipmaps
+- Extract texture
+- Check the UE versions of assets
 - Convert textures with [texconv](https://github.com/microsoft/DirectXTex/wiki/Texconv)
 
 ## Supported UE versions
-- UE4.18 ~ 4.27
+- UE4.15 ~ 4.27
 - FF7R
 
 If you want me to add support for your game, please contact me with [discord](https://discord.gg/Qx2Ff3MByF).
