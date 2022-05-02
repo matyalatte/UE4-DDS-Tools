@@ -1,6 +1,7 @@
 ver 0.3.0
 - Added support for tga, hdr, png, jpg, bmp. (You can inject non-dds files.)
 - Added support for 4.16, 4.17
+- Added --no_mipmaps option
 
 ver 0.2.6
 - Added support for 4.15, 4.20~4.24

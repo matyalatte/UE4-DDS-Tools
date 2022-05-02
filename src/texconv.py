@@ -36,8 +36,6 @@ def convert_to_dds(file_path, save_path, format_name, texture_type, nomip=False)
         raise RuntimeError('Can not convert cubemap textures with texconv.')
     if 'BC6' in format_name and file_path[-3:]!='hdr':
         raise RuntimeError('Use .dds or .hdr to inject HDR textures. ({})'.format(file_path))
-    print(format_name)
-    print(file_path)
     save_folder=os.path.dirname(save_path)
     fmt=FORMAT_FOR_TEXCONV[format_name]
     cmd = 'texconv\\texconv.exe "{}" -o "{}" -f {} -y '.format(file_path, save_folder, fmt)

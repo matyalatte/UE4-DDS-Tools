@@ -381,6 +381,8 @@ class Utexture:
     #remove mipmaps except the largest one
     def remove_mipmaps(self):
         old_mipmap_num = len(self.mipmaps)
+        if old_mipmap_num==1:
+            return
         self.mipmaps = [self.mipmaps[0]]
         self.mipmaps[0].uexp=True
         self.has_ubulk=False

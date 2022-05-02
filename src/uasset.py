@@ -144,7 +144,6 @@ class UassetExportOld(c.LittleEndianStructure):
         self.offset=offset
 
     def name_export(self, imports, name_list):
-        print(self.name_id)
         self.name = name_list[self.name_id]
         self.class_name = imports[-self.class_id-1].name
         self.import_name = imports[-self.import_id-1].name

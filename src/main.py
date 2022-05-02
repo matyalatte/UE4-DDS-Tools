@@ -23,6 +23,7 @@ def get_args():
     parser.add_argument('--mode', default='parse', type=str, help='valid, parse, copy_uasset, inject, remove_mipmaps, and check are available.')
     parser.add_argument('--version', default=None, type=str, help='version of UE4. It will overwrite the argment in config.json.')
     parser.add_argument('--export_as', default='dds', type=str, help='format to export. dds, tga, png, jpg, and bmp is available.')
+    parser.add_argument('--no_mipmaps', action='store_true', help='force no mips to dds and uasset.')
     #parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
     args = parser.parse_args()
     return args
@@ -37,7 +38,7 @@ def get_config():
     return config
 
 #parse mode (parse dds or uasset)
-def parse(folder, file, save_folder, version, export_as, clear=True):
+def parse(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     file = os.path.join(folder, file)
     if file[-3:].lower()=='dds':
         DDS.load(file, verbose=True)
@@ -45,7 +46,7 @@ def parse(folder, file, save_folder, version, export_as, clear=True):
         Utexture(file, version=version, verbose=True)
 
 #valid mode (check if the tool can read and write a file correctly.)
-def valid(folder, file, save_folder, version, export_as, clear=True):
+def valid(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
 
     #make or clear workspace
     save_folder = 'workspace/valid'
@@ -80,7 +81,7 @@ def valid(folder, file, save_folder, version, export_as, clear=True):
             compare(ubulk_name, new_ubulk_name)
 
 #copy mode (copy uasset to workspace)
-def copy_uasset(folder, file, save_folder, version, export_as, clear=True):
+def copy_uasset(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     src_file = os.path.join(folder, file)
     #Utexture(src_file, version=version) #check if the asset can parse
 
@@ -109,7 +110,7 @@ def copy_uasset(folder, file, save_folder, version, export_as, clear=True):
         print('copy: {} -> {}'.format(ubulk_name, new_ubulk_name))
 
 #inject mode (inject dds into the asset copied to workspace)
-def inject_dds(folder, file, save_folder, version, export_as, clear=True):
+def inject_dds(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     uasset_folder = 'workspace/uasset'
     if not os.path.exists(uasset_folder):
         raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
@@ -149,20 +150,24 @@ def inject_dds(folder, file, save_folder, version, export_as, clear=True):
     else:
         mkdir('workspace/dds')
         temp_dds = os.path.join('workspace/dds', os.path.splitext(os.path.basename(src_file))[0]+'.dds')
-        texconv.convert_to_dds(src_file, temp_dds, texture.format_name, texture.texture_type, nomip=len(texture.mipmaps)<=1)
+        texconv.convert_to_dds(src_file, temp_dds, texture.format_name, texture.texture_type, nomip=len(texture.mipmaps)<=1 or no_mipmaps)
         dds = DDS.load(temp_dds)
         os.remove(temp_dds)
 
     texture.inject_dds(dds, force=False)
+    if no_mipmaps:
+        texture.remove_mipmaps()
     texture.save(new_file)
 
 #export mode (export uasset as dds)
-def export_as_dds(folder, file, save_folder, version, export_as, clear=True):
+def export_as_dds(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     new_file=os.path.splitext(new_file)[0]+'.dds'
 
     texture = Utexture(src_file, version=version)
+    if no_mipmaps:
+        texture.remove_mipmaps()
     dds = DDS.asset_to_DDS(texture)
     if export_as=='dds':
         dds.save(new_file)
@@ -178,7 +183,7 @@ def export_as_dds(folder, file, save_folder, version, export_as, clear=True):
 
 
 #remove mode (remove mipmaps from uasset)
-def remove_mipmaps(folder, file, save_folder, version, export_as, clear=True):
+def remove_mipmaps(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
     print(save_folder)
@@ -189,7 +194,7 @@ def remove_mipmaps(folder, file, save_folder, version, export_as, clear=True):
     texture.save(new_file)
 
 #confirm mode (check)
-def check_version(folder, file, save_folder, version, export_as, clear=True):
+def check_version(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     print('Running valid mode with each version...')
     passed_version = []
     for v in UE_VERSIONS:
@@ -226,6 +231,7 @@ if __name__=='__main__':
     save_folder = args.save_folder
     mode = args.mode
     export_as = args.export_as
+    no_mipmaps = args.no_mipmaps
     #force = args.force
     force = False
     
@@ -267,7 +273,7 @@ if __name__=='__main__':
             #if input is a file
             folder = os.path.dirname(file)
             file = os.path.basename(file)
-            func(folder, file, save_folder, version, export_as)
+            func(folder, file, save_folder, version, export_as, no_mipmaps)
 
         else:
             if os.path.isfile(file):
@@ -276,7 +282,7 @@ if __name__=='__main__':
                 func= [copy_uasset, inject_dds]
                 inject=0
                 for file in file_list:
-                    func[inject](folder, file, save_folder, version, export_as)
+                    func[inject](folder, file, save_folder, version, export_as, no_mipmaps)
                     inject = not inject
             else:
                 #if input is a folder
@@ -285,7 +291,7 @@ if __name__=='__main__':
                 folder, file_list = get_file_list_from_folder(file)
                 for file in file_list:
                     if file[-6:]=='uasset' or file[-3:] in TEXTURES:
-                        func(folder, file, save_folder, version, export_as, clear=clear)
+                        func(folder, file, save_folder, version, export_as, no_mipmaps, clear=clear)
                         clear=False
 
     if os.path.isfile(save_folder):
