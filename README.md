@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.2.6
+# UE4-DDS-Tools ver0.3.0
 Texture modding tools for UE4 games.<br>
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE4 assets.<br>
 
