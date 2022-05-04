@@ -3,7 +3,7 @@
         {
             "label": "Inject",
             "window_name": "UE4-DDS-Tools (Inject mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version=", " "],
+            "command": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out% --version=%version% %option%",
             "button": "Inject",
             "components": [
                 {
@@ -37,7 +37,7 @@
         {
             "label": "Export",
             "window_name": "UE4-DDS-Tools (Export mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" --mode=export --save_folder=\"", "\" --version=", " --export_as=", " "],
+            "command": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
             "button": "Export",
             "components": [
                 {
@@ -73,7 +73,7 @@
         {
             "label": "Check version",
             "window_name": "UE4-DDS-Tools (Check mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" --mode=check"],
+            "command": "python\\python.exe src\\main.py %uasset% --mode=check",
             "button": "Check",
             "show_last_line": true,
             "components": [
@@ -87,7 +87,7 @@
         {
             "label": "Convert",
             "window_name": "Texconv",
-            "command": ["texconv\\texconv.exe -r:keep \"", "\" -o \"", "\" -f", " -y "],
+            "command": "texconv\\texconv.exe -r:keep %texture% -o %out% -f%fmt% -y %options%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
