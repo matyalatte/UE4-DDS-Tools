@@ -9,16 +9,19 @@
                 {
                     "type": "file",
                     "label": "Uasset file",
-                    "extension": "uasset files | *.uasset"
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 },
                 {
                     "type": "file",
                     "label": "Texture file (dds, tga, hdr, png, jpg, or bmp)",
-                    "extension": "any files | *"
+                    "extension": "any files | *",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output folder"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",
@@ -43,11 +46,13 @@
                 {
                     "type": "file",
                     "label": "Uasset file",
-                    "extension": "uasset files | *.uasset"
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output folder"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",
@@ -80,7 +85,8 @@
                 {
                     "type": "file",
                     "label": "Uasset file",
-                    "extension": "uasset files | *.uasset"
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 }
             ]
         },
@@ -98,11 +104,13 @@
                 {
                     "type": "file",
                     "label": "Texture file. (You can use * or ? to specify multiple files.)",
-                    "extension": "any files | *"
+                    "extension": "any files | *",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output folder"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",
