@@ -8,8 +8,8 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE4 assets.<br>
 
 ## Features
 
-- Inject any size DDS and any number of mipmaps
-- Extract texture
+- Inject any size textures into assets
+- Extract textures from assets
 - Check the UE versions of assets
 - Convert textures with [texconv](https://github.com/microsoft/DirectXTex/wiki/Texconv)
 

@@ -200,7 +200,7 @@ def check_version(folder, file, save_folder, version, export_as, no_mipmaps, cle
     for v in UE_VERSIONS:
         try:
             with redirect_stdout(open(os.devnull, 'w')):
-                valid(folder, file, save_folder, v, export_as, clear=True)
+                valid(folder, file, save_folder, v, export_as, no_mipmaps, clear=True)
             print('  {}: Passed'.format(v))
             passed_version.append(v)
         except:
