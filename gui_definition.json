@@ -3,74 +3,97 @@
         {
             "label": "Inject",
             "window_name": "UE4-DDS-Tools (Inject mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" \"", "\" --save_folder=\"", "\" --version="],
+            "command": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out% --version=%version% %option%",
             "button": "Inject",
             "components": [
                 {
                     "type": "file",
-                    "label": "Uasset file (Drop or select .uasset)",
-                    "extension": "uasset files | *.uasset"
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 },
                 {
                     "type": "file",
-                    "label": "DDS file (Drop or select .dds)",
-                    "extension": "dds files (*.dds;*.DDS)| *.dds;*.DDS"
+                    "label": "Texture file (dds, tga, hdr, png, jpg, or bmp)",
+                    "extension": "any files | *",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output path (Drop or select a folder)"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",
                     "label": "UE4 version",
-                    "items": ["4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.18 ~ 4.19", "4.15", "ff7r"],
-                    "values": ["4.26", "4.23", "4.20", "4.18", "4.15", "ff7r"],
+                    "items": ["4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "ff7r"],
+                    "values": ["4.26", "4.23", "4.20", "4.16", "4.15", "ff7r"],
                     "default": 5
+                },
+                {
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
                 }
             ]
         },
         {
-            "label": "Export as dds",
+            "label": "Export",
             "window_name": "UE4-DDS-Tools (Export mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" --mode=export --save_folder=\"", "\" --version="],
+            "command": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
             "button": "Export",
             "components": [
                 {
                     "type": "file",
-                    "label": "Uasset file (Drop or select .uasset)",
-                    "extension": "uasset files | *.uasset"
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output path (Drop or select a folder)"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",
                     "label": "UE4 version",
-                    "items": ["4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.18 ~ 4.19", "4.15", "ff7r"],
-                    "values": ["4.26", "4.23", "4.20", "4.18", "4.15", "ff7r"],
+                    "items": ["4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "ff7r"],
+                    "values": ["4.26", "4.23", "4.20", "4.16", "4.15", "ff7r"],
                     "default": 5
+                },
+                {
+                    "type": "choice",
+                    "label": "Export as",
+                    "items": [".tga or .hdr", ".dds", ".png", ".jpg", ".bmp"],
+                    "values": ["tga", "dds", "png", "jpg", "bmp"],
+                    "default": 0
+                },
+                {
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
                 }
             ]
         },
         {
             "label": "Check version",
             "window_name": "UE4-DDS-Tools (Check mode)",
-            "command": ["python\\python.exe src\\main.py \"", "\" --mode=check"],
+            "command": "python\\python.exe src\\main.py %uasset% --mode=check",
             "button": "Check",
             "show_last_line": true,
             "components": [
                 {
                     "type": "file",
-                    "label": "Uasset file (Drop or select .uasset)",
-                    "extension": "uasset files | *.uasset"
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true
                 }
             ]
         },
         {
             "label": "Convert",
             "window_name": "Texconv",
-            "command": ["texconv\\texconv.exe -r:keep \"", "\" -o \"", "\" -f", " -y "],
+            "command": "texconv\\texconv.exe -r:keep %texture% -o %out% -f%fmt% -y %options%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
@@ -81,11 +104,13 @@
                 {
                     "type": "file",
                     "label": "Texture file. (You can use * or ? to specify multiple files.)",
-                    "extension": "any files | *"
+                    "extension": "any files | *",
+                    "add_quotes": true
                 },
                 {
                     "type": "folder",
-                    "label": "Output path"
+                    "label": "Output folder",
+                    "add_quotes": true
                 },
                 {
                     "type": "choice",

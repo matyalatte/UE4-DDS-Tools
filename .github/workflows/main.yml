@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.0.3
+  GUI_VERSION: v0.1.0
   PYTHON_VERSION: 3.9.12
   TEXCONV_VERSION: mar2022
 
@@ -62,7 +62,6 @@ jobs:
         run: |
           cp -r src ../release
           cp bat/_check* ../release
-          cp bat/_export* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release

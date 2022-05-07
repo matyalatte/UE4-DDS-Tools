@@ -10,7 +10,7 @@ def get_size(file):
     file.seek(pos)
     return size
 
-def check(actual, expected, f=None, msg='Parse failed. This is unexpected.'):
+def check(actual, expected, f=None, msg='Parse failed. Make sure you specified UE4 version correctly.'):
     if actual!=expected:
         if f is not None:
             print('offset: {}'.format(f.tell()))
