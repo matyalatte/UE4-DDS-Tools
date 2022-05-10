@@ -8,7 +8,7 @@ def convert_dds(dds_path, save_path, export_as, format_name, texture_type):
         raise RuntimeError('Can not convert cubemap textures with texconv.')
     if export_as=='dds':
         raise RuntimeError('Can not convert dds to dds.')
-    if 'BC6' in format_name and export_as=='tga':
+    if ('BC6' in format_name or 'Float' in format_name) and export_as=='tga':
         export_as='hdr'
     save_folder=os.path.dirname(save_path)
     fmt = export_as
@@ -34,7 +34,7 @@ FORMAT_FOR_TEXCONV = {
 def convert_to_dds(file_path, save_path, format_name, texture_type, nomip=False):
     if texture_type=='Cube':
         raise RuntimeError('Can not convert cubemap textures with texconv.')
-    if 'BC6' in format_name and file_path[-3:]!='hdr':
+    if ('BC6' in format_name or 'Float' in format_name) and file_path[-3:].lower()!='hdr':
         raise RuntimeError('Use .dds or .hdr to inject HDR textures. ({})'.format(file_path))
     save_folder=os.path.dirname(save_path)
     fmt=FORMAT_FOR_TEXCONV[format_name]

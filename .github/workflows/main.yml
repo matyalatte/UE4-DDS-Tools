@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.1.0
+  GUI_VERSION: v0.1.1
   PYTHON_VERSION: 3.9.12
   TEXCONV_VERSION: mar2022
 
@@ -67,7 +67,7 @@ jobs:
           cp LICENSE ../release
         shell: bash
 
-      - name: Archive Release for python
+      - name: Archive Release
         uses: thedoctor0/zip-release@master
         with:
           directory: '../release'

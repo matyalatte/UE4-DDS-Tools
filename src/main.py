@@ -9,8 +9,8 @@ from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
 import texconv
 
-TOOL_VERSION = '0.3.0'
-UE_VERSIONS = ['4.' + str(i+15) for i in range(13)] + ['ff7r'] #4.15~4.27, ff7r
+TOOL_VERSION = '0.3.1'
+UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['ff7r'] #4.13~4.27, ff7r
 TEXTURES = ['dds', 'tga', 'hdr', 'bmp', 'jpg', 'png']
 TEXTURES += [fmt.upper() for fmt in TEXTURES]
 
@@ -179,16 +179,10 @@ def export_as_dds(folder, file, save_folder, version, export_as, no_mipmaps, cle
         texconv.convert_dds(temp_dds, new_file, export_as, texture.format_name, texture.texture_type)
         os.remove(temp_dds)
         
-
-
-
 #remove mode (remove mipmaps from uasset)
 def remove_mipmaps(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, file)
-    print(save_folder)
-    print(file)
-    print(new_file)
     texture = Utexture(src_file, version=version)
     texture.remove_mipmaps()
     texture.save(new_file)
