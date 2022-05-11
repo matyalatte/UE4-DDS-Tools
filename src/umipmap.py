@@ -34,7 +34,6 @@ class Umipmap(c.LittleEndianStructure):
         self.one=1
 
     def read(f, version):
-        print(f.tell())
         mip = Umipmap(version)
         f.readinto(mip)
         mip.uexp = mip.ubulk_flag not in [1025, 1281, 1]
