@@ -68,9 +68,9 @@ class Utexture:
         print('load: ' + uasset_name)
 
         #read .uasset
-        self.uasset = Uasset(uasset_name)
+        self.uasset = Uasset(uasset_name, version)
         self.nouexp = self.uasset.nouexp
-        if self.version=='4.15':
+        if self.version in ['4.14', '4.13', '4.15']:
             if not self.nouexp:
                 raise RuntimeError('Uexp should not exist.')
         elif self.nouexp:
@@ -287,8 +287,11 @@ class Utexture:
                 f.seek(0)
                 ubulk = f.read()
 
-        #write .uasset        
+        #write .uasset
+        #if self.version=='4.13':
+        #    size += len(ubulk) + 4
         self.uasset.exports[0].update(size -4, size -4)
+        
         self.uasset.save(uasset_name, size)
         if self.nouexp:
             with open(uasset_name, 'ab') as f:
@@ -358,7 +361,7 @@ class Utexture:
             write_uint32(f, self.cube_flag)
             write_uint32(f, uexp_map_num)
         
-        if self.version in ['4.27', '4.15', 'ff7r']:
+        if self.version in ['4.27', '4.15', '4.14', '4.13', 'ff7r']:
             offset = 0
         else:
             new_end_offset = \

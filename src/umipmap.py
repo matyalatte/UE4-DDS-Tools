@@ -36,7 +36,7 @@ class Umipmap(c.LittleEndianStructure):
     def read(f, version):
         mip = Umipmap(version)
         f.readinto(mip)
-        mip.uexp = mip.ubulk_flag not in [1025, 1281]
+        mip.uexp = mip.ubulk_flag not in [1025, 1281, 1]
         mip.meta = mip.ubulk_flag==32
         if mip.uexp:
             mip.data = f.read(mip.data_size)
@@ -65,7 +65,12 @@ class Umipmap(c.LittleEndianStructure):
                 self.ubulk_flag=72 if self.version!='ff7r' else 64
             self.unk_flag = 0
         else:
-            self.ubulk_flag=1281 if self.version!='4.15' else 1025
+            if self.version=='4.13':
+                self.ubulk_flag=1
+            elif self.version in ['4.15', '4.14']:
+                self.ubulk_flag=1025
+            else:
+                self.ubulk_flag=1281
             self.unk_flag = self.version in ['4.27', 'ff7r']
         if self.uexp and self.meta:
             self.data_size=0

@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.3.0
+# UE4-DDS-Tools ver0.3.1
 Texture modding tools for UE4 games.<br>
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE4 assets.<br>
 
@@ -14,7 +14,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE4 assets.<br>
 - Convert textures with [texconv](https://github.com/microsoft/DirectXTex/wiki/Texconv)
 
 ## Supported UE versions
-- UE4.15 ~ 4.27
+- UE4.13 ~ 4.27
 - FF7R
 
 If you want me to add support for your game, please contact me with [discord](https://discord.gg/Qx2Ff3MByF).
