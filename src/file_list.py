@@ -63,6 +63,9 @@ def get_base_folder(p):
         directory=""
     return directory, folder
 
+def get_ext(path):
+    return path.split('.')[-1].lower()
+
 def get_file_list_from_folder(folder):
     #file_list = sorted(os.listdir(folder))
     file_list = get_file_list_rec(folder)

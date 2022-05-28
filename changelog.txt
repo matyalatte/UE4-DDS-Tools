@@ -1,3 +1,6 @@
+ver 0.3.2
+- Added support for Borderlands3
+
 ver 0.3.1
 - Added support for UE4.13, 4.14
 - Fixed a bug check mode is not working

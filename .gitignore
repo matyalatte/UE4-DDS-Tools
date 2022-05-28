@@ -3,6 +3,7 @@ python
 *.exe
 *.dll
 *test*
+*sample*
 *.dds
 *.uasset
 *.uexp

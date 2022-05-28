@@ -6,11 +6,11 @@ from contextlib import redirect_stdout
 from io_util import mkdir, compare
 from utexture import Utexture, get_all_file_path
 from dds import DDS
-from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec
+from file_list import get_file_list_from_folder, get_file_list_from_txt, get_file_list_rec, get_ext
 import texconv
 
-TOOL_VERSION = '0.3.1'
-UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['ff7r'] #4.13~4.27, ff7r
+TOOL_VERSION = '0.3.2'
+UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['ff7r', 'borderlands3'] #4.13~4.27, ff7r
 TEXTURES = ['dds', 'tga', 'hdr', 'bmp', 'jpg', 'png']
 TEXTURES += [fmt.upper() for fmt in TEXTURES]
 
@@ -40,7 +40,7 @@ def get_config():
 #parse mode (parse dds or uasset)
 def parse(folder, file, save_folder, version, export_as, no_mipmaps, clear=True):
     file = os.path.join(folder, file)
-    if file[-3:].lower()=='dds':
+    if get_ext(file)=='dds':
         DDS.load(file, verbose=True)
     else:
         Utexture(file, version=version, verbose=True)
@@ -59,7 +59,7 @@ def valid(folder, file, save_folder, version, export_as, no_mipmaps, clear=True)
     src_file = os.path.join(folder, file)
     new_file=os.path.join(save_folder, file)
     
-    if file[-3:].lower()=='dds':
+    if get_ext(file)=='dds':
         #read and write dds
         dds = DDS.load(src_file)
         dds.save(new_file)
@@ -122,7 +122,7 @@ def inject_dds(folder, file, save_folder, version, export_as, no_mipmaps, clear=
     file_list = get_file_list_rec(uasset_folder)
     uasset_list=[]
     for f in file_list:
-        if f[-6:]=='uasset':
+        if get_ext(f)=='uasset':
             uasset_list.append(f)
     if len(uasset_list)==0:
         raise RuntimeError('Uasset Not Found. Run 1_copy_uasset*.bat first.')
@@ -145,7 +145,7 @@ def inject_dds(folder, file, save_folder, version, export_as, no_mipmaps, clear=
     #read and inject dds
     src_file = os.path.join(folder, file)
     new_file = os.path.join(save_folder, uasset_base)
-    if src_file[-3:].lower()=='dds':
+    if get_ext(src_file)=='dds':
         dds = DDS.load(src_file)
     else:
         mkdir('workspace/dds')
@@ -284,7 +284,7 @@ if __name__=='__main__':
                 clear=True
                 folder, file_list = get_file_list_from_folder(file)
                 for file in file_list:
-                    if file[-6:]=='uasset' or file[-3:] in TEXTURES:
+                    if get_ext(file)=='uasset' or file[-3:] in TEXTURES:
                         func(folder, file, save_folder, version, export_as, no_mipmaps, clear=clear)
                         clear=False
 
@@ -292,7 +292,7 @@ if __name__=='__main__':
         raise RuntimeError("Output path is not a folder.")
     if file=="":
         raise RuntimeError("Specify files.")
-    if file[-4:]==".txt" and os.path.isfile(file):
+    if get_ext(file)==".txt" and os.path.isfile(file):
         print('Mode: {}'.format(mode))
         main(file, mode)
     if dds_file is None:
