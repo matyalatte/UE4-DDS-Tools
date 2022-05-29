@@ -1,4 +1,5 @@
 import os
+from io_util import mkdir
 
 def texconv_exist():
     return os.path.exists('texconv/texconv.exe')
@@ -11,6 +12,8 @@ def convert_dds(dds_path, save_path, export_as, format_name, texture_type):
     if ('BC6' in format_name or 'Float' in format_name) and export_as=='tga':
         export_as='hdr'
     save_folder=os.path.dirname(save_path)
+    if save_folder not in ['.', ''] and not os.path.exists(save_folder):
+        mkdir(save_folder)
     fmt = export_as
     if 'BC5' in format_name:
         fmt += ' -f rgba -reconstructz'
@@ -37,6 +40,8 @@ def convert_to_dds(file_path, save_path, format_name, texture_type, nomip=False)
     if ('BC6' in format_name or 'Float' in format_name) and file_path[-3:].lower()!='hdr':
         raise RuntimeError('Use .dds or .hdr to inject HDR textures. ({})'.format(file_path))
     save_folder=os.path.dirname(save_path)
+    if save_folder not in ['.', ''] and not os.path.exists(save_folder):
+        mkdir(save_folder)
     fmt=FORMAT_FOR_TEXCONV[format_name]
     cmd = 'texconv\\texconv.exe "{}" -o "{}" -f {} -y '.format(file_path, save_folder, fmt)
     if nomip:
