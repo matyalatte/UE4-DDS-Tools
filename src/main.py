@@ -85,7 +85,7 @@ def valid(folder, file, args, version=None):
 #inject mode (inject dds into the asset copied to workspace)
 def inject(folder, file, args, texture_file=None):
     if texture_file is None:
-        texture_file=args.texture_file
+        texture_file=args.texture
     if get_ext(texture_file) not in TEXTURES:
         raise RuntimeError('Unsupported texture format. ({})'.format(get_ext(texture_file)))
 
