@@ -2,6 +2,7 @@ ver 0.3.2
 - Added support for Borderlands3
 - Removed legacy method (2-step injection with batch files)
 - Improved folder method
+- Minor updates for GUI
 
 ver 0.3.1
 - Added support for UE4.13, 4.14
