@@ -59,9 +59,9 @@ class Utexture:
             version='4.25'
         if version in ['4.20', '4.21']:
             version='4.22'
-        if version=='borderlands3':
+        self.bl3 = version=='borderlands3'
+        if self.bl3:
             version='4.22'
-            self.bl3 = True
         self.version = version
         
         if not os.path.isfile(file_path):
