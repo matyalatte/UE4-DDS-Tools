@@ -212,6 +212,7 @@ class DDS:
 
     #save as dds
     def save(self, file):
+        print('save: {}'.format(file))
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
             mkdir(folder)

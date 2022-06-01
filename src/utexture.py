@@ -57,8 +57,11 @@ class Utexture:
             version='4.27'
         if version in ['4.23', '4.24']:
             version='4.25'
-        if version in ['4.21', '4.22']:
-            version='4.20'
+        if version in ['4.20', '4.21']:
+            version='4.22'
+        self.bl3 = version=='borderlands3'
+        if self.bl3:
+            version='4.22'
         self.version = version
         
         if not os.path.isfile(file_path):
@@ -170,7 +173,7 @@ class Utexture:
         self.type_name_id = read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = read_uint32(f) #Offset to end of uexp?
-        if self.version in ['4.25', '4.27', '4.20']:
+        if self.version in ['4.22', '4.25', '4.27']:
             read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
         f.seek(8, 1) #original width and height
         self.cube_flag = read_uint16(f)
@@ -198,7 +201,7 @@ class Utexture:
             f.seek(4, 1) #uexp mip map num
 
         #read mipmaps
-        self.mipmaps = [Umipmap.read(f, self.version) for i in range(map_num)]
+        self.mipmaps = [Umipmap.read(f, self.version, self.bl3) for i in range(map_num)]
         _, ubulk_map_num = self.get_mipmap_num()
         self.has_ubulk=ubulk_map_num>0
 
@@ -327,7 +330,7 @@ class Utexture:
         #write meta data
         write_uint64(f, self.type_name_id)
         write_uint32(f, 0) #write dummy offset. (rewrite it later)
-        if self.version in ['4.25', '4.27', '4.20']:
+        if self.version in ['4.22', '4.25', '4.27']:
             write_null(f)
         
         write_uint32(f, self.original_width)
@@ -369,8 +372,9 @@ class Utexture:
                 f.tell() + \
                 uexp_map_data_size + \
                 ubulk_map_num*32 + \
-                (len(self.mipmaps))*(self.version in ['4.25', '4.20'])*4 + \
-                (self.version=='4.25')*4
+                (len(self.mipmaps))*(self.version in ['4.25', '4.22'])*4 + \
+                (self.version=='4.25')*4 - \
+                (len(self.mipmaps))*(self.bl3)*6
             offset = -new_end_offset-8
         #write mipmaps
         for mip in self.mipmaps:
@@ -428,7 +432,7 @@ class Utexture:
 
         #inject
         i=0
-        self.mipmaps=[Umipmap(self.version) for i in range(len(dds.mipmap_data))]
+        self.mipmaps=[Umipmap(self.version, self.bl3) for i in range(len(dds.mipmap_data))]
         for data, size, mip in zip(dds.mipmap_data, dds.mipmap_size, self.mipmaps):
             if self.has_ubulk and i+1<len(dds.mipmap_data) and size[0]*size[1]>uexp_width*uexp_height:
                 mip.update(data, size, False)
@@ -469,4 +473,4 @@ class Utexture:
         print('  max height: {}'.format(max_height))
         print('  format: {}'.format(self.type))
         print('  texture type: {}'.format(self.texture_type))
-        print('  mipmap num: {}'.format(len(self.mipmaps)))
+        print('  mipmap: {}'.format(len(self.mipmaps)))

@@ -14,12 +14,13 @@ class Umipmap(c.LittleEndianStructure):
         #data, c_ubyte*
         #width, c_uint32
         #height, c_uint32
-        #if version==4.27 or 20:
-        #   null, c_uint32
+        #if version>=4.20:
+        #   depth, c_uint32 (==1 for 2d and cube. maybe !=1 for 3d textures)
     ]
 
-    def __init__(self, version):
+    def __init__(self, version, bl3=False):
         self.version = version
+        self.bl3 = bl3
 
     def update(self, data, size, uexp):
         self.uexp=uexp
@@ -33,17 +34,25 @@ class Umipmap(c.LittleEndianStructure):
         self.pixel_num = self.width*self.height
         self.one=1
 
-    def read(f, version):
-        mip = Umipmap(version)
+    def read(f, version, bl3=False):
+        mip = Umipmap(version, bl3)
         f.readinto(mip)
         mip.uexp = mip.ubulk_flag not in [1025, 1281, 1]
         mip.meta = mip.ubulk_flag==32
         if mip.uexp:
             mip.data = f.read(mip.data_size)
-        mip.width = read_uint32(f)
-        mip.height = read_uint32(f)
-        if version in ['4.25', '4.27', '4.20']:
-            read_const_uint32(f, 1)
+        
+        if bl3:
+            read_int = read_uint16
+        else:
+            read_int = read_uint32
+
+        mip.width = read_int(f)
+        mip.height = read_int(f)
+        if version in ['4.22', '4.25', '4.27']:
+            depth = read_int(f)
+            check(depth, 1)
+
         check(mip.one, 1)
         check(mip.data_size, mip.data_size2)
         mip.pixel_num = mip.width*mip.height
@@ -79,7 +88,12 @@ class Umipmap(c.LittleEndianStructure):
         if self.uexp and not self.meta:
             f.write(self.data)
 
-        write_uint32(f, self.width)
-        write_uint32(f, self.height)
-        if self.version in ['4.25', '4.27', '4.20']:
-            write_uint32(f, 1)
+        if self.bl3:
+            write_int = write_uint16
+        else:
+            write_int = write_uint32
+
+        write_int(f, self.width)
+        write_int(f, self.height)
+        if self.version in ['4.22', '4.25', '4.27']:
+            write_int(f, 1)

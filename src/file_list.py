@@ -63,11 +63,18 @@ def get_base_folder(p):
         directory=""
     return directory, folder
 
-def get_file_list_from_folder(folder):
-    #file_list = sorted(os.listdir(folder))
+def get_ext(path):
+    return path.split('.')[-1].lower()
+
+def get_file_list_from_folder(folder, ext=None, include_base=True):
     file_list = get_file_list_rec(folder)
-    directory, folder = get_base_folder(folder)
-    file_list = [os.path.join(folder, file) for file in file_list]
+    if ext is not None:
+        file_list = [f for f in file_list if get_ext(f) in ext]
+    if include_base:
+        directory, folder = get_base_folder(folder)
+        file_list = [os.path.join(folder, file) for file in file_list]
+    else:
+        directory = folder
     return directory, file_list
 
 def get_file_list_rec(folder):

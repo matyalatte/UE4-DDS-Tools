@@ -1,17 +1,28 @@
+#python
 *__pycache__
 python
+
+#generated files
 *.exe
 *.dll
+*.zip
+gui_config.json
+*/exported
+*/injected
+*/workspace
+
+#for testing
 *test*
+*sample*
+*.bat
+!bat/*.bat
+*.sh
+
+#texture files
 *.dds
+*.png
+*.tga
+*.hdr
 *.uasset
 *.uexp
 *.ubulk
-*removed
-*injected
-*workspace
-*.bat
-!bat/*.bat
-*sh
-*zip
-gui_config.json
