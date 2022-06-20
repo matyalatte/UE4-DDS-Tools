@@ -316,7 +316,6 @@ class Utexture:
             if mip.uexp:
                 uexp_map_data_size += len(mip.data)+32*(self.version!='ff7r')
         
-        print(valid)
         #write cooked size if exist
         if self.bin1 is not None:
             if not valid:
