@@ -1,3 +1,7 @@
+ver 0.3.2-hotfix
+- Fixed a bug check mode won't work if the imported size is not the same as the actual size.
+
+
 ver 0.3.2
 - Added support for Borderlands3
 - Removed legacy method (2-step injection with batch files)

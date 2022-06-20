@@ -73,7 +73,7 @@ def valid(folder, file, args, version=None):
         #read and write uasset
         uasset_name, uexp_name, ubulk_name = get_all_file_path(src_file)
         texture = Utexture(src_file, version=version, verbose=True)
-        new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file)
+        new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file, valid=True)
 
         #compare and remove files
         compare(uasset_name, new_uasset_name)

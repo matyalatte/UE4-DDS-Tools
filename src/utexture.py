@@ -175,7 +175,9 @@ class Utexture:
         self.end_offset = read_uint32(f) #Offset to end of uexp?
         if self.version in ['4.22', '4.25', '4.27']:
             read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-        f.seek(8, 1) #original width and height
+
+        self.original_width = read_uint32(f)
+        self.original_height = read_uint32(f)
         self.cube_flag = read_uint16(f)
         self.unk_int = read_uint16(f)
         if self.cube_flag==1:
@@ -242,7 +244,7 @@ class Utexture:
         return uexp_map_num, ubulk_map_num
 
     #save as uasset
-    def save(self, file):
+    def save(self, file, valid=False):
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
             mkdir(folder)
@@ -259,7 +261,7 @@ class Utexture:
         else:
             f = open(uexp_name, 'wb')
             
-        self.write_uexp(f)
+        self.write_uexp(f, valid=valid)
         if self.version in ['4.25', '4.27']:
             write_null(f)
         new_end_offset = f.tell() + self.uasset_size
@@ -305,7 +307,7 @@ class Utexture:
                 
         return uasset_name, uexp_name, ubulk_name
 
-    def write_uexp(self, f):
+    def write_uexp(self, f, valid=False):
         #get mipmap info
         max_width, max_height = self.get_max_uexp_size()
         uexp_map_num, ubulk_map_num = self.get_mipmap_num()
@@ -314,16 +316,19 @@ class Utexture:
             if mip.uexp:
                 uexp_map_data_size += len(mip.data)+32*(self.version!='ff7r')
         
+        print(valid)
         #write cooked size if exist
         if self.bin1 is not None:
-            self.original_height=max(self.original_height, max_height)
-            self.original_width=max(self.original_width, max_width)
+            if not valid:
+                self.original_height=max(self.original_height, max_height)
+                self.original_width=max(self.original_width, max_width)
             f.write(self.bin1)
             write_uint32(f, self.original_width)
             write_uint32(f, self.original_height)
         else:
-            self.original_height=max_height
-            self.original_width =max_width
+            if not valid:
+                self.original_height=max_height
+                self.original_width =max_width
 
         f.write(self.unk)
 
