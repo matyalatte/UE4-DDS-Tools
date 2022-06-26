@@ -72,6 +72,7 @@ class Utexture:
 
         #read .uasset
         self.uasset = Uasset(uasset_name, version)
+        self.unversioned=self.uasset.header.unversioned
         self.nouexp = self.uasset.nouexp
         if self.version in ['4.14', '4.13', '4.15']:
             if not self.nouexp:
@@ -97,10 +98,7 @@ class Utexture:
             f = open(uexp_name, 'rb')
 
         self.read_uexp(f)
-        if self.version in ['4.25', '4.27']:
-            read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-        #check(self.end_offset, f.tell()+self.uasset_size)
-        self.none_name_id = read_uint64(f)
+        
         
         if not self.nouexp:
             foot=f.read(4)
@@ -132,31 +130,36 @@ class Utexture:
     #read uexp
     def read_uexp(self, f):
         #read cooked size if exist
-        if self.version=='ff7r':
-            f.read(1)
-            b = f.read(1)
-            while (b not in [b'\x03', b'\x05']):
-                f.read(1)
-                b = f.read(1)
-                if f.tell()>1000:
+        self.bin1=None
+        self.imported_width=None
+        self.imported_height=None
+        if self.unversioned:
+            uh = read_uint8_array(f, 2)
+            is_last=uh[1]%2==0
+            while (is_last):
+                uh = read_uint8_array(f, 2)
+                is_last=uh[1]%2==0
+                if f.tell()>100:
                     raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
             s = f.tell()
             f.seek(0)
             self.bin1=f.read(s)
-            self.original_width = read_uint32(f)
-            self.original_height = read_uint32(f)
+            chk = read_uint8_array(f, 8)
+            chk = [i for i in chk if i==0]
+            f.seek(-8, 1)            
+            if len(chk)>2:
+                self.imported_width = read_uint32(f)
+                self.imported_height = read_uint32(f)
         else:
-            first_property_id = read_uint32(f)
+            first_property_id = read_uint64(f)
             if first_property_id>=len(self.name_list):
                 raise RuntimeError('list index out of range. ' + VERSION_ERR_MSG)
             first_property = self.name_list[first_property_id]
             f.seek(0)
             if first_property=='ImportedSize':
                 self.bin1 = f.read(49)
-                self.original_width = read_uint32(f)
-                self.original_height = read_uint32(f)
-            else:
-                self.bin1 = None
+                self.imported_width = read_uint32(f)
+                self.imported_height = read_uint32(f)
 
         #skip property part        
         offset=f.tell()
@@ -173,8 +176,10 @@ class Utexture:
         self.type_name_id = read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = read_uint32(f) #Offset to end of uexp?
-        if self.version in ['4.22', '4.25', '4.27']:
+        if self.version in ['4.22', '4.25', '4.27', '5.0']:
             read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
+        if self.version=='5.0':
+            read_null_array(f, 4)
 
         self.original_width = read_uint32(f)
         self.original_height = read_uint32(f)
@@ -223,6 +228,11 @@ class Utexture:
                     i+=size
             check(i, len(self.uexp_mip_bulk.data))
 
+        if self.version in ['4.25', '4.27', '5.0']:
+            read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
+        #check(self.end_offset, f.tell()+self.uasset_size)
+        self.none_name_id = read_uint64(f)
+
     #get max size of uexp mips
     def get_max_uexp_size(self):
         for mip in self.mipmaps:
@@ -262,14 +272,7 @@ class Utexture:
             f = open(uexp_name, 'wb')
             
         self.write_uexp(f, valid=valid)
-        if self.version in ['4.25', '4.27']:
-            write_null(f)
-        new_end_offset = f.tell() + self.uasset_size
-        write_uint64(f, self.none_name_id)
         
-        f.seek(self.offset_to_end_offset)
-        write_uint32(f, new_end_offset)
-        f.seek(0, 2)
         if not self.nouexp:
             f.write(Utexture.UNREAL_SIGNATURE)
             size = f.tell()
@@ -318,24 +321,28 @@ class Utexture:
         
         #write cooked size if exist
         if self.bin1 is not None:
-            if not valid:
-                self.original_height=max(self.original_height, max_height)
-                self.original_width=max(self.original_width, max_width)
             f.write(self.bin1)
-            write_uint32(f, self.original_width)
-            write_uint32(f, self.original_height)
-        else:
+
+        if self.imported_height is not None:
             if not valid:
-                self.original_height=max_height
-                self.original_width =max_width
+                self.imported_height=max(self.original_height, max_height)
+                self.imported_width=max(self.original_width, max_width)
+            write_uint32(f, self.imported_width)
+            write_uint32(f, self.imported_height)
+
+        if not valid:
+            self.original_height=max_height
+            self.original_width =max_width
 
         f.write(self.unk)
 
         #write meta data
         write_uint64(f, self.type_name_id)
         write_uint32(f, 0) #write dummy offset. (rewrite it later)
-        if self.version in ['4.22', '4.25', '4.27']:
+        if self.version in ['4.22', '4.25', '4.27', '5.0']:
             write_null(f)
+        if self.version=='5.0':
+            write_null_array(f, 4)
         
         write_uint32(f, self.original_width)
         write_uint32(f, self.original_height)
@@ -368,7 +375,7 @@ class Utexture:
             write_uint32(f, self.cube_flag)
             write_uint32(f, uexp_map_num)
         
-        if self.version in ['4.27', '4.15', '4.14', '4.13', 'ff7r']:
+        if self.version in ['5.0', '4.27', '4.15', '4.14', '4.13', 'ff7r']:
             offset = 0
         else:
             new_end_offset = \
@@ -383,11 +390,24 @@ class Utexture:
         #write mipmaps
         for mip in self.mipmaps:
             if mip.uexp:
-                mip.offset=self.uasset_size+f.tell()+24
+                mip.offset=self.uasset_size+f.tell()+24 -4*(self.version=='5.0')
             else:
                 mip.offset=offset
                 offset+=mip.data_size
             mip.write(f, self.uasset_size)
+
+        if self.version in ['4.25', '4.27', '5.0']:
+            write_null(f)
+
+        if self.version=='5.0':
+            new_end_offset = f.tell() - self.offset_to_end_offset
+        else:
+            new_end_offset = f.tell() + self.uasset_size
+        write_uint64(f, self.none_name_id)
+        
+        f.seek(self.offset_to_end_offset)
+        write_uint32(f, new_end_offset)
+        f.seek(0, 2)
 
     #remove mipmaps except the largest one
     def remove_mipmaps(self):

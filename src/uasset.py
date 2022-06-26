@@ -10,11 +10,12 @@ class UassetHeader: #185 ~ 193 bytes
     def __init__(self, f, version):
         check(f.read(4), UassetHeader.HEAD)
         self.version = read_int32(f)
-        check(-self.version-1, 6 - (version=='4.13'))
-        self.null = f.read(16)
+        check(-self.version-1, 6 - (version=='4.13') + (version=='5.0'))
+        self.null = f.read(16+4*(version=='5.0'))
         self.uasset_size = read_uint32(f)
         check(read_str(f), "None")
-        self.unk = f.read(4)
+        self.pkg_flags = read_uint32(f) # 00 20 00 00: unversioned header flag
+        self.unversioned = (self.pkg_flags & 8192)!=0
         self.name_count = read_uint32(f)
         self.name_offset = read_uint32(f)
         read_null_array(f, 2)
@@ -45,6 +46,10 @@ class UassetHeader: #185 ~ 193 bytes
             return
         self.file_data_count = read_int32(f)
         self.file_data_offset = read_uint32(f)
+        if version=='5.0':
+            self.unk_count = read_uint32(f)
+            for i in range(self.unk_count):
+                check(read_int32(f), -1)
 
     def write(self, f, version):
         f.write(UassetHeader.HEAD)
@@ -52,7 +57,7 @@ class UassetHeader: #185 ~ 193 bytes
         f.write(self.null)
         write_uint32(f, self.uasset_size)
         write_str(f, "None")
-        f.write(self.unk)
+        write_uint32(f, self.pkg_flags)
         write_uint32(f, self.name_count)
         write_uint32(f, self.name_offset)
         write_null_array(f, 2)
@@ -83,6 +88,10 @@ class UassetHeader: #185 ~ 193 bytes
             return
         write_int32(f, self.file_data_count)
         write_uint32(f, self.file_data_offset)
+        if version=='5.0':
+            write_uint32(f, self.unk_count)
+            for i in range(self.unk_count):
+                write_int32(f, -1)
 
     def print(self):
         print('Header info')
@@ -109,6 +118,18 @@ class UassetImport(c.LittleEndianStructure):
         ("name_id", c.c_uint32),
         ("unk", c.c_uint32),
     ]
+
+    def read(f, version):
+        imp = UassetImport()
+        f.readinto(imp)
+        if version=='5.0':
+            imp.unk2 = read_uint32(f)
+        return imp
+
+    def write(self, f, version):
+        f.write(self)
+        if version=='5.0':
+            write_uint32(f, self.unk2)
 
     def name_import(self, name_list):
         self.name = name_list[self.name_id]
@@ -152,7 +173,7 @@ class UassetExport: #80 ~ 104 bytes
         else:
             self.size=read_uint64(f)
         self.offset = read_uint32(f)
-        self.unk = f.read(64-4*(version in ['4.15', '4.14']) - 24*(version=='4.13'))
+        self.unk = f.read(64-4*(version in ['4.15', '4.14']) - 24*(version=='4.13') + 4*(version=='5.0'))
 
     def write(self, f, version):
         write_int32(f, self.class_id)
@@ -220,7 +241,7 @@ class Uasset:
             self.hash_list = [x[1] for x in names]
 
             #read imports
-            self.imports=read_struct_array(f, UassetImport, len=self.header.import_count)
+            self.imports=[UassetImport.read(f, self.version) for i in range(self.header.import_count)]
             self.texture_type = name_imports(self.imports, self.name_list)
             if verbose:
                 print('Import')
@@ -256,7 +277,7 @@ class Uasset:
         print('save :' + file)
         with open(file, 'wb') as f:
             #skip header part
-            f.seek(193 - 4 * (self.version == '4.14') -  8 * (self.version == '4.13'))
+            f.seek(self.header.name_offset)
 
             #write name table
             for name, hash in zip(self.name_list, self.hash_list):
@@ -265,7 +286,7 @@ class Uasset:
 
             #write imports
             self.header.import_offset = f.tell()
-            list(map(lambda x: f.write(x), self.imports))
+            list(map(lambda x: x.write(f, self.version), self.imports))
 
             #skip exports part
             self.header.export_offset = f.tell()

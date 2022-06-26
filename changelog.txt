@@ -1,3 +1,7 @@
+ver 0.3.3
+- Added support for UE5.0
+- Added support for Unversioned Header
+
 ver 0.3.2-hotfix
 - Fixed a bug check mode won't work if the imported size is not the same as the actual size.
 

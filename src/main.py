@@ -9,8 +9,8 @@ from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_ext
 import texconv
 
-TOOL_VERSION = '0.3.2'
-UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['ff7r', 'borderlands3'] #4.13~4.27, ff7r
+TOOL_VERSION = '0.3.3'
+UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.0', 'ff7r', 'borderlands3'] #4.13~4.27, ff7r
 TEXTURES = ['dds', 'tga', 'hdr', 'bmp', 'jpg', 'png']
 TEXTURES += [fmt.upper() for fmt in TEXTURES]
 

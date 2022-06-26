@@ -5,7 +5,7 @@ import ctypes as c
 class Umipmap(c.LittleEndianStructure):
     _pack_=1
     _fields_ = [
-        ("one", c.c_uint32), #1
+        #("one", c.c_uint32), #1
         ("ubulk_flag", c.c_uint16), #1281->ubulk, 72->uexp, 32 or 64->ff7r uexp
         ("unk_flag", c.c_uint16), #ubulk and 1->ue4.27 or ff7r
         ("data_size", c.c_uint32), #0->ff7r uexp
@@ -32,10 +32,11 @@ class Umipmap(c.LittleEndianStructure):
         self.width=size[0]
         self.height=size[1]
         self.pixel_num = self.width*self.height
-        self.one=1
 
     def read(f, version, bl3=False):
         mip = Umipmap(version, bl3)
+        if version!='5.0':
+            read_const_uint32(f, 1)
         f.readinto(mip)
         mip.uexp = mip.ubulk_flag not in [1025, 1281, 1]
         mip.meta = mip.ubulk_flag==32
@@ -49,11 +50,10 @@ class Umipmap(c.LittleEndianStructure):
 
         mip.width = read_int(f)
         mip.height = read_int(f)
-        if version in ['4.22', '4.25', '4.27']:
+        if version in ['4.22', '4.25', '4.27', '5.0']:
             depth = read_int(f)
-            check(depth, 1)
+            check(depth, 1 ,msg='3d texture is unsupported.')
 
-        check(mip.one, 1)
         check(mip.data_size, mip.data_size2)
         mip.pixel_num = mip.width*mip.height
         return mip
@@ -80,10 +80,13 @@ class Umipmap(c.LittleEndianStructure):
                 self.ubulk_flag=1025
             else:
                 self.ubulk_flag=1281
-            self.unk_flag = self.version in ['4.27', 'ff7r']
+            self.unk_flag = self.version in ['5.0', '4.27', 'ff7r']
         if self.uexp and self.meta:
             self.data_size=0
             self.data_size2=0
+
+        if self.version!='5.0':
+            write_uint32(f, 1)
         f.write(self)
         if self.uexp and not self.meta:
             f.write(self.data)
@@ -95,5 +98,5 @@ class Umipmap(c.LittleEndianStructure):
 
         write_int(f, self.width)
         write_int(f, self.height)
-        if self.version in ['4.22', '4.25', '4.27']:
+        if self.version in ['4.22', '4.25', '4.27', '5.0']:
             write_int(f, 1)
