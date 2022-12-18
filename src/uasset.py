@@ -10,7 +10,10 @@ class UassetHeader: #185 ~ 193 bytes
     def __init__(self, f, version):
         check(f.read(4), UassetHeader.HEAD)
         self.version = read_int32(f)
-        check(-self.version-1, 6 - (version=='4.13') + (version=='5.0'))
+        file_version = -self.version - 1
+        if (file_version < 5) or (file_version > 7):
+            raise RuntimeError(f"Unsupported .uasset version ({file_version})")
+        check(file_version, 6 - (version=='4.13') + (version=='5.0'))
         self.null = f.read(16+4*(version=='5.0'))
         self.uasset_size = read_uint32(f)
         check(read_str(f), "None")

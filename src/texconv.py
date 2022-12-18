@@ -11,6 +11,12 @@ def convert_dds(dds_path, save_path, export_as, format_name, texture_type):
         raise RuntimeError('Can not convert dds to dds.')
     if ('BC6' in format_name or 'Float' in format_name) and export_as=='tga':
         export_as='hdr'
+    if format_name not in FORMAT_FOR_TEXCONV.keys():
+        raise RuntimeError(
+            f"DDS converter does NOT support {format_name}.\n"
+            "You should choose '.dds' as an export format."
+        )
+
     save_folder=os.path.dirname(save_path)
     if save_folder not in ['.', ''] and not os.path.exists(save_folder):
         mkdir(save_folder)
@@ -31,7 +37,7 @@ FORMAT_FOR_TEXCONV = {
     'BC6H(unsigned)': 'BC6H_UF16',
     'BC7': 'BC7_UNORM',
     'FloatRGBA': 'R16G16B16A16_FLOAT',
-    'B8G8R8A8(sRGB)': 'B8G8R8A8_UNORM_SRGB'
+    'B8G8R8A8': 'B8G8R8A8_UNORM'
 }
 
 def convert_to_dds(file_path, save_path, format_name, texture_type, nomip=False):
@@ -39,9 +45,16 @@ def convert_to_dds(file_path, save_path, format_name, texture_type, nomip=False)
         raise RuntimeError('Can not convert cubemap textures with texconv.')
     if ('BC6' in format_name or 'Float' in format_name) and file_path[-3:].lower()!='hdr':
         raise RuntimeError('Use .dds or .hdr to inject HDR textures. ({})'.format(file_path))
+    if format_name not in FORMAT_FOR_TEXCONV.keys():
+        raise RuntimeError(
+            f"DDS converter does NOT support {format_name}.\n"
+            "You should convert it to dds with another tool first."
+        )
+
     save_folder=os.path.dirname(save_path)
     if save_folder not in ['.', ''] and not os.path.exists(save_folder):
         mkdir(save_folder)
+
     fmt=FORMAT_FOR_TEXCONV[format_name]
     cmd = 'texconv\\texconv.exe "{}" -o "{}" -f {} -y '.format(file_path, save_folder, fmt)
     if nomip:

@@ -8,6 +8,7 @@ from utexture import Utexture, get_all_file_path
 from dds import DDS
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_ext
 import texconv
+from utexture import get_pf_from_uexp, PF_FORMAT
 
 TOOL_VERSION = '0.3.3'
 UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.0', 'ff7r', 'borderlands3'] #4.13~4.27, ff7r
@@ -140,6 +141,10 @@ def remove_mipmaps(folder, file, args):
 
 #confirm mode (check)
 def check_version(folder, file, args):
+    pixel_format = get_pf_from_uexp(os.path.join(folder, file[:-len(get_ext(file))]+'uexp'))
+    if pixel_format not in PF_FORMAT.keys():
+        raise RuntimeError(f"Unsupported pixel format. ({pixel_format})")
+
     print('Running valid mode with each version...')
     passed_version = []
     for v in UE_VERSIONS:

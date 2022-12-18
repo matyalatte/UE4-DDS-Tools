@@ -29,6 +29,9 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.<br>
 - BC7
 - B8G8R8A8 (Uncompressed color map)
 - FloatRGBA (Uncompressed HDR)
+- ASTC_4x4
+
+You will get the `Unsupported pixel format.` error for other pixel formats.  
 
 ## Download
 Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)

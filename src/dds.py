@@ -17,7 +17,8 @@ DDS_FORMAT = {
     'BC6H(signed)': [96],             #DXGI_FORMAT_BC6H_SF16
     'BC7': [98, 99],                  #DXGI_FORMAT_BC7_TYPELESS
     'FloatRGBA': [10],                #DXGI_FORMAT_R16G16B16A16_FLOAT
-    'B8G8R8A8(sRGB)': [91]            #DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
+    'B8G8R8A8': [87],                 #DXGI_FORMAT_B8G8R8A8_UNORM
+    'ASTC_4X4': [134]                 #DXGI_FORMAT_ASTC_4X4_UNORM
 }
 
 def get_dds_format(form):

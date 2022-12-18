@@ -11,12 +11,13 @@ BYTE_PER_PIXEL = {
     'BC4/ATI1': 0.5,
     'BC4(signed)': 0.5,
     'BC5/ATI2': 1,
-    'BC5(signed)': 1, 
+    'BC5(signed)': 1,
     'BC6H(unsigned)': 1,
     'BC6H(signed)': 1,
     'BC7': 1,
     'FloatRGBA': 8,
-    'B8G8R8A8(sRGB)': 4
+    'B8G8R8A8': 4,
+    'ASTC_4X4': 8
 }
 
 PF_FORMAT = {
@@ -25,9 +26,10 @@ PF_FORMAT = {
     'PF_BC4': 'BC4/ATI1',
     'PF_BC5': 'BC5/ATI2',
     'PF_BC6H': 'BC6H(unsigned)',
-    'PF_BC7': 'BC7', 
+    'PF_BC7': 'BC7',
     'PF_FloatRGBA': 'FloatRGBA',
-    'PF_B8G8R8A8': 'B8G8R8A8(sRGB)'
+    'PF_B8G8R8A8': 'B8G8R8A8',
+    'PF_ASTC_4x4': 'ASTC_4X4'
 }
 
 def is_power_of_2(n):
@@ -214,7 +216,7 @@ class Utexture:
 
         #get format name
         if self.type not in PF_FORMAT:
-            raise RuntimeError('Unsupported format. ({})'.format(self.type))
+            raise RuntimeError('Unsupported pixel format. ({})'.format(self.type))
         self.format_name = PF_FORMAT[self.type]
         self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
 
@@ -498,3 +500,26 @@ class Utexture:
         print('  format: {}'.format(self.type))
         print('  texture type: {}'.format(self.texture_type))
         print('  mipmap: {}'.format(len(self.mipmaps)))
+
+def get_pf_from_uexp(uexp_file):
+    with open(uexp_file, 'rb') as f:
+        size = get_size(f)
+        pixel_format = None
+        while(f.tell() + 1 < size):
+            if f.read(1) == b'P':
+                pixel_format = b'P'
+                while(f.tell() + 1 < size):
+                    c = f.read(1)
+                    if c == b'\x00':
+                        break
+                    pixel_format = b''.join([pixel_format, c])
+                if pixel_format[:3] == b'PF_':
+                    break
+                else:
+                    pixel_format = None
+    if pixel_format is None:
+        raise RuntimeError(
+            "Can NOT detect pixel format.\n"
+            "This asset might not be a texture."
+        )
+    return pixel_format.decode()
