@@ -17,6 +17,7 @@ gui_config.json
 *.bat
 !bat/*.bat
 *.sh
+*.cfg
 
 #texture files
 *.dds
