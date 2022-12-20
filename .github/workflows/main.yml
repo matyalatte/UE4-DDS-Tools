@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.1.2
+  GUI_VERSION: v0.2.1
   PYTHON_VERSION: 3.9.12
   TEXCONV_VERSION: mar2022
 
@@ -45,8 +45,8 @@ jobs:
 
       - name: Download Simple Command Runner
         run: |
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
           cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
           cp gui_definition.json ../release
         shell: bash

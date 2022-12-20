@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import shutil
+import tempfile
 import time
 from contextlib import redirect_stdout
 
@@ -62,41 +63,34 @@ def valid(folder, file, args, version=None):
     if version is None:
         version = args.version
 
-    # make or clear workspace
-    save_folder = 'workspace/valid'
-    if os.path.exists(save_folder):
-        shutil.rmtree(save_folder)
-        print('clear: {}'.format(save_folder))
-    mkdir(save_folder)
-    print('clear: {}'.format(save_folder))
+    with tempfile.TemporaryDirectory() as temp_dir:
+        src_file = os.path.join(folder, file)
+        new_file = os.path.join(temp_dir, file)
 
-    src_file = os.path.join(folder, file)
-    new_file = os.path.join(save_folder, file)
+        if get_ext(file) == 'dds':
+            # read and write dds
+            dds = DDS.load(src_file)
+            dds.save(new_file)
 
-    if get_ext(file) == 'dds':
-        # read and write dds
-        dds = DDS.load(src_file)
-        dds.save(new_file)
+            # compare and remove files
+            compare(src_file, new_file)
 
-        # compare and remove files
-        compare(src_file, new_file)
+        else:
+            # read and write uasset
+            uasset_name, uexp_name, ubulk_name = get_all_file_path(src_file)
+            texture = Utexture(src_file, version=version, verbose=True)
+            new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file, valid=True)
 
-    else:
-        # read and write uasset
-        uasset_name, uexp_name, ubulk_name = get_all_file_path(src_file)
-        texture = Utexture(src_file, version=version, verbose=True)
-        new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file, valid=True)
-
-        # compare and remove files
-        compare(uasset_name, new_uasset_name)
-        if new_uexp_name is not None:
-            compare(uexp_name, new_uexp_name)
-        if new_ubulk_name is not None:
-            compare(ubulk_name, new_ubulk_name)
+            # compare and remove files
+            compare(uasset_name, new_uasset_name)
+            if new_uexp_name is not None:
+                compare(uexp_name, new_uexp_name)
+            if new_ubulk_name is not None:
+                compare(ubulk_name, new_ubulk_name)
 
 
 def inject(folder, file, args, texture_file=None):
-    '''Inject mode (inject dds into the asset copied to workspace)'''
+    '''Inject mode (inject dds into the asset)'''
     if texture_file is None:
         texture_file = args.texture
     if get_ext(texture_file) not in TEXTURES:
@@ -112,13 +106,12 @@ def inject(folder, file, args, texture_file=None):
     if get_ext(src_file) == 'dds':
         dds = DDS.load(src_file)
     else:
-        mkdir('workspace/dds')
-        temp_dds = os.path.join('workspace/dds', os.path.splitext(os.path.basename(src_file))[0] + '.dds')
-        texconv.convert_to_dds(src_file, temp_dds,
-                               texture.format_name, texture.texture_type,
-                               nomip=len(texture.mipmaps) <= 1 or args.no_mipmaps)
-        dds = DDS.load(temp_dds)
-        os.remove(temp_dds)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(src_file))[0] + '.dds')
+            texconv.convert_to_dds(src_file, temp_dds,
+                                texture.format_name, texture.texture_type,
+                                nomip=len(texture.mipmaps) <= 1 or args.no_mipmaps)
+            dds = DDS.load(temp_dds)
 
     texture.inject_dds(dds, force=False)
     if args.no_mipmaps:
@@ -139,13 +132,12 @@ def export_as_dds(folder, file, args):
     if args.export_as == 'dds':
         dds.save(new_file)
     else:
-        mkdir('workspace/dds')
-        temp_dds = os.path.join('workspace/dds', os.path.splitext(os.path.basename(file))[0]+'.dds')
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(file))[0]+'.dds')
 
-        dds.save(temp_dds)
-        texconv.convert_dds(temp_dds, new_file, args.export_as,
-                            texture.format_name, texture.texture_type)
-        os.remove(temp_dds)
+            dds.save(temp_dds)
+            texconv.convert_dds(temp_dds, new_file, args.export_as,
+                                texture.format_name, texture.texture_type)
 
 
 def remove_mipmaps(folder, file, args):

@@ -1,3 +1,7 @@
+ver 0.4.0
+- Updated GUI (v0.1.2 to v0.2.1)
+- Introduced tempfile for temporary files
+
 ver 0.3.3
 - Supported UE5.0 assets
 - Supported unversioned header
