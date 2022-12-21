@@ -4,34 +4,19 @@ import os
 import io_util
 from uasset import Uasset
 from umipmap import Umipmap
+from dds import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
 
 
-BYTE_PER_PIXEL = {
-    'DXT1/BC1': 0.5,
-    'DXT5/BC3': 1,
-    'BC4/ATI1': 0.5,
-    'BC4(signed)': 0.5,
-    'BC5/ATI2': 1,
-    'BC5(signed)': 1,
-    'BC6H(unsigned)': 1,
-    'BC6H(signed)': 1,
-    'BC7': 1,
-    'FloatRGBA': 8,
-    'B8G8R8A8': 4,
-    'ASTC_4X4': 8
-}
-
-
-PF_FORMAT = {
-    'PF_DXT1': 'DXT1/BC1',
-    'PF_DXT5': 'DXT5/BC3',
-    'PF_BC4': 'BC4/ATI1',
-    'PF_BC5': 'BC5/ATI2',
-    'PF_BC6H': 'BC6H(unsigned)',
-    'PF_BC7': 'BC7',
-    'PF_FloatRGBA': 'FloatRGBA',
-    'PF_B8G8R8A8': 'B8G8R8A8',
-    'PF_ASTC_4x4': 'ASTC_4X4'
+PF_TO_DXGI = {
+    'PF_DXT1': DXGI_FORMAT.DXGI_FORMAT_BC1_UNORM,
+    'PF_DXT5': DXGI_FORMAT.DXGI_FORMAT_BC3_UNORM,
+    'PF_BC4': DXGI_FORMAT.DXGI_FORMAT_BC4_UNORM,
+    'PF_BC5': DXGI_FORMAT.DXGI_FORMAT_BC5_UNORM,
+    'PF_BC6H': DXGI_FORMAT.DXGI_FORMAT_BC6H_UF16,
+    'PF_BC7': DXGI_FORMAT.DXGI_FORMAT_BC7_UNORM,
+    'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
+    'PF_B8G8R8A8': DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
+    'PF_ASTC_4x4': DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM
 }
 
 
@@ -220,10 +205,10 @@ class Utexture:
         self.has_ubulk = ubulk_map_num > 0
 
         # get format name
-        if self.type not in PF_FORMAT:
+        if self.type not in PF_TO_DXGI:
             raise RuntimeError(f'Unsupported pixel format. ({self.type})')
-        self.format_name = PF_FORMAT[self.type]
-        self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
+        self.dxgi_format = PF_TO_DXGI[self.type]
+        self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
         if self.version == 'ff7r':
             # split mipmap data
@@ -430,14 +415,17 @@ class Utexture:
     # inject dds into asset
     def inject_dds(self, dds, force=False):
         # check formats
-        if '(signed)' in dds.header.format_name:
-            raise RuntimeError(f'UE4 requires unsigned format but your dds is {dds.header.format_name}.')
-
-        if dds.header.format_name != self.format_name and not force:
-            raise RuntimeError(f'The format does not match. ({self.type}, {dds.header.format_name})')
+        if dds.header.dxgi_format != self.dxgi_format and not force:
+            raise RuntimeError(
+                "The format does not match. "
+                f"(Uasset: {self.dxgi_format.name[12:]}, DDS: {dds.header.dxgi_format.name[12:]})"
+            )
 
         if dds.header.texture_type != self.texture_type:
-            raise RuntimeError(f'Texture type does not match. ({self.texture_type}, {dds.header.texture_type})')
+            raise RuntimeError(
+                "Texture type does not match. "
+                f"(Uasset: {self.texture_type}, DDS: {dds.header.texture_type})"
+            )
 
         '''
         def get_key_from_value(d, val):
@@ -501,7 +489,7 @@ class Utexture:
         max_width, max_height = self.get_max_size()
         print(f'  max width: {max_width}')
         print(f'  max height: {max_height}')
-        print(f'  format: {self.type}')
+        print(f'  format: {self.type} ({self.dxgi_format.name[12:]})')
         print(f'  texture type: {self.texture_type}')
         print(f'  mipmap: {len(self.mipmaps)}')
 

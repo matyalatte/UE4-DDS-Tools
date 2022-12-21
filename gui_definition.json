@@ -29,7 +29,7 @@
                 },
                 {
                     "type": "choice",
-                    "label": "UE4 version",
+                    "label": "UE version",
                     "items": ["5.0", "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "4.14", "4.13", "ff7r", "borderlands3"],
                     "values": ["5.0", "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "ff7r", "borderlands3"]
                 },
@@ -61,7 +61,7 @@
                 },
                 {
                     "type": "choice",
-                    "label": "UE4 version",
+                    "label": "UE version",
                     "items": ["5.0", "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "4.14", "4.13", "ff7r", "borderlands3"],
                     "values": ["5.0", "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "ff7r", "borderlands3"]
                 },
@@ -97,8 +97,8 @@
         },
         {
             "label": "Convert",
-            "window_name": "Texconv",
-            "command": "texconv\\texconv.exe -r:keep %texture% -o %out% -f%fmt% -y %options%",
+            "window_name": "UE4-DDS-Tools (Convert mode)",
+            "command": "python\\python.exe src\\main.py %file% --mode=convert --save_folder=%out% --convert_to=%fmt% %option%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
@@ -108,7 +108,7 @@
                 },
                 {
                     "type": "file",
-                    "label": "Texture file. (You can use * or ? to specify multiple files.)",
+                    "label": "Texture file.",
                     "extension": "any files | *",
                     "add_quotes": true,
                     "empty_message": "Drop an image here!"
@@ -122,15 +122,14 @@
                 {
                     "type": "choice",
                     "label": "Convert to",
-                    "items": [".png", ".tga", ".hdr", "DXT1", "DXT5", "BC4U", "BC5U", "BC6HU", "BC7U", "B8G8R8A8", "FloatRGBA16"],
-                    "values": ["t png", "t tga", "t hdr", " DXT1", " DXT5", " BC4_UNORM", " BC5_UNORM", " BC6H_UF16", " BC7_UNORM", "B8G8R8A8_UNORM_SRGB", "R16G16B16A16_FLOAT"],
-                    "default": 1
+                    "items": [".png", ".jpg", ".bmp", ".tga", ".hdr", "BC1U (DXT1)", "BC3U (DXT5)", "BC4U", "BC5U", "BC6HU", "BC7U", "B8G8R8A8", "FloatRGBA16"],
+                    "values": ["png", "jpg", "bmp", "tga", "hdr", "BC1_UNORM", " BC3_UNORM", "BC4_UNORM", "BC5_UNORM", "BC6H_UF16", "BC7_UNORM", "B8G8R8A8_UNORM_SRGB", "R16G16B16A16_FLOAT"],
+                    "default": 3
                 },
                 {
-                    "type": "check_array",
-                    "label": "Options",
-                    "items": ["No mipmaps", "Resize to a power of 2 for width and height", "BC5 to .png or .tga"],
-                    "values": ["-m 1 ", "-pow2 ", "-f rgba -reconstructz "]
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
                 }
             ]
         }

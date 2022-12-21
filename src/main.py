@@ -2,24 +2,26 @@
 import argparse
 import json
 import os
-import shutil
 import tempfile
 import time
 from contextlib import redirect_stdout
 
 # my scripts
-from io_util import mkdir, compare
+from io_util import compare, get_ext
 from utexture import Utexture, get_all_file_path
-from dds import DDS
-from file_list import get_file_list_from_folder, get_file_list_from_txt, get_ext
-import texconv
-from utexture import get_pf_from_uexp, PF_FORMAT
+from dds import DDS, DXGI_FORMAT
+from file_list import get_file_list_from_folder, get_file_list_from_txt
+from texconv import Texconv, is_windows
+from utexture import get_pf_from_uexp, PF_TO_DXGI
 
-TOOL_VERSION = '0.3.3'
+TOOL_VERSION = '0.4.0'
+
 # UE version: 4.13 ~ 5.0, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.0', 'ff7r', 'borderlands3']
-TEXTURES = ['dds', 'tga', 'hdr', 'bmp', 'jpg', 'png']
-TEXTURES += [fmt.upper() for fmt in TEXTURES]
+
+TEXTURES = ['dds', 'tga', 'hdr']
+if is_windows():
+    TEXTURES += ["bmp", "jpg", "png"]
 
 
 def get_args():
@@ -28,11 +30,14 @@ def get_args():
     parser.add_argument('texture', nargs='?', help='texture file for injection mode')
     parser.add_argument('--save_folder', default='output', type=str, help='save folder')
     parser.add_argument('--mode', default='inject', type=str,
-                        help='valid, parse, inject, export, remove_mipmaps, and check are available.')
+                        help='valid, parse, inject, export, remove_mipmaps, check and convert are available.')
     parser.add_argument('--version', default=None, type=str,
                         help='version of UE4. It will overwrite the argment in config.json.')
     parser.add_argument('--export_as', default='dds', type=str,
-                        help='format to export. dds, tga, png, jpg, and bmp is available.')
+                        help='format for export mode. dds, tga, png, jpg, and bmp are available.')
+    parser.add_argument('--convert_to', default='tga', type=str,
+                        help=("format for convert mode."
+                              "tga, hdr, png, jpg, bmp, or DXGI formats (e.g. BC1_UNORM) are available."))
     parser.add_argument('--no_mipmaps', action='store_true',
                         help='force no mips to dds and uasset.')
     # parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
@@ -49,7 +54,7 @@ def get_config():
     return config
 
 
-def parse(folder, file, args):
+def parse(folder, file, args, texconv=None):
     '''Parse mode (parse dds or uasset)'''
     file = os.path.join(folder, file)
     if get_ext(file) == 'dds':
@@ -58,7 +63,7 @@ def parse(folder, file, args):
         Utexture(file, version=args.version, verbose=True)
 
 
-def valid(folder, file, args, version=None):
+def valid(folder, file, args, version=None, texconv=None):
     '''Valid mode (check if the tool can read and write a file correctly.)'''
     if version is None:
         version = args.version
@@ -89,7 +94,7 @@ def valid(folder, file, args, version=None):
                 compare(ubulk_name, new_ubulk_name)
 
 
-def inject(folder, file, args, texture_file=None):
+def inject(folder, file, args, texture_file=None, texconv=None):
     '''Inject mode (inject dds into the asset)'''
     if texture_file is None:
         texture_file = args.texture
@@ -107,10 +112,10 @@ def inject(folder, file, args, texture_file=None):
         dds = DDS.load(src_file)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(src_file))[0] + '.dds')
-            texconv.convert_to_dds(src_file, temp_dds,
-                                texture.format_name, texture.texture_type,
-                                nomip=len(texture.mipmaps) <= 1 or args.no_mipmaps)
+            temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
+                                              out=temp_dir, export_as_cubemap=texture.texture_type == "Cube",
+                                              no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
+                                              allow_slow_codec=True, verbose=False)
             dds = DDS.load(temp_dds)
 
     texture.inject_dds(dds, force=False)
@@ -119,7 +124,7 @@ def inject(folder, file, args, texture_file=None):
     texture.save(new_file)
 
 
-def export_as_dds(folder, file, args):
+def export(folder, file, args, texconv=None):
     '''Export mode (export uasset as dds)'''
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
@@ -128,19 +133,17 @@ def export_as_dds(folder, file, args):
     texture = Utexture(src_file, version=args.version)
     if args.no_mipmaps:
         texture.remove_mipmaps()
-    dds = DDS.asset_to_DDS(texture)
+    dds = DDS.utexture_to_DDS(texture)
     if args.export_as == 'dds':
         dds.save(new_file)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(file))[0]+'.dds')
-
             dds.save(temp_dds)
-            texconv.convert_dds(temp_dds, new_file, args.export_as,
-                                texture.format_name, texture.texture_type)
+            texconv.convert_dds_to(temp_dds, out=os.path.dirname(new_file), fmt=args.export_as, verbose=False)
 
 
-def remove_mipmaps(folder, file, args):
+def remove_mipmaps(folder, file, args, texconv=None):
     '''Remove mode (remove mipmaps from uasset)'''
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
@@ -149,11 +152,11 @@ def remove_mipmaps(folder, file, args):
     texture.save(new_file)
 
 
-def check_version(folder, file, args):
+def check_version(folder, file, args, texconv=None):
     '''Check mode (check pixel format and file version)'''
     pixel_format = get_pf_from_uexp(os.path.join(folder, file[:-len(get_ext(file))]+'uasset'))
     print(f'Pixel format: {pixel_format}')
-    if pixel_format not in PF_FORMAT.keys():
+    if pixel_format not in PF_TO_DXGI.keys():
         raise RuntimeError(f"Unsupported pixel format. ({pixel_format})")
 
     print('Running valid mode with each version...')
@@ -173,6 +176,33 @@ def check_version(folder, file, args):
     else:
         s = '{}'.format(passed_version)[1:-1].replace("'", "")
         print('Found some versions can handle the asset. ({})'.format(s))
+
+
+def convert(folder, file, args, texconv=None):
+    '''Convert mode (convert texture files)'''
+    src_file = os.path.join(folder, file)
+    new_file = os.path.join(args.save_folder, file)
+
+    if args.convert_to.lower() in TEXTURES[1:]:
+        ext = args.convert_to.lower()
+    else:
+        if not DXGI_FORMAT.is_valid_format("DXGI_FORMAT_" + args.convert_to):
+            raise RuntimeError(f"The specified format is undefined. ({args.convert_to})")
+        ext = "dds"
+
+    new_file = os.path.splitext(new_file)[0] + "." + ext
+
+    print(f"Converting {src_file} to {new_file}...")
+
+    if ext == "dds":
+        texconv.convert_to_dds(src_file, DXGI_FORMAT["DXGI_FORMAT_" + args.convert_to],
+                               out=os.path.dirname(new_file), export_as_cubemap=False,
+                               no_mip=args.no_mipmaps,
+                               allow_slow_codec=True, verbose=False)
+    elif get_ext(file) == "dds":
+        texconv.convert_dds_to(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
+    else:
+        texconv.convert_nondds(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
 
 
 # main
@@ -207,8 +237,9 @@ if __name__ == '__main__':
         'inject': inject,
         'remove_mipmaps': remove_mipmaps,
         'parse': parse,
-        'export': export_as_dds,
-        'check': check_version
+        'export': export,
+        'check': check_version,
+        "convert": convert
     }
 
     # cehck configs
@@ -226,8 +257,11 @@ if __name__ == '__main__':
         raise RuntimeError('force injection is unsupported yet')
     if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
         raise RuntimeError('Unsupported format to export ({})'.format(args.export_as))
-    if args.export_as != 'dds' and not texconv.texconv_exist():
-        raise RuntimeError('texconv not fould. put texconv.exe in texconv folder.')
+
+    # load texconv
+    texconv = None
+    if (mode == "export" and args.export_as != "dds") or mode in ["inject", "convert"]:
+        texconv = Texconv()
 
     func = mode_functions[mode]
 
@@ -238,14 +272,14 @@ if __name__ == '__main__':
             if mode == 'inject':
                 file_list = [file_list[i*2:i*2+2] for i in range(len(file_list)//2)]
                 for uasset_file, texture_file in file_list:
-                    func(folder, uasset_file, args, texture_file=os.path.join(folder, texture_file))
+                    func(folder, uasset_file, args, texture_file=os.path.join(folder, texture_file), texconv=texconv)
             else:
                 for file in file_list:
-                    func(folder, file, args)
+                    func(folder, file, args, texconv=texconv)
         else:
             folder = os.path.dirname(file)
             file = os.path.basename(file)
-            func(folder, file, args)
+            func(folder, file, args, texconv=texconv)
     else:
         # folder method
         if mode == 'inject':
@@ -261,11 +295,12 @@ if __name__ == '__main__':
             for texture_file in texture_file_list:
                 uasset_file = texture_file[:-len(get_ext(texture_file))] + 'uasset'
                 uasset_file = os.path.join(base, uasset_file)
-                func(folder, uasset_file, args, texture_file=os.path.join(texture_folder, texture_file))
+                func(folder, uasset_file, args,
+                     texture_file=os.path.join(texture_folder, texture_file), texconv=texconv)
         else:
             folder, file_list = get_file_list_from_folder(file, ext=['uasset'])
             for file in file_list:
-                func(folder, file, args)
+                func(folder, file, args, texconv=texconv)
 
     if mode != "check":
         print(f'Success! Run time (s): {(time.time() - start_time)}')

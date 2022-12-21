@@ -6,6 +6,11 @@ def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
 
 
+def get_ext(file):
+    """Get file extension."""
+    return file.split('.')[-1].lower()
+
+
 def get_size(file):
     pos = file.tell()
     file.seek(0, 2)

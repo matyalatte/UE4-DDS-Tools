@@ -25,6 +25,7 @@ Example
 '''
 
 import os
+from io_util import get_ext
 
 
 def remove_quotes(string):
@@ -62,10 +63,6 @@ def get_base_folder(p):
     if directory == ".":
         directory = ""
     return directory, folder
-
-
-def get_ext(path):
-    return path.split('.')[-1].lower()
 
 
 def get_file_list_from_folder(folder, ext=None, include_base=True):
