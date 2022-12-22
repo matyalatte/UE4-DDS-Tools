@@ -113,7 +113,7 @@ class Texconv:
 
         args2 = ['-ft', fmt]
 
-        if dds_header.is_bc5():
+        if dds_header.is_normals():
             args2 += ['-reconstructz']
             if invert_normals:
                 args2 += ['-inverty']
@@ -163,7 +163,7 @@ class Texconv:
         if no_mip:
             args += ['-m', '1']
 
-        if ("BC5" in dds_fmt) and invert_normals:
+        if ("BC5" in dds_fmt or dds_fmt == "R8G8_UNORM") and invert_normals:
             args += ['-inverty']
 
         if export_as_cubemap:

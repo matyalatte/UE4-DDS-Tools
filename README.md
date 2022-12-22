@@ -51,6 +51,7 @@ This tool can convert textures between the following file formats.
 - A1
 - A8
 - G8 (R8)
+- R8G8
 - G16
 - G16R16
 - B8G8R8A8

@@ -20,6 +20,7 @@ PF_TO_DXGI = {
     'PF_A8': DXGI_FORMAT.DXGI_FORMAT_A8_UNORM,
     'PF_G8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
     'PF_R8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
+    'PF_R8G8': DXGI_FORMAT.DXGI_FORMAT_R8G8_UNORM,
     'PF_G16': DXGI_FORMAT.DXGI_FORMAT_R16_UNORM,
     'PF_G16R16': DXGI_FORMAT.DXGI_FORMAT_R16G16_UNORM,
     'PF_B8G8R8A8': DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
@@ -30,6 +31,16 @@ PF_TO_DXGI = {
     'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
     'PF_A32B32G32R32F': DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
     'PF_ASTC_4x4': DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM
+}
+
+PF_TO_UNCOMPRESSED = {
+    'PF_DXT1': 'PF_B8G8R8A8',
+    'PF_DXT3': 'PF_B8G8R8A8',
+    'PF_DXT5': 'PF_B8G8R8A8',
+    'PF_BC4': 'PF_R8',
+    'PF_BC5': 'PF_R8G8',
+    'PF_BC6H': 'PF_FloatRGBA',
+    'PF_BC7': 'PF_B8G8R8A8',
 }
 
 
@@ -203,6 +214,7 @@ class Utexture:
         else:
             raise RuntimeError('Not a cube flag! ' + VERSION_ERR_MSG)
         self.pixel_format = io_util.read_str(f)
+        self.update_format()
         if self.version == 'ff7r' and self.unk_int == Utexture.UBULK_FLAG[1]:
             io_util.read_null(f)
             io_util.read_null(f)
@@ -220,12 +232,6 @@ class Utexture:
         self.mipmaps = [Umipmap.read(f, self.version, self.bl3) for i in range(map_num)]
         _, ubulk_map_num = self.get_mipmap_num()
         self.has_ubulk = ubulk_map_num > 0
-
-        # get format name
-        if self.pixel_format not in PF_TO_DXGI:
-            raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
-        self.dxgi_format = PF_TO_DXGI[self.pixel_format]
-        self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
         if self.version == 'ff7r':
             # split mipmap data
@@ -430,9 +436,9 @@ class Utexture:
         print(f'  mipmap: {old_mipmap_num} -> 1')
 
     # inject dds into asset
-    def inject_dds(self, dds, force=False):
+    def inject_dds(self, dds):
         # check formats
-        if dds.header.dxgi_format != self.dxgi_format and not force:
+        if dds.header.dxgi_format != self.dxgi_format:
             raise RuntimeError(
                 "The format does not match. "
                 f"(Uasset: {self.dxgi_format.name[12:]}, DDS: {dds.header.dxgi_format.name[12:]})"
@@ -443,22 +449,6 @@ class Utexture:
                 "Texture type does not match. "
                 f"(Uasset: {self.texture_type}, DDS: {dds.header.texture_type})"
             )
-
-        '''
-        def get_key_from_value(d, val):
-            keys = [k for k, v in d.items() if v == val]
-            if keys:
-                return keys[0]
-            return None
-
-        if force:
-            self.format_name = dds.header.format_name
-            new_type = get_key_from_value(self.format_name)
-            self.uasset_size+=len(new_type)-len(self.pixel_format)
-            self.pixel_format = new_type
-            self.name_list[self.pixel_format_name_id]=self.pixel_format
-            self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
-        '''
 
         max_width, max_height = self.get_max_size()
         old_size = (max_width, max_height)
@@ -509,6 +499,24 @@ class Utexture:
         print(f'  format: {self.pixel_format} ({self.dxgi_format.name[12:]})')
         print(f'  texture type: {self.texture_type}')
         print(f'  mipmap: {len(self.mipmaps)}')
+
+    def to_uncompressed(self):
+        if self.pixel_format in PF_TO_UNCOMPRESSED:
+            self.change_format(PF_TO_UNCOMPRESSED[self.pixel_format])
+
+    def change_format(self, pixel_format):
+        """Change pixel format."""
+        if self.pixel_format != pixel_format:
+            print(f'Changed pixel format from {self.pixel_format} to {pixel_format}')
+        self.pixel_format = pixel_format
+        self.update_format()
+        self.uasset.update_name_list(self.pixel_format_name_id, pixel_format)
+
+    def update_format(self):
+        if self.pixel_format not in PF_TO_DXGI:
+            raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
+        self.dxgi_format = PF_TO_DXGI[self.pixel_format]
+        self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
 
 def get_pf_from_uexp(uexp_file):

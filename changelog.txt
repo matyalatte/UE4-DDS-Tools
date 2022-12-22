@@ -1,5 +1,6 @@
 ver 0.4.1
 - Supported more pixel formats
+- Added "force_uncompressed" option to inject mode
 
 ver 0.4.0 (Introduced Texconv-Custom-DLL)
 - Updated GUI (v0.1.2 to v0.2.1)

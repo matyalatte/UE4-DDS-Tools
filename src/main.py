@@ -41,7 +41,8 @@ def get_args():
                               "tga, hdr, png, jpg, bmp, or DXGI formats (e.g. BC1_UNORM) are available."))
     parser.add_argument('--no_mipmaps', action='store_true',
                         help='force no mips to dds and uasset.')
-    # parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
+    parser.add_argument('--force_uncompressed', action='store_true',
+                        help='use uncompressed format for BC1, BC6, and BC7.')
     return parser.parse_args()
 
 
@@ -111,13 +112,15 @@ def inject(folder, file, args, texture_file=None, texconv=None):
         dds = DDS.load(src_file)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
+            if args.force_uncompressed:
+                texture.to_uncompressed()
             temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
                                               out=temp_dir, export_as_cubemap=texture.texture_type == "Cube",
                                               no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
                                               allow_slow_codec=True, verbose=False)
             dds = DDS.load(temp_dds)
 
-    texture.inject_dds(dds, force=False)
+    texture.inject_dds(dds)
     if args.no_mipmaps:
         texture.remove_mipmaps()
     texture.save(new_file)
@@ -221,8 +224,6 @@ if __name__ == '__main__':
     texture_file = args.texture
     mode = args.mode
 
-    force = False
-
     if args.version is not None:
         version = args.version
     if version is None:
@@ -252,8 +253,6 @@ if __name__ == '__main__':
         raise RuntimeError(f'Unsupported mode. ({mode})')
     if version not in UE_VERSIONS:
         raise RuntimeError(f'Unsupported version. ({version})')
-    if force:
-        raise RuntimeError('force injection is unsupported yet')
     if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
         raise RuntimeError(f'Unsupported format to export ({args.export_as})')
 

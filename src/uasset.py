@@ -2,6 +2,7 @@
 import os
 import ctypes as c
 import io_util
+from crc import generate_hash
 
 
 class UassetHeader:  # 185 ~ 193 bytes
@@ -323,3 +324,7 @@ class Uasset:
                 export.update(export.size, offset)
                 offset += export.size
             list(map(lambda x: x.write(f, self.version), self.exports))
+
+    def update_name_list(self, i, new_name):
+        self.name_list[i] = new_name
+        self.hash_list[i] = generate_hash(new_name)

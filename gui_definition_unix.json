@@ -34,9 +34,10 @@
                     "values": ["5.0", "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "ff7r", "borderlands3"]
                 },
                 {
-                    "type": "check",
-                    "label": "no mipmaps",
-                    "value": "--no_mipmaps"
+                    "type": "check_array",
+                    "label": "Options",
+                    "items": ["No mipmaps", "Force uncompressed"],
+                    "values": ["--no_mipmaps", "--force_uncompressed"]
                 }
             ]
         },
@@ -74,7 +75,7 @@
                 },
                 {
                     "type": "check",
-                    "label": "no mipmaps",
+                    "label": "No mipmaps",
                     "value": "--no_mipmaps"
                 }
             ]
@@ -128,7 +129,7 @@
                 },
                 {
                     "type": "check",
-                    "label": "no mipmaps",
+                    "label": "No mipmaps",
                     "value": "--no_mipmaps"
                 }
             ]

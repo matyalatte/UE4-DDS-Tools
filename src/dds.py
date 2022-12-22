@@ -230,8 +230,9 @@ class DDSHeader(c.LittleEndianStructure):
     def is_hdr(self):
         return is_hdr(self.dxgi_format.name)
 
-    def is_bc5(self):
-        return 'BC5' in self.dxgi_format.name
+    def is_normals(self):
+        dxgi = self.dxgi_format.name[12:]
+        return 'BC5' in dxgi or dxgi == 'R8G8_UNORM'
 
     def get_format_as_str(self):
         return self.dxgi_format.name
