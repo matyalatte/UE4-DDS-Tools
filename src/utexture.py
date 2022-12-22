@@ -4,18 +4,31 @@ import os
 import io_util
 from uasset import Uasset
 from umipmap import Umipmap
-from dds import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
+from dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
 
 
+# Defined in UnrealEngine/Engine/Source/Runtime/D3D12RHI/Private/D3D12RHI.cpp
 PF_TO_DXGI = {
     'PF_DXT1': DXGI_FORMAT.DXGI_FORMAT_BC1_UNORM,
+    'PF_DXT3': DXGI_FORMAT.DXGI_FORMAT_BC2_UNORM,
     'PF_DXT5': DXGI_FORMAT.DXGI_FORMAT_BC3_UNORM,
     'PF_BC4': DXGI_FORMAT.DXGI_FORMAT_BC4_UNORM,
     'PF_BC5': DXGI_FORMAT.DXGI_FORMAT_BC5_UNORM,
     'PF_BC6H': DXGI_FORMAT.DXGI_FORMAT_BC6H_UF16,
     'PF_BC7': DXGI_FORMAT.DXGI_FORMAT_BC7_UNORM,
-    'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
+    'PF_A1': DXGI_FORMAT.DXGI_FORMAT_R1_UNORM,
+    'PF_A8': DXGI_FORMAT.DXGI_FORMAT_A8_UNORM,
+    'PF_G8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
+    'PF_R8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
+    'PF_G16': DXGI_FORMAT.DXGI_FORMAT_R16_UNORM,
+    'PF_G16R16': DXGI_FORMAT.DXGI_FORMAT_R16G16_UNORM,
     'PF_B8G8R8A8': DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
+    'PF_A2B10G10R10': DXGI_FORMAT.DXGI_FORMAT_R10G10B10A2_UNORM,
+    'PF_A16B16G16R16': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM,
+    'PF_FloatRGB': DXGI_FORMAT.DXGI_FORMAT_R11G11B10_FLOAT,
+    'PF_FloatR11G11B10': DXGI_FORMAT.DXGI_FORMAT_R11G11B10_FLOAT,
+    'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
+    'PF_A32B32G32R32F': DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
     'PF_ASTC_4x4': DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM
 }
 
@@ -31,8 +44,8 @@ def is_power_of_2(n):
 EXT = ['.uasset', '.uexp', '.ubulk']
 
 
-# get all file paths for texture asset from a file path.
 def get_all_file_path(file):
+    '''Get all file paths for texture asset from a file path.'''
     base_name, ext = os.path.splitext(file)
     if ext not in EXT:
         raise RuntimeError('Not Uasset. ({})'.format(file))
@@ -40,6 +53,16 @@ def get_all_file_path(file):
 
 
 VERSION_ERR_MSG = 'Make sure you specified UE4 version correctly.'
+
+
+def skip_unversioned_headers(f):
+    uhead = io_util.read_uint8_array(f, 2)
+    is_last = uhead[1] % 2 == 0
+    while is_last:
+        uhead = io_util.read_uint8_array(f, 2)
+        is_last = uhead[1] % 2 == 0
+        if f.tell() > 100:
+            raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
 
 
 class Utexture:
@@ -59,7 +82,7 @@ class Utexture:
         self.version = version
 
         if not os.path.isfile(file_path):
-            raise RuntimeError('Not File. ({})'.format(file_path))
+            raise RuntimeError(f'Not File. ({file_path})')
 
         uasset_name, uexp_name, ubulk_name = get_all_file_path(file_path)
         print('load: ' + uasset_name)
@@ -126,13 +149,7 @@ class Utexture:
         self.imported_width = None
         self.imported_height = None
         if self.unversioned:
-            uh = io_util.read_uint8_array(f, 2)
-            is_last = uh[1] % 2 == 0
-            while (is_last):
-                uh = io_util.read_uint8_array(f, 2)
-                is_last = uh[1] % 2 == 0
-                if f.tell() > 100:
-                    raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
+            skip_unversioned_headers(f)
             s = f.tell()
             f.seek(0)
             self.bin1 = f.read(s)
@@ -165,7 +182,7 @@ class Utexture:
         self.unk = f.read(s)
 
         # read meta data
-        self.type_name_id = io_util.read_uint64(f)
+        self.pixel_format_name_id = io_util.read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = io_util.read_uint32(f)  # Offset to end of uexp?
         if self.version in ['4.22', '4.25', '4.27', '5.0']:
@@ -185,7 +202,7 @@ class Utexture:
                 raise RuntimeError('Unexpected error! Please report it to the developer.')
         else:
             raise RuntimeError('Not a cube flag! ' + VERSION_ERR_MSG)
-        self.type = io_util.read_str(f)
+        self.pixel_format = io_util.read_str(f)
         if self.version == 'ff7r' and self.unk_int == Utexture.UBULK_FLAG[1]:
             io_util.read_null(f)
             io_util.read_null(f)
@@ -205,9 +222,9 @@ class Utexture:
         self.has_ubulk = ubulk_map_num > 0
 
         # get format name
-        if self.type not in PF_TO_DXGI:
-            raise RuntimeError(f'Unsupported pixel format. ({self.type})')
-        self.dxgi_format = PF_TO_DXGI[self.type]
+        if self.pixel_format not in PF_TO_DXGI:
+            raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
+        self.dxgi_format = PF_TO_DXGI[self.pixel_format]
         self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
         if self.version == 'ff7r':
@@ -329,7 +346,7 @@ class Utexture:
         f.write(self.unk)
 
         # write meta data
-        io_util.write_uint64(f, self.type_name_id)
+        io_util.write_uint64(f, self.pixel_format_name_id)
         io_util.write_uint32(f, 0)  # write dummy offset. (rewrite it later)
         if self.version in ['4.22', '4.25', '4.27', '5.0']:
             io_util.write_null(f)
@@ -341,7 +358,7 @@ class Utexture:
         io_util.write_uint16(f, self.cube_flag)
         io_util.write_uint16(f, self.unk_int)
 
-        io_util.write_str(f, self.type)
+        io_util.write_str(f, self.pixel_format)
 
         if self.version == 'ff7r' and self.unk_int == Utexture.UBULK_FLAG[1]:
             io_util.write_null(f)
@@ -437,9 +454,9 @@ class Utexture:
         if force:
             self.format_name = dds.header.format_name
             new_type = get_key_from_value(self.format_name)
-            self.uasset_size+=len(new_type)-len(self.type)
-            self.type = new_type
-            self.name_list[self.type_name_id]=self.type
+            self.uasset_size+=len(new_type)-len(self.pixel_format)
+            self.pixel_format = new_type
+            self.name_list[self.pixel_format_name_id]=self.pixel_format
             self.byte_per_pixel = BYTE_PER_PIXEL[self.format_name]
         '''
 
@@ -489,7 +506,7 @@ class Utexture:
         max_width, max_height = self.get_max_size()
         print(f'  max width: {max_width}')
         print(f'  max height: {max_height}')
-        print(f'  format: {self.type} ({self.dxgi_format.name[12:]})')
+        print(f'  format: {self.pixel_format} ({self.dxgi_format.name[12:]})')
         print(f'  texture type: {self.texture_type}')
         print(f'  mipmap: {len(self.mipmaps)}')
 

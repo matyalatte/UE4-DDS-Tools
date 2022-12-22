@@ -1,0 +1,159 @@
+{
+    "gui": [
+        {
+            "label": "Inject",
+            "window_name": "UE4-DDS-Tools (Inject mode)",
+            "command": "python3 src/main.py %uasset% %texture% --save_folder=%out% --version=%version% %option%",
+            "button": "Inject",
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true,
+                    "empty_message": "Drop .uasset here!"
+                },
+                {
+                    "type": "file",
+                    "label": "Texture file (dds, tga, hdr, png, jpg, or bmp)",
+                    "extension": "any files | *",
+                    "add_quotes": true,
+                    "empty_message": "Drop an image here!"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output folder",
+                    "add_quotes": true,
+                    "empty_message": "Drop a folder here!"
+
+                },
+                {
+                    "type": "choice",
+                    "label": "UE version",
+                    "items": ["5.0", "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "4.14", "4.13", "ff7r", "borderlands3"],
+                    "values": ["5.0", "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "ff7r", "borderlands3"]
+                },
+                {
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
+                }
+            ]
+        },
+        {
+            "label": "Export",
+            "window_name": "UE4-DDS-Tools (Export mode)",
+            "command": "python3 src/main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
+            "button": "Export",
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true,
+                    "empty_message": "Drop .uasset here!"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output folder",
+                    "add_quotes": true,
+                    "empty_message": "Drop a folder here!"
+                },
+                {
+                    "type": "choice",
+                    "label": "UE version",
+                    "items": ["5.0", "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22", "4.16 ~ 4.19", "4.15", "4.14", "4.13", "ff7r", "borderlands3"],
+                    "values": ["5.0", "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "ff7r", "borderlands3"]
+                },
+                {
+                    "type": "choice",
+                    "label": "Export as",
+                    "items": [".tga or .hdr", ".dds"],
+                    "values": ["tga", "dds"],
+                    "default": 0
+                },
+                {
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
+                }
+            ]
+        },
+        {
+            "label": "Check version",
+            "window_name": "UE4-DDS-Tools (Check mode)",
+            "command": "python3 src/main.py %uasset% --mode=check",
+            "button": "Check",
+            "show_last_line": true,
+            "components": [
+                {
+                    "type": "file",
+                    "label": "Uasset file",
+                    "extension": "uasset files | *.uasset",
+                    "add_quotes": true,
+                    "empty_message": "Drop .uasset here!"
+                }
+            ]
+        },
+        {
+            "label": "Convert",
+            "window_name": "UE4-DDS-Tools (Convert mode)",
+            "command": "python3 src/main.py %file% --mode=convert --save_folder=%out% --convert_to=%fmt% %option%",
+            "button": "Convert",
+            "show_last_line": true,
+            "components": [
+                {
+                    "type": "static_text",
+                    "label": "Converts textures with texconv."
+                },
+                {
+                    "type": "file",
+                    "label": "Texture file.",
+                    "extension": "any files | *",
+                    "add_quotes": true,
+                    "empty_message": "Drop an image here!"
+                },
+                {
+                    "type": "folder",
+                    "label": "Output folder",
+                    "add_quotes": true,
+                    "empty_message": "Drop a folder here!"
+                },
+                {
+                    "type": "choice",
+                    "label": "Convert to",
+                    "items": [".tga", ".hdr", "BC1U (DXT1)", "BC3U (DXT5)", "BC4U", "BC5U", "BC6HU", "BC7U", "B8G8R8A8", "FloatRGBA16"],
+                    "values": ["tga", "hdr", "BC1_UNORM", " BC3_UNORM", "BC4_UNORM", "BC5_UNORM", "BC6H_UF16", "BC7_UNORM", "B8G8R8A8_UNORM_SRGB", "R16G16B16A16_FLOAT"],
+                    "default": 0
+                },
+                {
+                    "type": "check",
+                    "label": "no mipmaps",
+                    "value": "--no_mipmaps"
+                }
+            ]
+        }
+    ],
+    "help": [
+        {
+            "type": "url",
+            "label": "README",
+            "url": "github.com/matyalatte/UE4-DDS-Tools"
+        },
+        {
+            "type": "url",
+            "label": "How to Use",
+            "url": "github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use"
+        },
+        {
+            "type": "url",
+            "label": "About Simple Command Runner",
+            "url": "https://github.com/matyalatte/Simple-Command-Runner"
+        },
+        {
+            "type": "url",
+            "label": "About Texconv",
+            "url": "https://github.com/microsoft/DirectXTex/wiki/Texconv"
+        }
+    ]
+}

@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.4.0
+# UE4-DDS-Tools ver0.4.1
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -21,21 +21,6 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 - FF7R
 - Borderlands3
 
-## Supported DXGI Formats
-
-- DXT1/BC1
-- DXT5/BC3
-- BC4/ATI1
-- BC5/ATI2
-- BC6H
-- BC7
-- B8G8R8A8 (Uncompressed color map)
-- FloatRGBA (Uncompressed HDR)
-- ASTC_4x4
-
-> Note that Unreal Engine supports more DXGI formats.  
-> You will get the `Unsupported pixel format.` error for them.  
-
 ## Supported File Formats
 
 This tool can convert textures between the following file formats.  
@@ -48,14 +33,44 @@ This tool can convert textures between the following file formats.
 - .jpg
 - .png
 
-> Note that this tool can not convert non-official DXGI formats (e.g. ASTC_4x4) from and to non-dds files.  
-> It means you can not use .bmp, .png, and .jpg if the assets have non-official DXGI formats.  
+> Note that it can not convert non-official DXGI formats (e.g. ASTC_4x4) from and to non-dds files.  
+> It means you can not use .tga, .hdr, .bmp, .png, and .jpg if the assets have non-official DXGI formats.  
+
+## Supported Pixel Formats
+
+<details>
+<summary>The List of supported pixel formats</summary>
+
+- DXT1 (BC1)
+- DXT3 (BC2)
+- DXT5 (BC3)
+- BC4 (ATI1)
+- BC5 (ATI2)
+- BC6H
+- BC7
+- A1
+- A8
+- G8 (R8)
+- G16
+- G16R16
+- B8G8R8A8
+- A2B10G10R10
+- A16B16G16R16
+- FloatRGB (FloatR11G11B10)
+- FloatRGBA
+- A32B32G32R32F
+- ASTC_4x4
+
+</details>
+
+> Note that Unreal Engine supports more [pixel formats](https://docs.unrealengine.com/5.0/en-US/API/Runtime/Core/EPixelFormat/).  
+> You will get the `Unsupported pixel format.` error for them.  
 
 ## Download
 
 Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
 
-## How to Use
+## Getting Started
 
 [How to Use · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use)
 

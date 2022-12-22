@@ -98,16 +98,16 @@ class UassetHeader:  # 185 ~ 193 bytes
 
     def print(self):
         print('Header info')
-        print('  file size: {}'.format(self.uasset_size))
-        print('  number of names: {}'.format(self.name_count))
+        print(f'  file size: {self.uasset_size}')
+        print(f'  number of names: {self.name_count}')
         print('  name directory offset: 193')
-        print('  number of exports: {}'.format(self.export_count))
-        print('  export directory offset: {}'.format(self.export_offset))
-        print('  number of imports: {}'.format(self.import_count))
-        print('  import directory offset: {}'.format(self.import_offset))
-        print('  end offset of export: {}'.format(self.end_to_export))
-        print('  padding offset: {}'.format(self.padding_offset))
-        print('  file length (uasset+uexp-4): {}'.format(self.file_length))
+        print(f'  number of exports: {self.export_count}')
+        print(f'  export directory offset: {self.export_offset}')
+        print(f'  number of imports: {self.import_count}')
+        print(f'  import directory offset: {self.import_offset}')
+        print(f'  end offset of export: {self.end_to_export}')
+        print(f'  padding offset: {self.padding_offset}')
+        print(f'  file length (uasset+uexp-4): {self.file_length}')
         # print('  file data count: {}'.format(self.file_data_count))
         # print('  file data offset: {}'.format(self.file_data_offset))
 
@@ -122,6 +122,7 @@ class UassetImport(c.LittleEndianStructure):
         ("unk", c.c_uint32),
     ]
 
+    @staticmethod
     def read(f, version):
         imp = UassetImport()
         f.readinto(imp)
@@ -207,16 +208,16 @@ class UassetExport:  # 80 ~ 104 bytes
     def print(self, padding=2):
         pad = ' ' * padding
         print(pad+self.name)
-        print(pad+'  class: {}'.format(self.class_name))
-        print(pad+'  import: {}'.format(self.import_name))
-        print(pad+'  size: {}'.format(self.size))
-        print(pad+'  offset: {}'.format(self.offset))
+        print(pad+f'  class: {self.class_name}')
+        print(pad+f'  import: {self.import_name}')
+        print(pad+f'  size: {self.size}')
+        print(pad+f'  offset: {self.offset}')
 
 
 class Uasset:
     def __init__(self, uasset_file, version, verbose=False):
         if uasset_file[-7:] != '.uasset':
-            raise RuntimeError('Not .uasset. ({})'.format(uasset_file))
+            raise RuntimeError(f'Not .uasset. ({uasset_file})')
 
         if verbose:
             print('Loading '+uasset_file+'...')

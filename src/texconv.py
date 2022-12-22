@@ -10,7 +10,8 @@ import platform
 import shutil
 import tempfile
 
-from dds import DDSHeader, DXGI_FORMAT, is_hdr
+from dds import DDSHeader, is_hdr
+from dxgi_format import DXGI_FORMAT
 import io_util
 
 

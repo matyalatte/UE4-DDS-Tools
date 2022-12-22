@@ -1,8 +1,12 @@
-ver 0.4.0
+ver 0.4.1
+- Supported more pixel formats
+
+ver 0.4.0 (Introduced Texconv-Custom-DLL)
 - Updated GUI (v0.1.2 to v0.2.1)
 - Introduced tempfile for temporary files
 - Introduced custom build for texconv (Texconv-Custom-DLL)
 - Supported cubemaps
+- Improved DDS handling
 
 ver 0.3.3
 - Supported UE5.0 assets
@@ -25,7 +29,7 @@ ver 0.3.1
 - Fixed an error when extracting uncompressed HDR textures (FloatRGBA)
 - Minor updates for GUI
 
-ver 0.3.0
+ver 0.3.0 (Introduced Texconv)
 - Added support for tga, hdr, png, jpg, bmp. (You can inject non-dds files.)
 - Added support for 4.16, 4.17
 - Added --no_mipmaps option
@@ -60,7 +64,7 @@ ver 0.2.1
 - Added support for cube maps
 - Fixed an error when loading some assets.
 
-ver 0.2.0
+ver 0.2.0 (Supported other UE versions)
 - Added support for UE4.18 and UE4.19 games
 
 ver 0.1.7

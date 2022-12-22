@@ -46,14 +46,14 @@ class Umipmap(c.LittleEndianStructure):
             mip.data = f.read(mip.data_size)
 
         if bl3:
-            io_util.read_int = io_util.read_uint16
+            read_int = io_util.read_uint16
         else:
-            io_util.read_int = io_util.read_uint32
+            read_int = io_util.read_uint32
 
-        mip.width = io_util.read_int(f)
-        mip.height = io_util.read_int(f)
+        mip.width = read_int(f)
+        mip.height = read_int(f)
         if version in ['4.22', '4.25', '4.27', '5.0']:
-            depth = io_util.read_int(f)
+            depth = read_int(f)
             io_util.check(depth, 1, msg='3d texture is unsupported.')
 
         io_util.check(mip.data_size, mip.data_size2)

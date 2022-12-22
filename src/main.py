@@ -1,3 +1,4 @@
+'''Main file for UE4-DDS-Tools.'''
 # std libs
 import argparse
 import json
@@ -8,13 +9,13 @@ from contextlib import redirect_stdout
 
 # my scripts
 from io_util import compare, get_ext
-from utexture import Utexture, get_all_file_path
-from dds import DDS, DXGI_FORMAT
+from utexture import Utexture, get_all_file_path, get_pf_from_uexp, PF_TO_DXGI
+from dds import DDS
+from dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt
 from texconv import Texconv, is_windows
-from utexture import get_pf_from_uexp, PF_TO_DXGI
 
-TOOL_VERSION = '0.4.0'
+TOOL_VERSION = '0.4.1'
 
 # UE version: 4.13 ~ 5.0, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.0', 'ff7r', 'borderlands3']
@@ -41,8 +42,7 @@ def get_args():
     parser.add_argument('--no_mipmaps', action='store_true',
                         help='force no mips to dds and uasset.')
     # parser.add_argument('--force', default=None, type=str, help='ignore dds format.')
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def get_config():
@@ -50,8 +50,7 @@ def get_config():
     if not os.path.exists(json_path):
         return {}
     with open(json_path, encoding='utf-8') as f:
-        config = json.load(f)
-    return config
+        return json.load(f)
 
 
 def parse(folder, file, args, texconv=None):
@@ -99,7 +98,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     if texture_file is None:
         texture_file = args.texture
     if get_ext(texture_file) not in TEXTURES:
-        raise RuntimeError('Unsupported texture format. ({})'.format(get_ext(texture_file)))
+        raise RuntimeError(f'Unsupported texture format. ({get_ext(texture_file)})')
 
     # read uasset
     uasset_file = os.path.join(folder, file)
@@ -172,10 +171,10 @@ def check_version(folder, file, args, texconv=None):
     if len(passed_version) == 0:
         print('Failed for all supported versions. You can not mod the asset with this tool.')
     elif len(passed_version) == 1:
-        print('The version is {}.'.format(passed_version[0]))
+        print(f'The version is {passed_version[0]}.')
     else:
-        s = '{}'.format(passed_version)[1:-1].replace("'", "")
-        print('Found some versions can handle the asset. ({})'.format(s))
+        s = f'{passed_version}'[1:-1].replace("'", "")
+        print(f'Found some versions can handle the asset. ({s})')
 
 
 def convert(folder, file, args, texconv=None):
@@ -209,7 +208,7 @@ def convert(folder, file, args, texconv=None):
 if __name__ == '__main__':
     start_time = time.time()
 
-    print('UE4 DDS Tools ver{} by Matyalatte'.format(TOOL_VERSION))
+    print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')
 
     # get config
     config = get_config()
@@ -250,13 +249,13 @@ if __name__ == '__main__':
     if mode == 'inject' and (texture_file is None or texture_file == ""):
         raise RuntimeError("Specify texture file.")
     if mode not in mode_functions:
-        raise RuntimeError('Unsupported mode. ({})'.format(mode))
+        raise RuntimeError(f'Unsupported mode. ({mode})')
     if version not in UE_VERSIONS:
-        raise RuntimeError('Unsupported version. ({})'.format(version))
+        raise RuntimeError(f'Unsupported version. ({version})')
     if force:
         raise RuntimeError('force injection is unsupported yet')
     if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
-        raise RuntimeError('Unsupported format to export ({})'.format(args.export_as))
+        raise RuntimeError(f'Unsupported format to export ({args.export_as})')
 
     # load texconv
     texconv = None
@@ -270,7 +269,7 @@ if __name__ == '__main__':
             # txt method (file list)
             folder, file_list = get_file_list_from_txt(file)
             if mode == 'inject':
-                file_list = [file_list[i*2:i*2+2] for i in range(len(file_list)//2)]
+                file_list = [file_list[i * 2: i * 2 + 2] for i in range(len(file_list) // 2)]
                 for uasset_file, texture_file in file_list:
                     func(folder, uasset_file, args, texture_file=os.path.join(folder, texture_file), texconv=texconv)
             else:
