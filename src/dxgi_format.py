@@ -1,7 +1,10 @@
-'''Constants for DXGI format
+'''Constants for DXGI formats
 
 Notes:
-    https://docs.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
+    - Official document for DXGI formats
+      https://docs.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
+    - Official repo for DDS
+      https://github.com/microsoft/DirectXTex
 '''
 from enum import Enum
 
@@ -127,25 +130,47 @@ class DXGI_FORMAT(Enum):
     DXGI_FORMAT_P208 = 130
     DXGI_FORMAT_V208 = 131
     DXGI_FORMAT_V408 = 132
+
+    # non-official formats
     DXGI_FORMAT_ASTC_4X4_TYPELESS = 133
     DXGI_FORMAT_ASTC_4X4_UNORM = 134
-    # DXGI_FORMAT_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE
-    # DXGI_FORMAT_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE
-    DXGI_FORMAT_FORCE_UINT = 0xffffffff
 
     @classmethod
-    def is_valid_format(cls, fmt):
-        return fmt in cls._member_names_
+    def is_valid_format(cls, fmt_name):
+        return fmt_name in cls._member_names_
 
-    @classmethod
-    def get_max(cls):
+    @staticmethod
+    def get_max():
         return 134
 
-    @classmethod
-    def get_max_canonical(cls):
+    @staticmethod
+    def get_max_canonical():
         return 132
 
+    @staticmethod
+    def get_signed(fmt):
+        name = fmt.name
+        splitted = name.split("_")
+        num_type = splitted[-1]
 
+        new_num_types = {
+            "UNORM": "SNORM",
+            "UINT": "SINT"
+        }
+
+        if num_type in new_num_types:
+            name = "_".join(splitted[:-1] + new_num_types[num_type])
+        else:
+            return fmt
+
+        if DXGI_FORMAT.is_valid_format(name):
+            return DXGI_FORMAT[name]
+        else:
+            return fmt
+
+
+# Used to get the size of a mipmap
+# width * height * (byte per pixel) = (bytes of a mipmap)
 DXGI_BYTE_PER_PIXEL = {
     DXGI_FORMAT.DXGI_FORMAT_UNKNOWN: 0,
     DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_TYPELESS: 16,
@@ -269,3 +294,50 @@ DXGI_BYTE_PER_PIXEL = {
     DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_TYPELESS: 8,
     DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM: 8
 }
+
+
+def int_to_byte(n):
+    return n.to_bytes(1, byteorder="little")
+
+
+# Used to detect DXGI format from fourCC
+FOURCC_TO_DXGI = [
+    [[b'DXT1'], DXGI_FORMAT.DXGI_FORMAT_BC1_UNORM],
+    [[b'DXT2', b'DXT3'], DXGI_FORMAT.DXGI_FORMAT_BC2_UNORM],
+    [[b'DXT4', b'DXT5'], DXGI_FORMAT.DXGI_FORMAT_BC3_UNORM],
+    [[b'ATI1', b'BC4U', b'3DC1'], DXGI_FORMAT.DXGI_FORMAT_BC4_UNORM],
+    [[b'ATI2', b'BC5U', b'3DC2'], DXGI_FORMAT.DXGI_FORMAT_BC5_UNORM],
+    [[b'BC4S'], DXGI_FORMAT.DXGI_FORMAT_BC4_SNORM],
+    [[b'BC5S'], DXGI_FORMAT.DXGI_FORMAT_BC5_SNORM],
+    [[b'BC6H'], DXGI_FORMAT.DXGI_FORMAT_BC6H_UF16],
+    [[b'BC7L', b'BC7'], DXGI_FORMAT.DXGI_FORMAT_BC7_UNORM],
+    [[b'RGBG'], DXGI_FORMAT.DXGI_FORMAT_R8G8_B8G8_UNORM],
+    [[b'GRGB'], DXGI_FORMAT.DXGI_FORMAT_G8R8_G8B8_UNORM],
+    [[b'YUY2', b'UYVY'], DXGI_FORMAT.DXGI_FORMAT_YUY2],
+    [[int_to_byte(36)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM],
+    [[int_to_byte(110)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_SNORM],
+    [[int_to_byte(111)], DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT],
+    [[int_to_byte(112)], DXGI_FORMAT.DXGI_FORMAT_R16G16_FLOAT],
+    [[int_to_byte(113)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT],
+    [[int_to_byte(114)], DXGI_FORMAT.DXGI_FORMAT_R32_FLOAT],
+    [[int_to_byte(115)], DXGI_FORMAT.DXGI_FORMAT_R32G32_FLOAT],
+    [[int_to_byte(116)], DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT]
+]
+
+
+# Used to detect DXGI format from DDS_PIXELFORMAT
+BITMASK_TO_DXGI = [
+    [[0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000], DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM],
+    [[0x00ff0000, 0x0000ff00, 0x000000ff, 0], DXGI_FORMAT.DXGI_FORMAT_B8G8R8X8_UNORM],
+    [[0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000], DXGI_FORMAT.DXGI_FORMAT_R8G8B8A8_UNORM],
+    [[0x3ff00000, 0x000ffc00, 0x000003ff, 0xc0000000], DXGI_FORMAT.DXGI_FORMAT_R10G10B10A2_UNORM],
+    [[0x0000ffff, 0xffff0000, 0, 0], DXGI_FORMAT.DXGI_FORMAT_R16G16_UNORM],
+    [[0xffffffff, 0, 0, 0], DXGI_FORMAT.DXGI_FORMAT_R32_FLOAT],
+    [[0x7c00, 0x03e0, 0x001f, 0x8000], DXGI_FORMAT.DXGI_FORMAT_B5G5R5A1_UNORM],
+    [[0xf800, 0x07e0, 0x001f, 0], DXGI_FORMAT.DXGI_FORMAT_B5G6R5_UNORM],
+    [[0x0f00, 0x00f0, 0x000f, 0xf000], DXGI_FORMAT.DXGI_FORMAT_B4G4R4A4_UNORM],
+    [[0x00ff, 0, 0, 0xff00], DXGI_FORMAT.DXGI_FORMAT_R8G8_UNORM],
+    [[0xffff, 0, 0, 0], DXGI_FORMAT.DXGI_FORMAT_R16_UNORM],
+    [[0xff, 0, 0, 0], DXGI_FORMAT.DXGI_FORMAT_R8_UNORM],
+    [[0, 0, 0, 0xff], DXGI_FORMAT.DXGI_FORMAT_A8_UNORM]
+]

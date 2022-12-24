@@ -34,7 +34,7 @@ This tool can convert textures between the following file formats.
 - .png
 
 > Note that it can not convert non-official DXGI formats (e.g. ASTC_4x4) from and to non-dds files.  
-> It means you can not use .tga, .hdr, .bmp, .png, and .jpg if the assets have non-official DXGI formats.  
+> It means you can not use .tga, .hdr, .bmp, .png, and .jpg for them.  
 
 ## Supported Pixel Formats
 
@@ -60,6 +60,7 @@ This tool can convert textures between the following file formats.
 - FloatRGB (FloatR11G11B10)
 - FloatRGBA
 - A32B32G32R32F
+- B5G5R5A1_UNORM
 - ASTC_4x4
 
 </details>

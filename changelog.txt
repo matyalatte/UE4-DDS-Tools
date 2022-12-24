@@ -1,5 +1,6 @@
 ver 0.4.1
 - Supported more pixel formats
+- Supported dds files that have no fourCC
 - Added "force_uncompressed" option to inject mode
 
 ver 0.4.0 (Introduced Texconv-Custom-DLL)

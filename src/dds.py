@@ -1,37 +1,49 @@
-"""Class for DDS files."""
+"""Class for DDS files.
+
+Notes:
+    - Official document for DDS header
+      https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-header
+    - Official repo for DDS
+      https://github.com/microsoft/DirectXTex
+"""
 
 import ctypes as c
+from enum import Enum
 import os
 
-from dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
+from dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
+                         FOURCC_TO_DXGI, BITMASK_TO_DXGI)
 import io_util
 
 
-def int_to_byte(n, length=1):
-    return n.to_bytes(length, byteorder="little")
+class PF_FLAGS(Enum):
+    '''dwFlags for DDS_PIXELFORMAT'''
+    # DDS_ALPHAPIXELS = 0x00000001
+    # DDS_ALPHA = 0x00000002
+    DDS_FOURCC = 0x00000004
+    # DDS_RGB = 0x00000040
+    # DDS_LUMINANCE = 0x00020000
+    DDS_BUMPDUDV = 0x00080000
 
 
-FOURCC_TO_DXGI = [
-    [[b'DXT1'], DXGI_FORMAT.DXGI_FORMAT_BC1_UNORM],
-    [[b'DXT2', b'DXT3'], DXGI_FORMAT.DXGI_FORMAT_BC2_UNORM],
-    [[b'DXT4', b'DXT5'], DXGI_FORMAT.DXGI_FORMAT_BC3_UNORM],
-    [[b'ATI1', b'BC4U', b'3DC1'], DXGI_FORMAT.DXGI_FORMAT_BC4_UNORM],
-    [[b'ATI2', b'BC5U', b'3DC2'], DXGI_FORMAT.DXGI_FORMAT_BC5_UNORM],
-    [[b'BC4S'], DXGI_FORMAT.DXGI_FORMAT_BC4_SNORM],
-    [[b'BC5S'], DXGI_FORMAT.DXGI_FORMAT_BC5_SNORM],
-    [[b'BC6H'], DXGI_FORMAT.DXGI_FORMAT_BC6H_UF16],
-    [[b'BC7L', b'BC7'], DXGI_FORMAT.DXGI_FORMAT_BC7_UNORM],
-    [[b'RGBG'], DXGI_FORMAT.DXGI_FORMAT_R8G8_B8G8_UNORM],
-    [[b'GRGB'], DXGI_FORMAT.DXGI_FORMAT_G8R8_G8B8_UNORM],
-    [[b'YUY2', b'UYVY'], DXGI_FORMAT.DXGI_FORMAT_YUY2],
-    [[int_to_byte(36)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM],
-    [[int_to_byte(110)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_SNORM],
-    [[int_to_byte(111)], DXGI_FORMAT.DXGI_FORMAT_R16_FLOAT],
-    [[int_to_byte(112)], DXGI_FORMAT.DXGI_FORMAT_R16G16_FLOAT],
-    [[int_to_byte(113)], DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT],
-    [[int_to_byte(114)], DXGI_FORMAT.DXGI_FORMAT_R32_FLOAT],
-    [[int_to_byte(115)], DXGI_FORMAT.DXGI_FORMAT_R32G32_FLOAT],
-    [[int_to_byte(116)], DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT]
+UNCANONICAL_FOURCC = [
+    # fourCC for uncanonical formats (ETC, PVRTC, ATITC, ASTC)
+    b"ETC",
+    b"ETC1",
+    b"ETC2",
+    b"ET2A",
+    b"PTC2",
+    b"PTC4",
+    b"ATC",
+    b"ATCA",
+    b"ATCE",
+    b"ATCI",
+    b"AS44",
+    b"AS55",
+    b"AS66",
+    b"AS85",
+    b"AS86",
+    b"AS:5"
 ]
 
 
@@ -52,19 +64,19 @@ TGA_SUPPORTED = [
     # Convertible as a decompressed format
     "BC1_TYPELESS",
     "BC1_UNORM",
+    "BC1_UNORM_SRGB",
     "BC2_TYPELESS",
     "BC2_UNORM",
+    "BC2_UNORM_SRGB",
     "BC3_TYPELESS",
     "BC3_UNORM",
-    "BC7_TYPELESS",
-    "BC7_UNORM",
-    "BC1_UNORM_SRGB",
-    "BC2_UNORM_SRGB",
     "BC3_UNORM_SRGB",
-    "BC7_UNORM_SRGB",
     "BC4_TYPELESS",
     "BC4_UNORM",
     "BC4_SNORM",
+    "BC7_TYPELESS",
+    "BC7_UNORM",
+    "BC7_UNORM_SRGB",
 
     # Directory convertible
     "R8G8B8A8_UNORM",
@@ -78,38 +90,9 @@ TGA_SUPPORTED = [
     "B5G5R5A1_UNORM"
 ]
 
-# fourCC for uncanonical formats (ETC, PVRTC, ATITC, ASTC)
-UNCANONICAL_FOURCC = [
-    b"ETC",
-    b"ETC1",
-    b"ETC2",
-    b"ET2A",
-    b"PTC2",
-    b"PTC4",
-    b"ATC",
-    b"ATCA",
-    b"ATCE",
-    b"ATCI",
-    b"AS44",
-    b"AS55",
-    b"AS66",
-    b"AS85",
-    b"AS86",
-    b"AS:5"
-]
-
-
-def get_dds_format(fmt):
-    """Convert raw format data to string."""
-    for pxlfmt, dxgi in FOURCC_TO_DXGI:
-        if fmt in pxlfmt:
-            return dxgi
-    print("Failed to detect dxgi format. It'll be loaded as a B8G8R8A8 texture.")
-    return DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM
-
 
 def is_hdr(name):
-    return 'BC6' in name or 'FLOAT' in name
+    return 'BC6' in name or 'FLOAT' in name or 'INT' in name or 'SNORM' in name
 
 
 def convertible_to_tga(name):
@@ -136,22 +119,21 @@ class DDSHeader(c.LittleEndianStructure):
         ("tool_name", c.c_char * 4),         # Reserved1
         ("null", c.c_uint32),                # Reserved1
         ("pfsize", c.c_uint32),              # PfSize == 32
-        ("pfflags", c.c_uint32),             # PfFlags == 4
+        ("pfflags", c.c_uint32),             # PfFlags (if 4 then FourCC is used)
         ("fourCC", c.c_char * 4),            # FourCC
-        ("bit_count_mask", c.c_uint32 * 5),  # Bitcount, Bitmask (null * 5)
+        ("bit_count", c.c_uint32),           # Bitcount
+        ("bit_mask", c.c_uint32 * 4),        # Bitmask
         ("caps", c.c_uint8 * 4),             # [8 * hasMips, 16, 64 * hasMips, 0]
         ("caps2", c.c_uint8 * 4),            # [0, 254 * isCubeMap, 0, 0]
         ("reserved2", c.c_uint32 * 3),       # ReservedCpas, Reserved2
     ]
 
-    def initialize(self, width, height, mipmap_num, dxgi_format):
-        self.width = width
-        self.height = height
-        self.mipmap_num = mipmap_num
-        if isinstance(dxgi_format, str):
-            self.dxgi_format = DXGI_FORMAT["DXGI_FORMAT_" + dxgi_format]
-        else:
-            self.dxgi_format = dxgi_format
+    def __init__(self):
+        super().__init__()
+        self.mipmap_num = 0
+        self.dxgi_format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN
+        self.byte_per_pixel = 0
+        self.texture_type = '2D'
 
     @staticmethod
     def read(f):
@@ -179,7 +161,7 @@ class DDSHeader(c.LittleEndianStructure):
             io_util.read_const_uint32(f, 1)      # arraySize == 1
             f.seek(4, 1)                         # miscFlag2
         else:
-            head.dxgi_format = get_dds_format(head.fourCC)
+            head.dxgi_format = head.get_dxgi_from_header()
         head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
         head.texture_type = ['2D', 'Cube'][head.is_cube()]
         return head
@@ -201,25 +183,64 @@ class DDSHeader(c.LittleEndianStructure):
             io_util.write_uint32(f, 1)
             io_util.write_uint32(f, 0)
 
-    def update(self):
+    def update(self, width, height, mipmap_num, dxgi_format, is_cube):
+        self.width = width
+        self.height = height
+        self.mipmap_num = mipmap_num
+        if isinstance(dxgi_format, str):
+            self.dxgi_format = DXGI_FORMAT["DXGI_FORMAT_" + dxgi_format]
+        else:
+            self.dxgi_format = dxgi_format
+
         has_mips = self.mipmap_num > 1
-        is_cube = self.is_cube()
+
         self.magic = DDSHeader.MAGIC
         self.head_size = 124
         self.flags = (c.c_uint8*4)(7, 16, 8 + 2 * has_mips, 0)
         self.pitch_size = int(self.width * self.height * self.get_bpp() * (1 + (is_cube) * 5))
         self.depth = 1
-        self.reserved = (c.c_uint32*9)(0, 0, 0, 0, 0, 0, 0, 0, 0)
+        self.reserved = (c.c_uint32 * 9)((0) * 9)
         self.tool_name = 'MATY'.encode()
         self.null = 0
         self.pfsize = 32
-        self.pfflags = 4
-        self.bit_count_mask = (c.c_uint32 * 5)(0, 0, 0, 0, 0)
+        self.pfflags = PF_FLAGS.DDS_FOURCC.value
+        self.bit_count = (c.c_uint32)(0)
+        self.bit_mask = (c.c_uint32 * 4)((0) * 4)
         self.caps = (c.c_uint8 * 4)(8 * has_mips, 16, 64 * has_mips, 0)
         self.caps2 = (c.c_uint8 * 4)(0, 254 * is_cube, 0, 0)
         self.reserved2 = (c.c_uint32*3)(0, 0, 0)
         self.fourCC = b'DX10'
         self.texture_type = ['2D', 'Cube'][is_cube]
+
+    def is_bit_mask(self, bit_mask):
+        for b1, b2 in zip(self.bit_mask, bit_mask):
+            if b1 != b2:
+                return False
+        return True
+
+    def get_dxgi_from_header(self):
+        '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
+        # Try to detect DXGI from fourCC.
+        if self.pfflags & PF_FLAGS.DDS_FOURCC.value:
+            for cc_list, dxgi in FOURCC_TO_DXGI:
+                if self.fourCC in cc_list:
+                    return dxgi
+
+        # Try to detect DXGI from bit mask.
+        detected_dxgi = None
+        for bit_mask, dxgi in BITMASK_TO_DXGI:
+            if self.is_bit_mask(bit_mask):
+                detected_dxgi = dxgi
+
+        if detected_dxgi is None:
+            print("Failed to detect dxgi format. It'll be loaded as B8G8R8A8.")
+            return DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM
+
+        if self.pfflags & PF_FLAGS.DDS_BUMPDUDV.value:
+            # DXGI format should be signed.
+            return DXGI_FORMAT.get_signed(detected_dxgi)
+        else:
+            return detected_dxgi
 
     def is_cube(self):
         return self.caps2[1] == 254
@@ -271,9 +292,10 @@ class DDS:
         self.mipmap_data = mipmap_data
         self.mipmap_size = mipmap_size
 
+    @staticmethod
     def load(file, verbose=False):
         if file[-3:] not in ['dds', 'DDS']:
-            raise RuntimeError('Not DDS. ({})'.format(file))
+            raise RuntimeError(f'Not DDS. ({file})')
         print('load: ' + file)
         with open(file, 'rb') as f:
             # read header
@@ -325,12 +347,11 @@ class DDS:
 
         return DDS(header, mipmap_data, mipmap_size)
 
+    @staticmethod
     def utexture_to_DDS(utexture):
         # make dds header
         header = DDSHeader()
-        header.initialize(0, 0, 0, utexture.dxgi_format)
-        header.caps2[1] = 254 * (utexture.texture_type == "Cube")
-        header.update()
+        header.update(0, 0, 0, utexture.dxgi_format, utexture.texture_type == 'Cube')
 
         mipmap_data = []
         mipmap_size = []

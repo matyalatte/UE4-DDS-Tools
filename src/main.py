@@ -108,12 +108,14 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     # read and inject dds
     src_file = texture_file
     new_file = os.path.join(args.save_folder, file)
+
+    if args.force_uncompressed:
+        texture.to_uncompressed()
+
     if get_ext(src_file) == 'dds':
         dds = DDS.load(src_file)
     else:
         with tempfile.TemporaryDirectory() as temp_dir:
-            if args.force_uncompressed:
-                texture.to_uncompressed()
             temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
                                               out=temp_dir, export_as_cubemap=texture.texture_type == "Cube",
                                               no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
@@ -213,23 +215,21 @@ if __name__ == '__main__':
 
     print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')
 
-    # get config
-    config = get_config()
-    if 'version' in config:
-        version = config['version']
-
     # get arguments
     args = get_args()
     file = args.file
     texture_file = args.texture
     mode = args.mode
 
-    if args.version is not None:
-        version = args.version
-    if version is None:
-        version = '4.27'
+    # get config
+    config = get_config()
+    if 'version' in config and config['version'] is not None:
+        args.version = config['version']
 
-    print(f'UE version: {version}')
+    if args.version is None:
+        args.version = '4.27'
+
+    print(f'UE version: {args.version}')
     print(f'Mode: {mode}')
 
     mode_functions = {
@@ -251,8 +251,8 @@ if __name__ == '__main__':
         raise RuntimeError("Specify texture file.")
     if mode not in mode_functions:
         raise RuntimeError(f'Unsupported mode. ({mode})')
-    if version not in UE_VERSIONS:
-        raise RuntimeError(f'Unsupported version. ({version})')
+    if args.version not in UE_VERSIONS:
+        raise RuntimeError(f'Unsupported version. ({args.version})')
     if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
         raise RuntimeError(f'Unsupported format to export ({args.export_as})')
 
@@ -296,7 +296,11 @@ if __name__ == '__main__':
                 func(folder, uasset_file, args,
                      texture_file=os.path.join(texture_folder, texture_file), texconv=texconv)
         else:
-            folder, file_list = get_file_list_from_folder(file, ext=['uasset'])
+            if mode == 'convert':
+                ext_list = TEXTURES
+            else:
+                ext_list = ['uasset']
+            folder, file_list = get_file_list_from_folder(file, ext=ext_list)
             for file in file_list:
                 func(folder, file, args, texconv=texconv)
 

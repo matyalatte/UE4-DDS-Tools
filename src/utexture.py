@@ -30,6 +30,7 @@ PF_TO_DXGI = {
     'PF_FloatR11G11B10': DXGI_FORMAT.DXGI_FORMAT_R11G11B10_FLOAT,
     'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
     'PF_A32B32G32R32F': DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
+    'PF_B5G5R5A1_UNORM': DXGI_FORMAT.DXGI_FORMAT_B5G5R5A1_UNORM,
     'PF_ASTC_4x4': DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM
 }
 
@@ -37,10 +38,11 @@ PF_TO_UNCOMPRESSED = {
     'PF_DXT1': 'PF_B8G8R8A8',
     'PF_DXT3': 'PF_B8G8R8A8',
     'PF_DXT5': 'PF_B8G8R8A8',
-    'PF_BC4': 'PF_R8',
+    'PF_BC4': 'PF_G8',
     'PF_BC5': 'PF_R8G8',
     'PF_BC6H': 'PF_FloatRGBA',
     'PF_BC7': 'PF_B8G8R8A8',
+    'PF_ASTC_4x4': 'PF_B8G8R8A8'
 }
 
 
@@ -59,7 +61,7 @@ def get_all_file_path(file):
     '''Get all file paths for texture asset from a file path.'''
     base_name, ext = os.path.splitext(file)
     if ext not in EXT:
-        raise RuntimeError('Not Uasset. ({})'.format(file))
+        raise RuntimeError(f'Not Uasset. ({file})')
     return [base_name + ext for ext in EXT]
 
 
@@ -128,7 +130,7 @@ class Utexture:
 
         if not self.nouexp:
             foot = f.read(4)
-            io_util.check(foot, Utexture.UNREAL_SIGNATURE)
+            io_util.check(foot, Utexture.UNREAL_SIGNATURE, f)
         f.close()
 
         # read .ubulk
@@ -230,6 +232,7 @@ class Utexture:
 
         # read mipmaps
         self.mipmaps = [Umipmap.read(f, self.version, self.bl3) for i in range(map_num)]
+
         _, ubulk_map_num = self.get_mipmap_num()
         self.has_ubulk = ubulk_map_num > 0
 

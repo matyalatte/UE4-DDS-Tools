@@ -94,11 +94,11 @@ class Umipmap(c.LittleEndianStructure):
             f.write(self.data)
 
         if self.bl3:
-            io_util.write_int = io_util.write_uint16
+            write_int = io_util.write_uint16
         else:
-            io_util.write_int = io_util.write_uint32
+            write_int = io_util.write_uint32
 
-        io_util.write_int(f, self.width)
-        io_util.write_int(f, self.height)
+        write_int(f, self.width)
+        write_int(f, self.height)
         if self.version in ['4.22', '4.25', '4.27', '5.0']:
-            io_util.write_int(f, 1)
+            write_int(f, 1)
