@@ -8,9 +8,8 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.1.2
+  GUI_VERSION: v0.2.1
   PYTHON_VERSION: 3.9.12
-  TEXCONV_VERSION: mar2022
 
 jobs:
   packaging:
@@ -27,7 +26,9 @@ jobs:
           echo "REPO_VERSION=$VERSION" >> $GITHUB_ENV
         shell: bash
         
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       
       - name: Download embeddable python
         run: |
@@ -45,19 +46,18 @@ jobs:
 
       - name: Download Simple Command Runner
         run: |
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}.zip
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
           cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
           cp gui_definition.json ../release
         shell: bash
 
-      - name: Download texconv
+      - name: build dll
         run: |
-          curl -OL https://github.com/microsoft/DirectXTex/releases/download/${{env.TEXCONV_VERSION}}/texconv.exe
-          mkdir -p ../release/texconv
-          cp texconv.exe ../release/texconv
-        shell: bash
-      
+          external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
+          mkdir -p ../release/src
+          cp external/Texconv-Custom-DLL/texconv.dll ../release/src
+
       - name: Copy files
         run: |
           cp -r src ../release

@@ -5,11 +5,14 @@ python
 #generated files
 *.exe
 *.dll
+*.so
+*.dylib
 *.zip
 gui_config.json
-*/exported
-*/injected
-*/workspace
+exported
+injected
+converted
+test
 
 #for testing
 *test*
@@ -17,6 +20,7 @@ gui_config.json
 *.bat
 !bat/*.bat
 *.sh
+*.cfg
 
 #texture files
 *.dds

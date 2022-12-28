@@ -3,7 +3,7 @@
         {
             "label": "Inject",
             "window_name": "UE4-DDS-Tools (Inject mode)",
-            "command": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out% --version=%version%%options%",
+            "command": "python3 src/main.py %uasset% %texture% --save_folder=%out% --version=%version%%options%",
             "button": "Inject",
             "components": [
                 {
@@ -45,7 +45,7 @@
         {
             "label": "Export",
             "window_name": "UE4-DDS-Tools (Export mode)",
-            "command": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
+            "command": "python3 src/main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
             "button": "Export",
             "components": [
                 {
@@ -71,8 +71,8 @@
                 {
                     "type": "choice",
                     "label": "Export as",
-                    "items": [".tga or .hdr", ".dds", ".png", ".jpg", ".bmp"],
-                    "values": ["tga", "dds", "png", "jpg", "bmp"],
+                    "items": [".tga or .hdr", ".dds"],
+                    "values": ["tga", "dds"],
                     "default": 0
                 },
                 {
@@ -85,7 +85,7 @@
         {
             "label": "Check version",
             "window_name": "UE4-DDS-Tools (Check mode)",
-            "command": "python\\python.exe src\\main.py %uasset% --mode=check",
+            "command": "python3 src/main.py %uasset% --mode=check",
             "button": "Check",
             "show_last_line": true,
             "components": [
@@ -101,7 +101,7 @@
         {
             "label": "Convert",
             "window_name": "UE4-DDS-Tools (Convert mode)",
-            "command": "python\\python.exe src\\main.py %file% --mode=convert --save_folder=%out% --convert_to=%fmt% %option%",
+            "command": "python3 src/main.py %file% --mode=convert --save_folder=%out% --convert_to=%fmt% %option%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
@@ -127,16 +127,16 @@
                     "type": "choice",
                     "label": "Convert to",
                     "items": [
-                        ".png", ".jpg", ".bmp", ".tga", ".hdr",
+                        ".tga", ".hdr",
                         "BC1U (DXT1)", "BC3U (DXT5)", "BC4U", "BC5U", "BC6HU", "BC7U",
                         "R8", "R8G8", "B8G8R8A8", "FloatRGBA16"
                     ],
                     "values": [
-                        "png", "jpg", "bmp", "tga", "hdr",
+                        "tga", "hdr",
                         "BC1_UNORM", " BC3_UNORM", "BC4_UNORM", "BC5_UNORM", "BC6H_UF16", "BC7_UNORM",
                         "R8_UNORM", "R8G8_UNORM", "B8G8R8A8_UNORM", "R16G16B16A16_FLOAT"
                     ],
-                    "default": 3
+                    "default": 0
                 },
                 {
                     "type": "check",
