@@ -223,7 +223,7 @@ if __name__ == '__main__':
 
     # get config
     config = get_config()
-    if 'version' in config and config['version'] is not None:
+    if (args.version is None) and ('version' in config) and (config['version'] is not None):
         args.version = config['version']
 
     if args.version is None:
