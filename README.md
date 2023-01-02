@@ -2,7 +2,7 @@
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.4.1
+# UE4-DDS-Tools ver0.4.2
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -16,7 +16,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 
 ## Supported UE versions
 
-- UE5.0
+- UE5.0 ~ 5.1
 - UE4.13 ~ 4.27
 - FF7R
 - Borderlands3

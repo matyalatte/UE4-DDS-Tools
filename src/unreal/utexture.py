@@ -2,8 +2,9 @@
 import io
 import os
 import io_util
-from uasset import Uasset
-from umipmap import Umipmap
+from .uasset import Uasset
+from .umipmap import Umipmap
+from .version import VersionInfo
 from dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
 
 
@@ -83,16 +84,7 @@ class Utexture:
     UBULK_FLAG = [0, 16384]
 
     def __init__(self, file_path, version='ff7r', verbose=False):
-        if version == '4.26':
-            version = '4.27'
-        if version in ['4.23', '4.24']:
-            version = '4.25'
-        if version in ['4.20', '4.21']:
-            version = '4.22'
-        self.bl3 = version == 'borderlands3'
-        if self.bl3:
-            version = '4.22'
-        self.version = version
+        self.version = VersionInfo(version)
 
         if not os.path.isfile(file_path):
             raise RuntimeError(f'Not File. ({file_path})')
@@ -101,10 +93,10 @@ class Utexture:
         print('load: ' + uasset_name)
 
         # read .uasset
-        self.uasset = Uasset(uasset_name, version)
+        self.uasset = Uasset(uasset_name, self.version)
         self.unversioned = self.uasset.header.unversioned
         self.nouexp = self.uasset.nouexp
-        if self.version in ['4.14', '4.13', '4.15']:
+        if self.version <= '4.15':
             if not self.nouexp:
                 raise RuntimeError('Uexp should not exist.')
         elif self.nouexp:
@@ -198,9 +190,9 @@ class Utexture:
         self.pixel_format_name_id = io_util.read_uint64(f)
         self.offset_to_end_offset = f.tell()
         self.end_offset = io_util.read_uint32(f)  # Offset to end of uexp?
-        if self.version in ['4.22', '4.25', '4.27', '5.0']:
+        if self.version >= '4.20':
             io_util.read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-        if self.version == '5.0':
+        if self.version >= '5.0':
             io_util.read_null_array(f, 4)
 
         self.original_width = io_util.read_uint32(f)
@@ -226,12 +218,12 @@ class Utexture:
 
         if self.version == 'ff7r':
             # ff7r have all mipmap data in a mipmap object
-            self.uexp_mip_bulk = Umipmap.read(f, 'ff7r')
+            self.uexp_mip_bulk = Umipmap.read(f, self.version)
             io_util.read_const_uint32(f, self.cube_flag)
             f.seek(4, 1)  # uexp mip map num
 
         # read mipmaps
-        self.mipmaps = [Umipmap.read(f, self.version, self.bl3) for i in range(map_num)]
+        self.mipmaps = [Umipmap.read(f, self.version) for i in range(map_num)]
 
         _, ubulk_map_num = self.get_mipmap_num()
         self.has_ubulk = ubulk_map_num > 0
@@ -246,7 +238,7 @@ class Utexture:
                     i += size
             io_util.check(i, len(self.uexp_mip_bulk.data))
 
-        if self.version in ['4.25', '4.27', '5.0']:
+        if self.version >= '4.23':
             io_util.read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
         # io_util.check(self.end_offset, f.tell()+self.uasset_size)
         self.none_name_id = io_util.read_uint64(f)
@@ -357,9 +349,9 @@ class Utexture:
         # write meta data
         io_util.write_uint64(f, self.pixel_format_name_id)
         io_util.write_uint32(f, 0)  # write dummy offset. (rewrite it later)
-        if self.version in ['4.22', '4.25', '4.27', '5.0']:
+        if self.version >= '4.20':
             io_util.write_null(f)
-        if self.version == '5.0':
+        if self.version >= '5.0':
             io_util.write_null_array(f, 4)
 
         io_util.write_uint32(f, self.original_width)
@@ -385,7 +377,7 @@ class Utexture:
                 if mip.uexp:
                     uexp_bulk = b''.join([uexp_bulk, mip.data])
             size = self.get_max_uexp_size()
-            self.uexp_mip_bulk = Umipmap('ff7r')
+            self.uexp_mip_bulk = Umipmap(self.version)
             self.uexp_mip_bulk.update(uexp_bulk, size, True)
             self.uexp_mip_bulk.offset = self.uasset_size+f.tell() + 24
             self.uexp_mip_bulk.write(f, self.uasset_size)
@@ -393,7 +385,7 @@ class Utexture:
             io_util.write_uint32(f, self.cube_flag)
             io_util.write_uint32(f, uexp_map_num)
 
-        if self.version in ['5.0', '4.27', '4.15', '4.14', '4.13', 'ff7r']:
+        if self.version <= '4.15' or self.version >= '4.26' or self.version == 'ff7r':
             offset = 0
         else:
             new_end_offset = \
@@ -401,23 +393,23 @@ class Utexture:
                 f.tell() + \
                 uexp_map_data_size + \
                 ubulk_map_num*32 + \
-                (len(self.mipmaps)) * (self.version in ['4.25', '4.22']) * 4 + \
-                (self.version == '4.25') * 4 - \
-                (len(self.mipmaps)) * (self.bl3) * 6
+                (len(self.mipmaps)) * (self.version >= '4.20' and self.version <= '4.25') * 4 + \
+                (self.version >= '4.23' and self.version <= '4.25') * 4 - \
+                (len(self.mipmaps)) * (self.version == 'borderlands3') * 6
             offset = -new_end_offset - 8
         # write mipmaps
         for mip in self.mipmaps:
             if mip.uexp:
-                mip.offset = self.uasset_size+f.tell() + 24 - 4 * (self.version == '5.0')
+                mip.offset = self.uasset_size+f.tell() + 24 - 4 * (self.version >= '5.0')
             else:
                 mip.offset = offset
                 offset += mip.data_size
             mip.write(f, self.uasset_size)
 
-        if self.version in ['4.25', '4.27', '5.0']:
+        if self.version >= '4.23':
             io_util.write_null(f)
 
-        if self.version == '5.0':
+        if self.version >= '5.0':
             new_end_offset = f.tell() - self.offset_to_end_offset
         else:
             new_end_offset = f.tell() + self.uasset_size
@@ -461,7 +453,7 @@ class Utexture:
 
         # inject
         i = 0
-        self.mipmaps = [Umipmap(self.version, self.bl3) for i in range(len(dds.mipmap_data))]
+        self.mipmaps = [Umipmap(self.version) for i in range(len(dds.mipmap_data))]
         for data, size, mip in zip(dds.mipmap_data, dds.mipmap_size, self.mipmaps):
             if self.has_ubulk and i + 1 < len(dds.mipmap_data) and size[0] * size[1] > uexp_width * uexp_height:
                 mip.update(data, size, False)

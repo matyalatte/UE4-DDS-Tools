@@ -1,3 +1,7 @@
+ver 0.4.2
+- Supported UE5.1
+- Refined codes
+
 ver 0.4.1
 - Supported more pixel formats
 - Supported dds files that have no fourCC

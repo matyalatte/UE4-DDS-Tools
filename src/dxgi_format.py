@@ -6,10 +6,10 @@ Notes:
     - Official repo for DDS
       https://github.com/microsoft/DirectXTex
 '''
-from enum import Enum
+from enum import IntEnum
 
 
-class DXGI_FORMAT(Enum):
+class DXGI_FORMAT(IntEnum):
     """Enum for DDS format."""
     DXGI_FORMAT_UNKNOWN = 0
     DXGI_FORMAT_R32G32B32A32_TYPELESS = 1
