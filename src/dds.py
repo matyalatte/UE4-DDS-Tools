@@ -8,7 +8,7 @@ Notes:
 """
 
 import ctypes as c
-from enum import Enum
+from enum import IntEnum
 import os
 
 from dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
@@ -16,7 +16,7 @@ from dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
 import io_util
 
 
-class PF_FLAGS(Enum):
+class PF_FLAGS(IntEnum):
     '''dwFlags for DDS_PIXELFORMAT'''
     # DDS_ALPHAPIXELS = 0x00000001
     # DDS_ALPHA = 0x00000002
@@ -177,7 +177,7 @@ class DDSHeader(c.LittleEndianStructure):
         f.write(self)
         # DXT10 header
         if self.fourCC == b'DX10':
-            io_util.write_uint32(f, self.dxgi_format.value)
+            io_util.write_uint32(f, self.dxgi_format)
             io_util.write_uint32(f, 3)
             io_util.write_uint32(f, 4 * self.is_cube())
             io_util.write_uint32(f, 1)
@@ -203,7 +203,7 @@ class DDSHeader(c.LittleEndianStructure):
         self.tool_name = 'MATY'.encode()
         self.null = 0
         self.pfsize = 32
-        self.pfflags = PF_FLAGS.DDS_FOURCC.value
+        self.pfflags = PF_FLAGS.DDS_FOURCC
         self.bit_count = (c.c_uint32)(0)
         self.bit_mask = (c.c_uint32 * 4)((0) * 4)
         self.caps = (c.c_uint8 * 4)(8 * has_mips, 16, 64 * has_mips, 0)
@@ -221,7 +221,7 @@ class DDSHeader(c.LittleEndianStructure):
     def get_dxgi_from_header(self):
         '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
         # Try to detect DXGI from fourCC.
-        if self.pfflags & PF_FLAGS.DDS_FOURCC.value:
+        if self.pfflags & PF_FLAGS.DDS_FOURCC:
             for cc_list, dxgi in FOURCC_TO_DXGI:
                 if self.fourCC in cc_list:
                     return dxgi
@@ -236,7 +236,7 @@ class DDSHeader(c.LittleEndianStructure):
             print("Failed to detect dxgi format. It'll be loaded as B8G8R8A8.")
             return DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM
 
-        if self.pfflags & PF_FLAGS.DDS_BUMPDUDV.value:
+        if self.pfflags & PF_FLAGS.DDS_BUMPDUDV:
             # DXGI format should be signed.
             return DXGI_FORMAT.get_signed(detected_dxgi)
         else:

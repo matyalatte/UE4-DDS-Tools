@@ -9,16 +9,16 @@ from contextlib import redirect_stdout
 
 # my scripts
 from io_util import compare, get_ext
-from utexture import Utexture, get_all_file_path, get_pf_from_uexp, PF_TO_DXGI
+from unreal.utexture import Utexture, get_all_file_path, get_pf_from_uexp, PF_TO_DXGI
 from dds import DDS
 from dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt
 from texconv import Texconv, is_windows
 
-TOOL_VERSION = '0.4.1'
+TOOL_VERSION = '0.4.2'
 
-# UE version: 4.13 ~ 5.0, ff7r, borderlands3
-UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.0', 'ff7r', 'borderlands3']
+# UE version: 4.13 ~ 5.1, ff7r, borderlands3
+UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
 
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
@@ -33,7 +33,7 @@ def get_args():
     parser.add_argument('--mode', default='inject', type=str,
                         help='valid, parse, inject, export, remove_mipmaps, check and convert are available.')
     parser.add_argument('--version', default=None, type=str,
-                        help='version of UE4. It will overwrite the argment in config.json.')
+                        help='UE version. It will overwrite the argment in config.json.')
     parser.add_argument('--export_as', default='dds', type=str,
                         help='format for export mode. dds, tga, png, jpg, and bmp are available.')
     parser.add_argument('--convert_to', default='tga', type=str,

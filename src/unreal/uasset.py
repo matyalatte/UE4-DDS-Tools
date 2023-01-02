@@ -1,8 +1,14 @@
 '''Classes for .uasset'''
 import os
 import ctypes as c
+from enum import IntEnum
 import io_util
-from crc import generate_hash
+from .crc import generate_hash
+
+
+class PackageFlags(IntEnum):
+    PKG_UnversionedProperties = 0x2000   # Uses unversioned property serialization
+    PKG_FilterEditorOnly = 0x80000000  # Package has editor-only data filtered out
 
 
 class UassetHeader:  # 185 ~ 193 bytes
@@ -14,21 +20,28 @@ class UassetHeader:  # 185 ~ 193 bytes
         file_version = -self.version - 1
         if (file_version < 5) or (file_version > 7):
             raise RuntimeError(f"Unsupported .uasset version ({file_version})")
-        io_util.check(file_version, 6 - (version == '4.13') + (version == '5.0'))
-        self.null = f.read(16 + 4 * (version == '5.0'))
+        io_util.check(file_version, 6 - (version <= '4.13') + (version >= '5.0'))
+        self.null = f.read(16 + 4 * (version >= '5.0'))
         self.uasset_size = io_util.read_uint32(f)
-        io_util.check(io_util.read_str(f), "None")
-        self.pkg_flags = io_util.read_uint32(f)  # 00 20 00 00: unversioned header flag
-        self.unversioned = (self.pkg_flags & 8192) != 0
+        self.package_name = io_util.read_str(f)  # "None" for most of assets
+        self.pkg_flags = io_util.read_uint32(f)
+        io_util.check(self.pkg_flags & PackageFlags.PKG_FilterEditorOnly > 0, True,
+                      msg="Unsupported file format detected. (PKG_FilterEditorOnlyitorOnly is false.)")
+        self.unversioned = (self.pkg_flags & PackageFlags.PKG_UnversionedProperties) > 0
         self.name_count = io_util.read_uint32(f)
         self.name_offset = io_util.read_uint32(f)
+        if (version >= '5.1'):
+            io_util.read_null(f)
+            import_offset = io_util.read_uint32(f)
         io_util.read_null_array(f, 2)
         self.export_count = io_util.read_uint32(f)
         self.export_offset = io_util.read_uint32(f)
         self.import_count = io_util.read_uint32(f)
         self.import_offset = io_util.read_uint32(f)
+        if (version >= '5.1'):
+            io_util.check(import_offset, self.import_offset)
         self.end_to_export = io_util.read_uint32(f)
-        if version in ['4.14', '4.13']:
+        if version <= '4.14':
             io_util.read_null(f)
             f.seek(4, 1)  # padding offset
             io_util.read_null(f)
@@ -41,16 +54,16 @@ class UassetHeader:  # 185 ~ 193 bytes
         io_util.read_null_array(f, 9)
         self.unk3 = io_util.read_uint32(f)
         io_util.read_null(f)
-        if version == '4.13':
+        if version <= '4.13':
             io_util.read_null(f)
         self.padding_offset = io_util.read_uint32(f)  # file data offset - 4
         self.file_length = io_util.read_uint32(f)  # .uasset + .uexp - 4
         io_util.read_null_array(f, 3)
-        if version == '4.13':
+        if version <= '4.13':
             return
         self.file_data_count = io_util.read_int32(f)
         self.file_data_offset = io_util.read_uint32(f)
-        if version == '5.0':
+        if version >= '5.0':
             self.unk_count = io_util.read_uint32(f)
             for i in range(self.unk_count):
                 io_util.check(io_util.read_int32(f), -1)
@@ -60,17 +73,20 @@ class UassetHeader:  # 185 ~ 193 bytes
         io_util.write_int32(f, self.version)
         f.write(self.null)
         io_util.write_uint32(f, self.uasset_size)
-        io_util.write_str(f, "None")
+        io_util.write_str(f, self.package_name)
         io_util.write_uint32(f, self.pkg_flags)
         io_util.write_uint32(f, self.name_count)
         io_util.write_uint32(f, self.name_offset)
+        if (version >= '5.1'):
+            io_util.write_null(f)
+            io_util.write_uint32(f, self.import_offset)
         io_util.write_null_array(f, 2)
         io_util.write_uint32(f, self.export_count)
         io_util.write_uint32(f, self.export_offset)
         io_util.write_uint32(f, self.import_count)
         io_util.write_uint32(f, self.import_offset)
         io_util.write_uint32(f, self.end_to_export)
-        if version in ['4.14', '4.13']:
+        if version <= '4.14':
             io_util.write_null(f)
             io_util.write_uint32(f, self.padding_offset)
             io_util.write_null(f)
@@ -83,16 +99,16 @@ class UassetHeader:  # 185 ~ 193 bytes
         io_util.write_null_array(f, 9)
         io_util.write_uint32(f, self.unk3)
         io_util.write_null(f)
-        if version == '4.13':
+        if version <= '4.13':
             io_util.write_null(f)
         io_util.write_uint32(f, self.padding_offset)
         io_util.write_uint32(f, self.file_length)
         io_util.write_null_array(f, 3)
-        if version == '4.13':
+        if version <= '4.13':
             return
         io_util.write_int32(f, self.file_data_count)
         io_util.write_uint32(f, self.file_data_offset)
-        if version == '5.0':
+        if version >= '5.0':
             io_util.write_uint32(f, self.unk_count)
             for i in range(self.unk_count):
                 io_util.write_int32(f, -1)
@@ -127,13 +143,13 @@ class UassetImport(c.LittleEndianStructure):
     def read(f, version):
         imp = UassetImport()
         f.readinto(imp)
-        if version == '5.0':
+        if version >= '5.0':
             imp.unk2 = io_util.read_uint32(f)
         return imp
 
     def write(self, f, version):
         f.write(self)
-        if version == '5.0':
+        if version >= '5.0':
             io_util.write_uint32(f, self.unk2)
 
     def name_import(self, name_list):
@@ -167,30 +183,30 @@ def name_imports(imports, name_list):
 class UassetExport:  # 80 ~ 104 bytes
     def __init__(self, f, version):
         self.class_id = io_util.read_int32(f)
-        if version != '4.13':
+        if version > '4.13':
             io_util.read_null(f)
         self.import_id = io_util.read_int32(f)
         io_util.read_null(f)
         self.name_id = io_util.read_uint32(f)
         self.unk_int = io_util.read_uint32(f)
         self.unk_int2 = io_util.read_uint32(f)
-        if version in ['4.15', '4.14', '4.13']:
+        if version <= '4.15':
             self.size = io_util.read_uint32(f)
         else:
             self.size = io_util.read_uint64(f)
         self.offset = io_util.read_uint32(f)
-        self.unk = f.read(64 - 4 * (version in ['4.15', '4.14']) - 24 * (version == '4.13') + 4 * (version == '5.0'))
+        self.unk = f.read(64 - 4 * (version <= '4.15') - 20 * (version <= '4.13') + 4 * (version == '5.0') - 8 * (version >= '5.1'))
 
     def write(self, f, version):
         io_util.write_int32(f, self.class_id)
-        if version != '4.13':
+        if version > '4.13':
             io_util.write_null(f)
         io_util.write_int32(f, self.import_id)
         io_util.write_null(f)
         io_util.write_uint32(f, self.name_id)
         io_util.write_uint32(f, self.unk_int)
         io_util.write_uint32(f, self.unk_int2)
-        if version in ['4.15', '4.14', '4.13']:
+        if version <= '4.15':
             io_util.write_uint32(f, self.size)
         else:
             io_util.write_uint64(f, self.size)
@@ -222,6 +238,7 @@ class Uasset:
 
         if verbose:
             print('Loading '+uasset_file+'...')
+
         self.version = version
         self.file = os.path.basename(uasset_file)[:-7]
 
@@ -229,7 +246,7 @@ class Uasset:
             # read header
             self.header = UassetHeader(f, self.version)
 
-            self.nouexp = self.version in ['4.15', '4.14', '4.13']
+            self.nouexp = self.version == ['4.15', '4.14', '4.13']
             self.size = self.header.uasset_size
             if verbose:
                 self.header.print()
@@ -261,6 +278,7 @@ class Uasset:
                 print('Export')
                 list(map(lambda x: x.print(), self.exports))
 
+            print(f.tell())
             # file data ids
             io_util.read_null_array(f, self.header.padding_count)
             io_util.check(self.header.padding_offset, f.tell())
@@ -298,7 +316,7 @@ class Uasset:
             # skip exports part
             self.header.export_offset = f.tell()
             list(map(lambda x: x.write(f, self.version), self.exports))
-            if self.version not in ['4.15', '4.14']:
+            if self.version != ['4.15', '4.14']:
                 self.header.end_to_export = f.tell()
 
             # file data ids
