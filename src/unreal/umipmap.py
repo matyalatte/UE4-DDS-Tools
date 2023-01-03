@@ -59,7 +59,7 @@ class Umipmap(c.LittleEndianStructure):
                 self.ubulk_flag |= BulkDataFlags.BULKDATA_Force_NOT_InlinePayload
             if self.version >= '4.16':
                 self.ubulk_flag |= BulkDataFlags.BULKDATA_PayloadInSeperateFile
-            self.unk_flag = (self.version =='ff7r') or (self.version >= '4.26')
+            self.unk_flag = (self.version == 'ff7r') or (self.version >= '4.26')
 
     @staticmethod
     def read(f, version):
