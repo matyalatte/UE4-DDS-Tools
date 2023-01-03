@@ -1,9 +1,28 @@
 import os
 import struct
+import tempfile
 
 
 def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
+
+
+class NonTempDir:
+    def __init__(self, path):
+        self.path = path
+
+    def __enter__(self):
+        return self.path
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+
+def get_temp_dir(disable_tempfile=True):
+    if disable_tempfile:
+        return NonTempDir("tmp")
+    else:
+        return tempfile.TemporaryDirectory()
 
 
 def get_ext(file):

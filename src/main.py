@@ -3,13 +3,13 @@
 import argparse
 import json
 import os
-import tempfile
 import time
 from contextlib import redirect_stdout
 
 # my scripts
-from io_util import compare, get_ext
-from unreal.utexture import Utexture, get_all_file_path, get_pf_from_uexp, PF_TO_DXGI
+from io_util import compare, get_ext, get_temp_dir
+from unreal.utexture import get_pf_from_uexp, PF_TO_DXGI
+from unreal.uasset import Uasset
 from dds import DDS
 from dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt
@@ -28,21 +28,23 @@ if is_windows():
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='uasset, texture file, or folder')
-    parser.add_argument('texture', nargs='?', help='texture file for injection mode')
-    parser.add_argument('--save_folder', default='output', type=str, help='save folder')
+    parser.add_argument('texture', nargs='?', help='Texture file for injection mode')
+    parser.add_argument('--save_folder', default='output', type=str, help='Output folder')
     parser.add_argument('--mode', default='inject', type=str,
                         help='valid, parse, inject, export, remove_mipmaps, check and convert are available.')
     parser.add_argument('--version', default=None, type=str,
                         help='UE version. It will overwrite the argment in config.json.')
     parser.add_argument('--export_as', default='dds', type=str,
-                        help='format for export mode. dds, tga, png, jpg, and bmp are available.')
+                        help='Format for export mode. dds, tga, png, jpg, and bmp are available.')
     parser.add_argument('--convert_to', default='tga', type=str,
-                        help=("format for convert mode."
+                        help=("Format for convert mode."
                               "tga, hdr, png, jpg, bmp, or DXGI formats (e.g. BC1_UNORM) are available."))
     parser.add_argument('--no_mipmaps', action='store_true',
-                        help='force no mips to dds and uasset.')
+                        help='Force no mips to dds and uasset.')
     parser.add_argument('--force_uncompressed', action='store_true',
-                        help='use uncompressed format for BC1, BC6, and BC7.')
+                        help='Use uncompressed format for BC1, BC6, and BC7.')
+    parser.add_argument('--disable_tempfile', action='store_true',
+                        help="Store temporary files in the tool's directory.")
     return parser.parse_args()
 
 
@@ -60,7 +62,7 @@ def parse(folder, file, args, texconv=None):
     if get_ext(file) == 'dds':
         DDS.load(file, verbose=True)
     else:
-        Utexture(file, version=args.version, verbose=True)
+        Uasset(file, version=args.version, verbose=True)
 
 
 def valid(folder, file, args, version=None, texconv=None):
@@ -68,7 +70,7 @@ def valid(folder, file, args, version=None, texconv=None):
     if version is None:
         version = args.version
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
         src_file = os.path.join(folder, file)
         new_file = os.path.join(temp_dir, file)
 
@@ -82,9 +84,10 @@ def valid(folder, file, args, version=None, texconv=None):
 
         else:
             # read and write uasset
-            uasset_name, uexp_name, ubulk_name = get_all_file_path(src_file)
-            texture = Utexture(src_file, version=version, verbose=True)
-            new_uasset_name, new_uexp_name, new_ubulk_name = texture.save(new_file, valid=True)
+            asset = Uasset(src_file, version=version, verbose=True)
+            uasset_name, uexp_name, ubulk_name = asset.get_all_file_path()
+            asset.save(new_file, valid=True)
+            new_uasset_name, new_uexp_name, new_ubulk_name = asset.get_all_file_path()
 
             # compare and remove files
             compare(uasset_name, new_uasset_name)
@@ -103,7 +106,8 @@ def inject(folder, file, args, texture_file=None, texconv=None):
 
     # read uasset
     uasset_file = os.path.join(folder, file)
-    texture = Utexture(uasset_file, version=args.version)
+    asset = Uasset(uasset_file, version=args.version)
+    texture = asset.texture
 
     # read and inject dds
     src_file = texture_file
@@ -115,7 +119,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     if get_ext(src_file) == 'dds':
         dds = DDS.load(src_file)
     else:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
             temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
                                               out=temp_dir, export_as_cubemap=texture.texture_type == "Cube",
                                               no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
@@ -125,7 +129,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     texture.inject_dds(dds)
     if args.no_mipmaps:
         texture.remove_mipmaps()
-    texture.save(new_file)
+    asset.save(new_file)
 
 
 def export(folder, file, args, texconv=None):
@@ -134,14 +138,15 @@ def export(folder, file, args, texconv=None):
     new_file = os.path.join(args.save_folder, file)
     new_file = os.path.splitext(new_file)[0] + '.dds'
 
-    texture = Utexture(src_file, version=args.version)
+    asset = Uasset(src_file, version=args.version)
+    texture = asset.texture
     if args.no_mipmaps:
         texture.remove_mipmaps()
     dds = DDS.utexture_to_DDS(texture)
     if args.export_as == 'dds':
         dds.save(new_file)
     else:
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
             temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(file))[0]+'.dds')
             dds.save(temp_dds)
             texconv.convert_dds_to(temp_dds, out=os.path.dirname(new_file), fmt=args.export_as, verbose=False)
@@ -151,9 +156,10 @@ def remove_mipmaps(folder, file, args, texconv=None):
     '''Remove mode (remove mipmaps from uasset)'''
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
-    texture = Utexture(src_file, version=args.version)
+    asset = Uasset(src_file, version=args.version)
+    texture = asset.texture
     texture.remove_mipmaps()
-    texture.save(new_file)
+    asset.save(new_file)
 
 
 def check_version(folder, file, args, texconv=None):

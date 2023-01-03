@@ -1,10 +1,6 @@
 '''Classes for texture assets (.uexp and .ubulk)'''
-import io
-import os
 import io_util
-from .uasset import Uasset
 from .umipmap import Umipmap
-from .version import VersionInfo
 from dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
 
 
@@ -55,17 +51,6 @@ def is_power_of_2(n):
     return is_power_of_2(n // 2)
 
 
-EXT = ['.uasset', '.uexp', '.ubulk']
-
-
-def get_all_file_path(file):
-    '''Get all file paths for texture asset from a file path.'''
-    base_name, ext = os.path.splitext(file)
-    if ext not in EXT:
-        raise RuntimeError(f'Not Uasset. ({file})')
-    return [base_name + ext for ext in EXT]
-
-
 VERSION_ERR_MSG = 'Make sure you specified UE4 version correctly.'
 
 
@@ -83,19 +68,11 @@ class Utexture:
     UNREAL_SIGNATURE = b'\xC1\x83\x2A\x9E'
     UBULK_FLAG = [0, 16384]
 
-    def __init__(self, file_path, version='ff7r', verbose=False):
-        self.version = VersionInfo(version)
-
-        if not os.path.isfile(file_path):
-            raise RuntimeError(f'Not File. ({file_path})')
-
-        uasset_name, uexp_name, ubulk_name = get_all_file_path(file_path)
-        print('load: ' + uasset_name)
-
-        # read .uasset
-        self.uasset = Uasset(uasset_name, self.version)
-        self.unversioned = self.uasset.header.unversioned
-        self.nouexp = self.uasset.nouexp
+    def __init__(self, uasset, verbose=False):
+        self.uasset = uasset
+        self.version = uasset.version
+        self.unversioned = self.uasset.header.is_unversioned()
+        self.nouexp = not self.uasset.has_uexp()
         if self.version <= '4.15':
             if not self.nouexp:
                 raise RuntimeError('Uexp should not exist.')
@@ -110,13 +87,7 @@ class Utexture:
         self.texture_type = self.uasset.texture_type
 
         # read .uexp
-        if self.nouexp:
-            with open(uasset_name, 'rb') as f:
-                f.seek(self.uasset_size)
-                uexp = f.read(self.uasset.exports[0].size)
-            f = io.BytesIO(uexp)
-        else:
-            f = open(uexp_name, 'rb')
+        f = self.uasset.get_uexp_io(rb=True)
 
         self.read_uexp(f)
 
@@ -127,17 +98,8 @@ class Utexture:
 
         # read .ubulk
         if self.has_ubulk:
-            if self.nouexp:
-                with open(uasset_name, 'rb') as f:
-                    f.seek(self.uasset.size + self.uasset.exports[0].size)
-                    size = io_util.get_size(f) - self.uasset.size - self.uasset.exports[0].size - 4
-                    ubulk = f.read(size)
-                    foot = f.read(4)
-                    io_util.check(foot, Utexture.UNREAL_SIGNATURE)
-                f = io.BytesIO(ubulk)
-            else:
-                f = open(ubulk_name, 'rb')
-                size = io_util.get_size(f)
+            f = self.uasset.get_ubulk_io(rb=True)
+            size = io_util.get_size(f)
             for mip in self.mipmaps:
                 if mip.uexp:
                     continue
@@ -264,22 +226,9 @@ class Utexture:
         return uexp_map_num, ubulk_map_num
 
     # save as uasset
-    def save(self, file, valid=False):
-        folder = os.path.dirname(file)
-        if folder not in ['.', ''] and not os.path.exists(folder):
-            io_util.mkdir(folder)
-
-        uasset_name, uexp_name, ubulk_name = get_all_file_path(file)
-        if self.nouexp:
-            uexp_name = None
-        if not self.has_ubulk or self.nouexp:
-            ubulk_name = None
-
+    def write(self, valid=False):
         # write .uexp
-        if self.nouexp:
-            f = io.BytesIO(b'')
-        else:
-            f = open(uexp_name, 'wb')
+        f = self.uasset.get_uexp_io(rb=False)
 
         self.write_uexp(f, valid=valid)
 
@@ -288,37 +237,26 @@ class Utexture:
             size = f.tell()
         else:
             f.seek(0)
-            uexp = f.read()
+            self.uasset.uexp_bin = f.read()
             size = f.tell() + 4
         f.close()
 
         # write .ubulk if exist
         if self.has_ubulk:
-            if self.nouexp:
-                f = io.BytesIO(b'')
-            else:
-                f = open(ubulk_name, 'wb')
+            f = self.uasset.get_ubulk_io(rb=False)
             for mip in self.mipmaps:
                 if not mip.uexp:
                     f.write(mip.data)
             if self.nouexp:
                 f.seek(0)
-                ubulk = f.read()
+                self.uasset.ubulk_bin = f.read()
 
         # write .uasset
         # if self.version=='4.13':
         #     size += len(ubulk) + 4
         self.uasset.exports[0].update(size - 4, size - 4)
 
-        self.uasset.save(uasset_name, size)
-        if self.nouexp:
-            with open(uasset_name, 'ab') as f:
-                f.write(uexp)
-                if self.has_ubulk:
-                    f.write(ubulk)
-                f.write(Utexture.UNREAL_SIGNATURE)
-
-        return uasset_name, uexp_name, ubulk_name
+        return size
 
     def write_uexp(self, f, valid=False):
         # get mipmap info
@@ -393,9 +331,10 @@ class Utexture:
                 f.tell() + \
                 uexp_map_data_size + \
                 ubulk_map_num*32 + \
-                (len(self.mipmaps)) * (self.version >= '4.20' and self.version <= '4.25') * 4 + \
-                (self.version >= '4.23' and self.version <= '4.25') * 4 - \
+                (len(self.mipmaps)) * (self.version >= '4.20') * 4 + \
+                (self.version >= '4.23') * 4 - \
                 (len(self.mipmaps)) * (self.version == 'borderlands3') * 6
+            # - file size?
             offset = -new_end_offset - 8
         # write mipmaps
         for mip in self.mipmaps:
