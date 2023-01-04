@@ -55,57 +55,42 @@ VERSION_ERR_MSG = 'Make sure you specified UE4 version correctly.'
 
 
 def skip_unversioned_headers(f):
+    start_offset = f.tell()
     uhead = io_util.read_uint8_array(f, 2)
     is_last = uhead[1] % 2 == 0
     while is_last:
         uhead = io_util.read_uint8_array(f, 2)
         is_last = uhead[1] % 2 == 0
-        if f.tell() > 100:
+        if f.tell() - start_offset > 100:
             raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
 
 
 class Utexture:
+    """
+    A texture (FTexturePlatformData)
+
+    Notes:
+        UnrealEngine/Engine/Source/Runtime/Engine/Classes/Engine/Texture.h
+        UnrealEngine/Engine/Source/Runtime/Engine/Private/TextureDerivedData.cpp
+    """
     UNREAL_SIGNATURE = b'\xC1\x83\x2A\x9E'
-    UBULK_FLAG = [0, 16384]
 
     def __init__(self, uasset, verbose=False):
         self.uasset = uasset
         self.version = uasset.version
-        self.unversioned = self.uasset.header.is_unversioned()
-        self.nouexp = not self.uasset.has_uexp()
-        if self.version <= '4.15':
-            if not self.nouexp:
-                raise RuntimeError('Uexp should not exist.')
-        elif self.nouexp:
-            raise RuntimeError('Uexp should exist.')
-
-        if len(self.uasset.exports) != 1:
-            raise RuntimeError('Unexpected number of exports')
-
-        self.uasset_size = self.uasset.size
-        self.name_list = self.uasset.name_list
-        self.texture_type = self.uasset.texture_type
+        self.name_list = uasset.name_list
 
         # read .uexp
         f = self.uasset.get_uexp_io(rb=True)
-
         self.read_uexp(f)
 
-        if not self.nouexp:
-            foot = f.read(4)
-            io_util.check(foot, Utexture.UNREAL_SIGNATURE, f)
-        f.close()
-
-        # read .ubulk
+        # read .ubulk if exists
         if self.has_ubulk:
             f = self.uasset.get_ubulk_io(rb=True)
-            size = io_util.get_size(f)
             for mip in self.mipmaps:
                 if mip.uexp:
                     continue
                 mip.data = f.read(mip.data_size)
-            io_util.check(size, f.tell())
-            f.close()
 
         self.print(verbose)
 
@@ -115,11 +100,13 @@ class Utexture:
         self.bin1 = None
         self.imported_width = None
         self.imported_height = None
-        if self.unversioned:
+        start_offset = f.tell()
+
+        if self.is_unversioned():
             skip_unversioned_headers(f)
             s = f.tell()
-            f.seek(0)
-            self.bin1 = f.read(s)
+            f.seek(start_offset)
+            self.bin1 = f.read(s - start_offset)
             chk = io_util.read_uint8_array(f, 8)
             chk = [i for i in chk if i == 0]
             f.seek(-8, 1)
@@ -131,7 +118,7 @@ class Utexture:
             if first_property_id >= len(self.name_list):
                 raise RuntimeError('list index out of range. ' + VERSION_ERR_MSG)
             first_property = self.name_list[first_property_id]
-            f.seek(0)
+            f.seek(start_offset)
             if first_property == 'ImportedSize':
                 self.bin1 = f.read(49)
                 self.imported_width = io_util.read_uint32(f)
@@ -142,9 +129,9 @@ class Utexture:
         b = f.read(8)
         while (b != b'\x01\x00\x01\x00\x01\x00\x00\x00'):
             b = b''.join([b[1:], f.read(1)])
-            if f.tell() > 1000:
+            if f.tell() - offset > 1000:
                 raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
-        s = f.tell()-offset
+        s = f.tell() - offset
         f.seek(offset)
         self.unk = f.read(s)
 
@@ -159,29 +146,24 @@ class Utexture:
 
         self.original_width = io_util.read_uint32(f)
         self.original_height = io_util.read_uint32(f)
-        self.cube_flag = io_util.read_uint16(f)
-        self.unk_int = io_util.read_uint16(f)
-        if self.cube_flag == 1:
-            if self.texture_type != '2D':
-                raise RuntimeError('Unexpected error! Please report it to the developer.')
-        elif self.cube_flag == 6:
-            if self.texture_type != 'Cube':
-                raise RuntimeError('Unexpected error! Please report it to the developer.')
-        else:
-            raise RuntimeError('Not a cube flag! ' + VERSION_ERR_MSG)
-        self.pixel_format = io_util.read_str(f)
-        self.update_format()
-        if self.version == 'ff7r' and self.unk_int == Utexture.UBULK_FLAG[1]:
-            io_util.read_null(f)
-            io_util.read_null(f)
-            ubulk_map_num = io_util.read_uint32(f)  # bulk map num + unk_map_num
-        self.unk_map_num = io_util.read_uint32(f)  # number of some mipmaps in uexp
-        map_num = io_util.read_uint32(f)  # map num ?
+        self.read_packed_data(io_util.read_uint32(f))  # PlatformData->PackedData
+        self.update_format(io_util.read_str(f))  # PixelFormatString
+
+        if self.has_opt_data:
+            if self.version == 'ff7r':
+                io_util.read_null(f)
+                io_util.read_null(f)
+                f.seek(4, 1)  # NumMipsInTail ? (bulk map num + first_mip_to_serialize)
+            else:
+                raise RuntimeError(f"Optional data is unsupported for this verison. ({self.version})")
+
+        self.first_mip_to_serialize = io_util.read_uint32(f)
+        map_num = io_util.read_uint32(f)  # mip map count
 
         if self.version == 'ff7r':
             # ff7r have all mipmap data in a mipmap object
-            self.uexp_mip_bulk = Umipmap.read(f, self.version)
-            io_util.read_const_uint32(f, self.cube_flag)
+            self.uexp_optional_mip = Umipmap.read(f, self.version)
+            io_util.read_const_uint32(f, self.num_slices)
             f.seek(4, 1)  # uexp mip map num
 
         # read mipmaps
@@ -195,15 +177,16 @@ class Utexture:
             i = 0
             for mip in self.mipmaps:
                 if mip.uexp:
-                    size = int(mip.pixel_num * self.byte_per_pixel * self.cube_flag)
-                    mip.data = self.uexp_mip_bulk.data[i:i+size]
+                    size = int(mip.pixel_num * self.byte_per_pixel * self.num_slices)
+                    mip.data = self.uexp_optional_mip.data[i: i + size]
                     i += size
-            io_util.check(i, len(self.uexp_mip_bulk.data))
+            io_util.check(i, len(self.uexp_optional_mip.data))
 
         if self.version >= '4.23':
-            io_util.read_null(f, msg='Not NULL! ' + VERSION_ERR_MSG)
-        # io_util.check(self.end_offset, f.tell()+self.uasset_size)
+            # bIsVirtual
+            io_util.read_null(f, msg='Virtual texture is unsupported.')
         self.none_name_id = io_util.read_uint64(f)
+        self.uexp_size = f.tell() - start_offset
 
     # get max size of uexp mips
     def get_max_uexp_size(self):
@@ -229,36 +212,23 @@ class Utexture:
     def write(self, valid=False):
         # write .uexp
         f = self.uasset.get_uexp_io(rb=False)
-
-        self.write_uexp(f, valid=valid)
-
-        if not self.nouexp:
-            f.write(Utexture.UNREAL_SIGNATURE)
-            size = f.tell()
-        else:
-            f.seek(0)
-            self.uasset.uexp_bin = f.read()
-            size = f.tell() + 4
-        f.close()
-
-        # write .ubulk if exist
         if self.has_ubulk:
-            f = self.uasset.get_ubulk_io(rb=False)
+            ubulk_io = self.uasset.get_ubulk_io(rb=False)
+            ubulk_start_offset = ubulk_io.tell()
+        else:
+            ubulk_start_offset = 0
+        self.write_uexp(f, ubulk_start_offset, valid=valid)
+
+        # write .ubulk if exists
+        if self.has_ubulk:
             for mip in self.mipmaps:
                 if not mip.uexp:
-                    f.write(mip.data)
-            if self.nouexp:
-                f.seek(0)
-                self.uasset.ubulk_bin = f.read()
+                    ubulk_io.write(mip.data)
 
-        # write .uasset
-        # if self.version=='4.13':
-        #     size += len(ubulk) + 4
-        self.uasset.exports[0].update(size - 4, size - 4)
+    def write_uexp(self, f, ubulk_start_offset, valid=False):
+        uasset_size = self.uasset.get_size()
+        start_offset = f.tell()
 
-        return size
-
-    def write_uexp(self, f, valid=False):
         # get mipmap info
         max_width, max_height = self.get_max_uexp_size()
         uexp_map_num, ubulk_map_num = self.get_mipmap_num()
@@ -286,7 +256,7 @@ class Utexture:
 
         # write meta data
         io_util.write_uint64(f, self.pixel_format_name_id)
-        io_util.write_uint32(f, 0)  # write dummy offset. (rewrite it later)
+        f.seek(4, 1)  # for self.end_offset. write here later
         if self.version >= '4.20':
             io_util.write_null(f)
         if self.version >= '5.0':
@@ -294,17 +264,16 @@ class Utexture:
 
         io_util.write_uint32(f, self.original_width)
         io_util.write_uint32(f, self.original_height)
-        io_util.write_uint16(f, self.cube_flag)
-        io_util.write_uint16(f, self.unk_int)
+        io_util.write_uint32(f, self.get_packed_data())
 
         io_util.write_str(f, self.pixel_format)
 
-        if self.version == 'ff7r' and self.unk_int == Utexture.UBULK_FLAG[1]:
+        if self.version == 'ff7r' and self.has_opt_data:
             io_util.write_null(f)
             io_util.write_null(f)
-            io_util.write_uint32(f, ubulk_map_num+self.unk_map_num)
+            io_util.write_uint32(f, ubulk_map_num + self.first_mip_to_serialize)
 
-        io_util.write_uint32(f, self.unk_map_num)
+        io_util.write_uint32(f, self.first_mip_to_serialize)
         io_util.write_uint32(f, len(self.mipmaps))
 
         if self.version == 'ff7r':
@@ -315,35 +284,21 @@ class Utexture:
                 if mip.uexp:
                     uexp_bulk = b''.join([uexp_bulk, mip.data])
             size = self.get_max_uexp_size()
-            self.uexp_mip_bulk = Umipmap(self.version)
-            self.uexp_mip_bulk.update(uexp_bulk, size, True)
-            self.uexp_mip_bulk.offset = self.uasset_size+f.tell() + 24
-            self.uexp_mip_bulk.write(f, self.uasset_size)
+            self.uexp_optional_mip = Umipmap(self.version)
+            self.uexp_optional_mip.update(uexp_bulk, size, True)
+            self.uexp_optional_mip.write(f, uasset_size)
 
-            io_util.write_uint32(f, self.cube_flag)
+            io_util.write_uint32(f, self.num_slices)
             io_util.write_uint32(f, uexp_map_num)
 
-        if self.version <= '4.15' or self.version >= '4.26' or self.version == 'ff7r':
-            offset = 0
-        else:
-            new_end_offset = \
-                self.uasset_size + \
-                f.tell() + \
-                uexp_map_data_size + \
-                ubulk_map_num*32 + \
-                (len(self.mipmaps)) * (self.version >= '4.20') * 4 + \
-                (self.version >= '4.23') * 4 - \
-                (len(self.mipmaps)) * (self.version == 'borderlands3') * 6
-            # - file size?
-            offset = -new_end_offset - 8
+        ubulk_offset = ubulk_start_offset
+
         # write mipmaps
         for mip in self.mipmaps:
-            if mip.uexp:
-                mip.offset = self.uasset_size+f.tell() + 24 - 4 * (self.version >= '5.0')
-            else:
-                mip.offset = offset
-                offset += mip.data_size
-            mip.write(f, self.uasset_size)
+            if not mip.uexp:
+                mip.offset = ubulk_offset
+                ubulk_offset += mip.data_size
+            mip.write(f, uasset_size)
 
         if self.version >= '4.23':
             io_util.write_null(f)
@@ -351,12 +306,21 @@ class Utexture:
         if self.version >= '5.0':
             new_end_offset = f.tell() - self.offset_to_end_offset
         else:
-            new_end_offset = f.tell() + self.uasset_size
+            new_end_offset = f.tell() + uasset_size
         io_util.write_uint64(f, self.none_name_id)
 
+        if self.version >= '4.16' and self.version <= '4.25' and self.version != 'ff7r':
+            # ubulk mipmaps have wierd offset data. (Fixed at 4.26)
+            ubulk_offset_base = -uasset_size - f.tell()
+            for mip in self.mipmaps:
+                if not mip.uexp:
+                    mip.rewrite_offset(f, ubulk_offset_base + mip.offset)
+
+        current = f.tell()
         f.seek(self.offset_to_end_offset)
         io_util.write_uint32(f, new_end_offset)
-        f.seek(0, 2)
+        f.seek(current)
+        self.uexp_size = current - start_offset
 
     # remove mipmaps except the largest one
     def remove_mipmaps(self):
@@ -378,10 +342,10 @@ class Utexture:
                 f"(Uasset: {self.dxgi_format.name[12:]}, DDS: {dds.header.dxgi_format.name[12:]})"
             )
 
-        if dds.header.texture_type != self.texture_type:
+        if dds.is_cube() != self.is_cube:
             raise RuntimeError(
                 "Texture type does not match. "
-                f"(Uasset: {self.texture_type}, DDS: {dds.header.texture_type})"
+                f"(Uasset: {self.get_texture_type()}, DDS: {dds.get_texture_type()})"
             )
 
         max_width, max_height = self.get_max_size()
@@ -391,6 +355,7 @@ class Utexture:
         uexp_width, uexp_height = self.get_max_uexp_size()
 
         # inject
+        self.first_mip_to_serialize = 0
         i = 0
         self.mipmaps = [Umipmap(self.version) for i in range(len(dds.mipmap_data))]
         for data, size, mip in zip(dds.mipmap_data, dds.mipmap_size, self.mipmaps):
@@ -407,7 +372,7 @@ class Utexture:
         if ubulk_map_num == 0:
             self.has_ubulk = False
         if self.version == "ff7r":
-            self.unk_int = Utexture.UBULK_FLAG[self.has_ubulk]
+            self.has_opt_data = self.has_ubulk
         new_mipmap_num = len(self.mipmaps)
 
         print('dds has been injected.')
@@ -428,11 +393,11 @@ class Utexture:
                 mip.print(padding=4)
                 i += 1
         max_width, max_height = self.get_max_size()
-        print(f'  max width: {max_width}')
-        print(f'  max height: {max_height}')
+        print(f'  width: {max_width}')
+        print(f'  height: {max_height}')
         print(f'  format: {self.pixel_format} ({self.dxgi_format.name[12:]})')
-        print(f'  texture type: {self.texture_type}')
-        print(f'  mipmap: {len(self.mipmaps)}')
+        print(f'  mipmaps: {len(self.mipmaps)}')
+        print(f'  cubemap: {self.is_cube}')
 
     def to_uncompressed(self):
         if self.pixel_format in PF_TO_UNCOMPRESSED:
@@ -442,15 +407,35 @@ class Utexture:
         """Change pixel format."""
         if self.pixel_format != pixel_format:
             print(f'Changed pixel format from {self.pixel_format} to {pixel_format}')
-        self.pixel_format = pixel_format
-        self.update_format()
+        self.update_format(pixel_format)
         self.uasset.update_name_list(self.pixel_format_name_id, pixel_format)
 
-    def update_format(self):
+    def update_format(self, pixel_format):
+        self.pixel_format = pixel_format
         if self.pixel_format not in PF_TO_DXGI:
             raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
         self.dxgi_format = PF_TO_DXGI[self.pixel_format]
         self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
+
+    def read_packed_data(self, packed_data):
+        self.is_cube = packed_data & (1 << 31) > 0
+        self.has_opt_data = packed_data & (1 << 30) > 0
+        self.num_slices = packed_data & ((1 << 30) - 1)
+
+    def get_packed_data(self):
+        packed_data = self.num_slices
+        packed_data |= self.is_cube * (1 << 31)
+        packed_data |= self.has_opt_data * (1 << 30)
+        return packed_data
+
+    def get_texture_type(self):
+        return ['2D', 'Cube'][self.is_cube]
+
+    def is_unversioned(self):
+        return self.uasset.header.is_unversioned()
+
+    def has_uexp(self):
+        return self.uasset.has_uexp()
 
 
 def get_pf_from_uexp(uexp_file):
