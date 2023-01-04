@@ -21,6 +21,8 @@ test
 !bat/*.bat
 *.sh
 *.cfg
+*.txt
+!chagelog.txt
 
 #texture files
 *.dds
