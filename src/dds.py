@@ -133,7 +133,6 @@ class DDSHeader(c.LittleEndianStructure):
         self.mipmap_num = 0
         self.dxgi_format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN
         self.byte_per_pixel = 0
-        self.texture_type = '2D'
 
     @staticmethod
     def read(f):
@@ -163,7 +162,6 @@ class DDSHeader(c.LittleEndianStructure):
         else:
             head.dxgi_format = head.get_dxgi_from_header()
         head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
-        head.texture_type = ['2D', 'Cube'][head.is_cube()]
         return head
 
     @staticmethod
@@ -210,7 +208,6 @@ class DDSHeader(c.LittleEndianStructure):
         self.caps2 = (c.c_uint8 * 4)(0, 254 * is_cube, 0, 0)
         self.reserved2 = (c.c_uint32*3)(0, 0, 0)
         self.fourCC = b'DX10'
-        self.texture_type = ['2D', 'Cube'][is_cube]
 
     def is_bit_mask(self, bit_mask):
         for b1, b2 in zip(self.bit_mask, bit_mask):
@@ -278,11 +275,14 @@ class DDSHeader(c.LittleEndianStructure):
     def get_bpp(self):
         return DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
+    def get_texture_type(self):
+        return ['2D', 'Cube'][self.is_cube()]
+
     def print(self):
-        print(f'  height: {self.height}')
         print(f'  width: {self.width}')
+        print(f'  height: {self.height}')
         print(f'  format: {self.dxgi_format.name[12:]}')
-        print(f'  mipmap num: {self.mipmap_num}')
+        print(f'  mipmaps: {self.mipmap_num}')
         print(f'  cubemap: {self.is_cube()}')
 
 
@@ -351,7 +351,7 @@ class DDS:
     def utexture_to_DDS(utexture):
         # make dds header
         header = DDSHeader()
-        header.update(0, 0, 0, utexture.dxgi_format, utexture.texture_type == 'Cube')
+        header.update(0, 0, 0, utexture.dxgi_format, utexture.is_cube)
 
         mipmap_data = []
         mipmap_size = []
@@ -383,3 +383,9 @@ class DDS:
                 for d in self.mipmap_data:
                     stride = len(d) // (1 + (self.header.is_cube()) * 5)
                     f.write(d[i * stride: (i + 1) * stride])
+
+    def get_texture_type(self):
+        return self.header.get_texture_type()
+
+    def is_cube(self):
+        return self.header.is_cube()

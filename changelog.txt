@@ -1,5 +1,8 @@
 ver 0.4.2
 - Supported UE5.1
+- Supported assets that have multiple texture objects (only for export mode)
+- Fixed an error when assets have non-ascii characters.
+- Fixed a bug that it won't update file size when updating name map.
 - Refined codes
 
 ver 0.4.1

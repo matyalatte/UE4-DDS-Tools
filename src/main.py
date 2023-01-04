@@ -107,7 +107,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     # read uasset
     uasset_file = os.path.join(folder, file)
     asset = Uasset(uasset_file, version=args.version)
-    texture = asset.texture
+    texture = asset.get_texture()
 
     # read and inject dds
     src_file = texture_file
@@ -121,7 +121,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     else:
         with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
             temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
-                                              out=temp_dir, export_as_cubemap=texture.texture_type == "Cube",
+                                              out=temp_dir, export_as_cubemap=texture.is_cube,
                                               no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
                                               allow_slow_codec=True, verbose=False)
             dds = DDS.load(temp_dds)
@@ -136,20 +136,27 @@ def export(folder, file, args, texconv=None):
     '''Export mode (export uasset as dds)'''
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
-    new_file = os.path.splitext(new_file)[0] + '.dds'
+    new_dir = os.path.dirname(new_file)
 
     asset = Uasset(src_file, version=args.version)
-    texture = asset.texture
-    if args.no_mipmaps:
-        texture.remove_mipmaps()
-    dds = DDS.utexture_to_DDS(texture)
-    if args.export_as == 'dds':
-        dds.save(new_file)
-    else:
-        with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
-            temp_dds = os.path.join(temp_dir, os.path.splitext(os.path.basename(file))[0]+'.dds')
-            dds.save(temp_dds)
-            texconv.convert_dds_to(temp_dds, out=os.path.dirname(new_file), fmt=args.export_as, verbose=False)
+    textures = asset.get_texture_list()
+    multi = len(textures) > 1
+    for tex, i in zip(textures, range(len(textures))):
+        if multi:
+            file_name = os.path.splitext(new_file)[0] + f'.{i}.dds'
+        else:
+            file_name = os.path.splitext(new_file)[0] + '.dds'
+        if args.no_mipmaps:
+            tex.remove_mipmaps()
+        dds = DDS.utexture_to_DDS(tex)
+        if args.export_as == 'dds':
+            dds.save(file_name)
+        else:
+            with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
+                temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
+                dds.save(temp_dds)
+                converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
+                print(f"convert to: {converted_file}")
 
 
 def remove_mipmaps(folder, file, args, texconv=None):
@@ -157,8 +164,9 @@ def remove_mipmaps(folder, file, args, texconv=None):
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
     asset = Uasset(src_file, version=args.version)
-    texture = asset.texture
-    texture.remove_mipmaps()
+    textures = asset.get_texture_list()
+    for tex in textures:
+        tex.remove_mipmaps()
     asset.save(new_file)
 
 

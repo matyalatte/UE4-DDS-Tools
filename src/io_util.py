@@ -114,11 +114,19 @@ def read_int32_array(file, len=None):
 
 
 def read_str(file):
-    num = read_uint32(file)
+    num = read_int32(file)
     if num == 0:
         return None
-    string = file.read(num-1).decode()
-    file.seek(1, 1)
+
+    utf16 = num < 0
+    if utf16:
+        num = -num
+        encode = 'utf-16-le'
+    else:
+        encode = 'ascii'
+
+    string = file.read((num - 1) * (1 + utf16)).decode(encode)
+    file.seek(1 + utf16, 1)
     return string
 
 
@@ -197,11 +205,13 @@ def write_int32_array(file, ary, with_length=False):
     write_array(file, ary, write_int32, with_length=with_length)
 
 
-def write_str(file, s):
-    num = len(s)+1
-    write_uint32(file, num)
-    str_byte = s.encode()
-    file.write(str_byte + b'\x00')
+def write_str(file, string):
+    num = len(string) + 1
+    utf16 = not string.isascii()
+    write_int32(file, num * (1 - 2 * utf16))
+    encode = 'utf-16-le' if utf16 else 'ascii'
+    str_byte = string.encode(encode)
+    file.write(str_byte + b'\x00' * (1 + utf16))
 
 
 def write_null(f):

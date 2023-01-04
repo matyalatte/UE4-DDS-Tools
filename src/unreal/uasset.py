@@ -267,15 +267,36 @@ class UassetImport(c.LittleEndianStructure):
         print(pad + '  class_file: ' + self.class_package_name)
 
 
+class Uunknown:
+    """Unknown Uobject."""
+    def __init__(self, uasset, size):
+        self.uasset = uasset
+        f = self.uasset.get_uexp_io(rb=True)
+        self.bin = f.read(size)
+        self.uexp_size = size
+        self.has_ubulk = False
+
+    def write(self, valid=False):
+        f = self.uasset.get_uexp_io(rb=False)
+        f.write(self.bin)
+        self.uexp_size = len(self.bin)
+
+    def is_texture(self):
+        return False
+
+
 class UassetExport:
     """Meta data for an object that is contained within this file. (FObjectExport)
 
     Notes:
         UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/ObjectResource.cpp
     """
+    TEXTURE_CLASSES = ["Texture2D", "TextureCube"]
+
     def __init__(self, f, version):
+        self.object = None  # The actual data will be stored here
         self.class_import_id = io_util.read_int32(f)
-        if version > '4.13':
+        if version >= '4.14':
             io_util.read_null(f)  # TemplateIndex
         self.super_import_id = io_util.read_int32(f)
         self.outer_index = io_util.read_uint32(f)  # 0: main object, 1: not main
@@ -320,6 +341,12 @@ class UassetExport:
     def is_main(self):
         return self.object_flags & ObjectFlags.RF_Standalone > 0
 
+    def is_texture(self):
+        return self.class_name in UassetExport.TEXTURE_CLASSES
+
+    def skip_uexp(self, uasset):
+        self.object = Uunknown(uasset, self.size)
+
     def print(self, padding=2):
         pad = ' ' * padding
         print(pad + f'{self.name}')
@@ -335,6 +362,9 @@ class Uasset:
         if not os.path.isfile(file_path):
             raise RuntimeError(f'Not File. ({file_path})')
 
+        self.texture = None
+        self.uexp_io = None
+        self.ubulk_io = None
         self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file_path)
         print('load: ' + self.uasset_file)
 
@@ -350,7 +380,6 @@ class Uasset:
             # read header
             self.header = UassetFileSummary(f, self.version)
 
-            self.size = self.header.uasset_size
             if verbose:
                 self.header.print()
                 print('Names')
@@ -391,19 +420,41 @@ class Uasset:
                 io_util.check(self.header.preload_dependency_offset, f.tell())
                 self.preload_dependency_ids = io_util.read_int32_array(f, len=self.header.preload_dependency_count)
 
-            io_util.check(f.tell(), self.size)
+            io_util.check(f.tell(), self.get_size())
 
             if self.has_uexp():
                 self.uexp_bin = None
                 self.ubulk_bin = None
             else:
-                uexp_size = self.header.bulk_offset - self.header.uasset_size
-                self.uexp_bin = f.read(uexp_size)
+                self.uexp_size = self.header.bulk_offset - self.header.uasset_size
+                self.uexp_bin = f.read(self.uexp_size)
                 self.ubulk_bin = f.read(io_util.get_size(f) - f.tell() - 4)
                 io_util.check(f.read(), UassetFileSummary.TAG)
 
-        self.texture_type = self.get_texture_type()
-        self.texture = Utexture(self, verbose=True)
+        self.read_export_objects(verbose=verbose)
+        self.texture = self.get_texture
+
+    def read_export_objects(self, verbose=False):
+        uexp_io = self.get_uexp_io(rb=True)
+        for exp in self.exports:
+            if verbose:
+                print(f"{exp.name}: (offset: {uexp_io.tell()})")
+            if exp.is_texture():
+                exp.object = Utexture(self, verbose=verbose)
+            else:
+                exp.skip_uexp(self)
+            io_util.check(exp.size, exp.object.uexp_size)
+        self.close_uexp_io(rb=True)
+        self.close_ubulk_io(rb=True)
+
+    def write_export_objects(self, valid=False):
+        uexp_io = self.get_uexp_io(rb=False)
+        for exp in self.exports:
+            exp.object.write(valid=valid)
+            offset = uexp_io.tell()
+            exp.update(exp.object.uexp_size, offset)
+        self.close_uexp_io(rb=False)
+        self.close_ubulk_io(rb=False)
 
     def save(self, file, valid=False):
         folder = os.path.dirname(file)
@@ -412,9 +463,12 @@ class Uasset:
 
         self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file)
 
-        uexp_size = self.texture.write(valid=valid)
+        if not self.has_ubulk():
+            self.ubulk_file = None
 
         print('save :' + self.uasset_file)
+
+        self.write_export_objects(valid=valid)
 
         with open(self.uasset_file, 'wb') as f:
             # skip header part
@@ -447,7 +501,7 @@ class Uasset:
                 io_util.write_int32_array(f, self.preload_dependency_ids)
 
             self.header.uasset_size = f.tell()
-            self.header.bulk_offset = uexp_size+self.header.uasset_size-4
+            self.header.bulk_offset = self.uexp_size + self.header.uasset_size
             self.header.name_count = len(self.name_list)
 
             # write header
@@ -469,8 +523,16 @@ class Uasset:
                 f.write(UassetFileSummary.TAG)
 
     def update_name_list(self, i, new_name):
+        old_name = self.name_list[i]
         self.name_list[i] = new_name
         self.hash_list[i] = generate_hash(new_name)
+
+        def get_size(string):
+            is_utf16 = not string.isascii()
+            return (len(string) + 1) * (1 + is_utf16)
+
+        # Update file size
+        self.header.uasset_size += get_size(new_name) - get_size(old_name)
 
     def get_main_export(self):
         main_list = [exp for exp in self.exports if exp.is_main()]
@@ -481,17 +543,24 @@ class Uasset:
     def has_uexp(self):
         return self.version >= '4.16'
 
-    def get_texture_type(self):
-        import_names = [imp.name for imp in self.imports]
+    def has_ubulk(self):
+        for exp in self.exports:
+            if exp.object.has_ubulk:
+                return True
+        return False
 
-        if 'Texture2D' in import_names:
-            texture_type = '2D'
-        elif 'TextureCube' in import_names:
-            texture_type = 'Cube'
-        else:
-            raise RuntimeError('Not texture assets!')
+    def get_texture_list(self):
+        textures = []
+        for exp in self.exports:
+            if exp.is_texture():
+                textures.append(exp.object)
+        return textures
 
-        return texture_type
+    def get_texture(self):
+        textures = self.get_texture_list()
+        if len(textures) != 1:
+            raise RuntimeError("This is not a texture asset.")
+        return textures[0]
 
     def __get_io(self, file, bin, rb):
         if self.has_uexp():
@@ -503,16 +572,57 @@ class Uasset:
             if rb:
                 return io.BytesIO(bin)
             else:
-                return io.BytesIO(b'')        
+                return io.BytesIO(b'')
 
     def get_uexp_io(self, rb=True):
-        return self.__get_io(self.uexp_file, self.uexp_bin, rb)
+        if self.uexp_io is None:
+            self.uexp_io = self.__get_io(self.uexp_file, self.uexp_bin, rb)
+        return self.uexp_io
 
     def get_ubulk_io(self, rb=True):
-        return self.__get_io(self.ubulk_file, self.ubulk_bin, rb)
+        if self.ubulk_io is None:
+            self.ubulk_io = self.__get_io(self.ubulk_file, self.ubulk_bin, rb)
+        return self.ubulk_io
+
+    def close_uexp_io(self, rb=True):
+        if self.uexp_io is None:
+            return
+        f = self.uexp_io
+        self.uexp_size = f.tell()
+        if self.has_uexp():
+            if rb:
+                io_util.check(f.read(4), UassetFileSummary.TAG, f)
+            else:
+                f.write(UassetFileSummary.TAG)
+        else:
+            if not rb:
+                f.seek(0)
+                self.uexp_bin = f.read()
+        f.close()
+        self.uexp_io = None
+
+    def close_ubulk_io(self, rb=True):
+        if self.ubulk_io is None:
+            return
+        f = self.ubulk_io
+        if rb:
+            size = io_util.get_size(f)
+            io_util.check(size, f.tell())
+        else:
+            if not self.has_uexp():
+                f.seek(0)
+                self.ubulk_bin = f.read()
+        f.close()
+        self.ubulk_io = None
 
     def get_all_file_path(self):
         if self.has_uexp():
-            return self.uasset_file, self.uexp_file, self.ubulk_file
+            if self.has_ubulk():
+                return self.uasset_file, self.uexp_file, self.ubulk_file
+            else:
+                return self.uasset_file, self.uexp_file, None
         else:
             return self.uasset_file, None, None
+
+    def get_size(self):
+        return self.header.uasset_size
