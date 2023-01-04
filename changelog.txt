@@ -1,3 +1,6 @@
+ver 0.4.3
+- Supported LightMapTexture2D
+
 ver 0.4.2
 - Supported UE5.1
 - Supported assets that have multiple texture objects (only for export mode)

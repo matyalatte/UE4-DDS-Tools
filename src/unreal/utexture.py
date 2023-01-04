@@ -75,10 +75,11 @@ class Utexture:
     """
     UNREAL_SIGNATURE = b'\xC1\x83\x2A\x9E'
 
-    def __init__(self, uasset, verbose=False):
+    def __init__(self, uasset, verbose=False, is_light_map=False):
         self.uasset = uasset
         self.version = uasset.version
         self.name_list = uasset.name_list
+        self.is_light_map = is_light_map
 
         # read .uexp
         f = self.uasset.get_uexp_io(rb=True)
@@ -149,13 +150,10 @@ class Utexture:
         self.read_packed_data(io_util.read_uint32(f))  # PlatformData->PackedData
         self.update_format(io_util.read_str(f))  # PixelFormatString
 
-        if self.has_opt_data:
-            if self.version == 'ff7r':
-                io_util.read_null(f)
-                io_util.read_null(f)
-                f.seek(4, 1)  # NumMipsInTail ? (bulk map num + first_mip_to_serialize)
-            else:
-                raise RuntimeError(f"Optional data is unsupported for this verison. ({self.version})")
+        if self.version == 'ff7r' and self.has_opt_data:
+            io_util.read_null(f)
+            io_util.read_null(f)
+            f.seek(4, 1)  # NumMipsInTail ? (bulk map num + first_mip_to_serialize)
 
         self.first_mip_to_serialize = io_util.read_uint32(f)
         map_num = io_util.read_uint32(f)  # mip map count
@@ -186,6 +184,10 @@ class Utexture:
             # bIsVirtual
             io_util.read_null(f, msg='Virtual texture is unsupported.')
         self.none_name_id = io_util.read_uint64(f)
+
+        if self.is_light_map:
+            self.light_map_flags = io_util.read_uint32(f)  # ELightMapFlags
+
         self.uexp_size = f.tell() - start_offset
 
     # get max size of uexp mips
@@ -308,6 +310,9 @@ class Utexture:
         else:
             new_end_offset = f.tell() + uasset_size
         io_util.write_uint64(f, self.none_name_id)
+
+        if self.is_light_map:
+            io_util.write_uint32(f, self.light_map_flags)
 
         if self.version >= '4.16' and self.version <= '4.25' and self.version != 'ff7r':
             # ubulk mipmaps have wierd offset data. (Fixed at 4.26)
