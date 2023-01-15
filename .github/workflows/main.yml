@@ -1,4 +1,4 @@
-name: packaging
+name: build
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
   PYTHON_VERSION: 3.9.12
 
 jobs:
-  packaging:
+  build:
     runs-on: windows-2022
     steps:
     
@@ -55,8 +55,8 @@ jobs:
       - name: build dll
         run: |
           external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
-          mkdir -p ../release/src
-          cp external/Texconv-Custom-DLL/texconv.dll ../release/src
+          mkdir -p ../release/src/directx
+          cp external/Texconv-Custom-DLL/texconv.dll ../release/src/directx
 
       - name: Copy files
         run: |

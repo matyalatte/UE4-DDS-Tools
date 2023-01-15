@@ -11,8 +11,8 @@ import ctypes as c
 from enum import IntEnum
 import os
 
-from dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
-                         FOURCC_TO_DXGI, BITMASK_TO_DXGI)
+from .dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
+                          FOURCC_TO_DXGI, BITMASK_TO_DXGI)
 import io_util
 
 

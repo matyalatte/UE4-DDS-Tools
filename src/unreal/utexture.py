@@ -1,7 +1,7 @@
 '''Classes for texture assets (.uexp and .ubulk)'''
 import io_util
 from .umipmap import Umipmap
-from dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
+from directx.dxgi_format import DXGI_FORMAT, DXGI_BYTE_PER_PIXEL
 
 
 # Defined in UnrealEngine/Engine/Source/Runtime/D3D12RHI/Private/D3D12RHI.cpp

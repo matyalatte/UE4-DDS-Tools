@@ -4,7 +4,7 @@ import os
 import ctypes as c
 from enum import IntEnum
 import io_util
-from .crc import generate_hash
+from .crc import generate_hash, strcrc_deprecated
 from .utexture import Utexture
 from .version import VersionInfo
 
@@ -40,6 +40,8 @@ class UassetFileSummary:
     TAG_SWAPPED = b'\x9E\x2A\x83\xC1'  # for big endian files
 
     def __init__(self, f, version):
+        self.file_name = f.name
+
         # Tag
         tag = f.read(4)
         if tag == UassetFileSummary.TAG_SWAPPED:
@@ -129,7 +131,13 @@ class UassetFileSummary:
         """
         io_util.read_null_array(f, 9)
 
+        """
+        PackageSource:
+            Value that is used to determine if the package was saved by developer or not.
+            CRC hash for shipping builds. Others for user created files.
+        """
         self.package_source = io_util.read_uint32(f)
+
         io_util.read_null(f)  # AdditionalPackagesToCook (zero length array)
         if self.file_version <= 5:
             io_util.read_null(f)  # NumTextureAllocations
@@ -216,9 +224,23 @@ class UassetFileSummary:
         print(f'  import directory offset: {self.import_offset}')
         print(f'  end offset of export: {self.depends_offset}')
         print(f'  file length (uasset+uexp-4): {self.bulk_offset}')
+        print(f'  official asset: {self.is_official()}')
 
     def is_unversioned(self):
         return (self.pkg_flags & PackageFlags.PKG_UnversionedProperties) > 0
+
+    def is_official(self):
+        crc = strcrc_deprecated("".join(os.path.basename(self.file_name).split(".")[:-1]))
+        return self.package_source == crc
+
+    def update_package_source(self, file_name=None, is_official=True):
+        if file_name is not None:
+            self.file_name = file_name
+        if is_official:
+            crc = strcrc_deprecated("".join(os.path.basename(self.file_name).split(".")[:-1]))
+        else:
+            crc = int.from_bytes(b"MOD ", "little")
+        self.package_source = crc
 
 
 class UassetImport(c.LittleEndianStructure):
@@ -626,3 +648,6 @@ class Uasset:
 
     def get_size(self):
         return self.header.uasset_size
+
+    def update_package_source(self, file_name=None, is_official=True):
+        self.header.update_package_source(file_name=file_name, is_official=is_official)
