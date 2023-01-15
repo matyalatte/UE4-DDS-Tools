@@ -44,7 +44,7 @@ CRCTable_DEPRECATED = [
 ]
 
 
-def crc32_deprecated(string):
+def memcrc_deprecated(string):
     """An algorithm for crc hash.
 
     Args:
@@ -67,7 +67,36 @@ def crc32_deprecated(string):
     crc = 0
     for i in ints:
         crc = ((crc >> 8) & 0x00FFFFFF) ^ CRCTable_DEPRECATED[(crc ^ i) & 0xFF]
-    return crc
+    return crc & 0xFFFFFFFF
+
+
+def strcrc_deprecated(string):
+    """An algorithm for crc hash.
+
+    Args:
+        string (str): A string for hash generation
+
+    Returens:
+        crc (int32): crc hash
+
+    Notes:
+        StrCrc_DEPRECATED in UE4.
+    """
+    # Convert string to ints
+    if string.isascii():
+        ints = string.upper().encode('ascii')
+    else:
+        binary = string.upper().encode('utf-16-le')
+        ints = struct.unpack('<'+'H'*len(string), binary)
+
+    # Generate hash from ints
+    crc = 0xFFFFFFFF
+    for i in ints:
+        cl = i & 255
+        crc = (crc << 8) ^ CRCTable_DEPRECATED[((crc >> 24) ^ cl) & 0xFF]
+        ch = (i >> 8) & 255
+        crc = (crc << 8) ^ CRCTable_DEPRECATED[((crc >> 24) ^ ch) & 0xFF]
+    return ~crc & 0xFFFFFFFF
 
 
 CRCTablesSB8_0 = [
@@ -106,8 +135,8 @@ CRCTablesSB8_0 = [
 ]
 
 
-def crc32(string):
-    """Another algorithm for crc hash.
+def memcrc(string):
+    """An algorithm for crc hash.
 
     Args:
         string (str): A string for hash generation
@@ -148,8 +177,8 @@ def generate_hash(string):
     Returens:
         hash_bin (bytes[4]): 4-byte hash
     """
-    hash1 = crc32_deprecated(string)
-    hash2 = crc32(string)
+    hash1 = memcrc_deprecated(string)
+    hash2 = memcrc(string)
     hash_int = (hash1 & 0xFFFF) | ((hash2 & 0xFFFF) << 16)
     hash_bin = struct.pack('<'+'I', hash_int)
     return hash_bin

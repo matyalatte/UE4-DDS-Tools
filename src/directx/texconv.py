@@ -10,8 +10,8 @@ import platform
 import shutil
 import tempfile
 
-from dds import DDSHeader, is_hdr
-from dxgi_format import DXGI_FORMAT
+from .dds import DDSHeader, is_hdr
+from .dxgi_format import DXGI_FORMAT
 import io_util
 
 
@@ -34,6 +34,9 @@ def is_mac():
 class Texconv:
     """Texture converter."""
     def __init__(self, dll_path=None, com_initialized=False):
+        self.load_dll(dll_path=dll_path, com_initialized=com_initialized)
+
+    def load_dll(self, dll_path=None, com_initialized=False):
         if dll_path is None:
             file_path = os.path.realpath(__file__)
             if is_windows():
@@ -44,39 +47,18 @@ class Texconv:
                 dll_name = "libtexconv.so"
             else:
                 raise RuntimeError(f'This OS ({get_os_name()}) is unsupported.')
-            dll_path = os.path.join(os.path.dirname(file_path), dll_name)
-
-        dll_path = os.path.abspath(dll_path)
+            dirname = os.path.dirname(file_path)
+            dll_path = os.path.join(dirname, dll_name)
+            dll_path2 = os.path.join(os.path.dirname(dirname), dll_name)  # allow ../texconv.dll
 
         if not os.path.exists(dll_path):
-            raise RuntimeError(f'texconv not found. ({dll_path})')
+            if os.path.exists(dll_path2):
+                dll_path = dll_path2
+            else:
+                raise RuntimeError(f'texconv not found. ({dll_path})')
 
         self.dll = ctypes.cdll.LoadLibrary(dll_path)
         self.com_initialized = com_initialized
-
-    def texconv(self, file, args, out=None, verbose=True, allow_slow_codec=False):
-        """Run texconv."""
-        if out is not None and isinstance(out, str):
-            args += ['-o', out]
-        else:
-            out = '.'
-
-        if out not in ['.', ''] and not os.path.exists(out):
-            io_util.mkdir(out)
-
-        args += ["-y"]
-        args += [os.path.normpath(file)]
-
-        args_p = [ctypes.c_wchar_p(arg) for arg in args]
-        args_p = (ctypes.c_wchar_p*len(args_p))(*args_p)
-        err_buf = ctypes.create_unicode_buffer(512)
-        result = self.dll.texconv(len(args), args_p, verbose, not self.com_initialized, allow_slow_codec, err_buf, 512)
-        self.com_initialized = True
-
-        if result != 0:
-            raise RuntimeError(err_buf.value)
-
-        return out
 
     def convert_dds_to(self, file, out=None, fmt="tga", cubemap_layout="h-cross", invert_normals=False, verbose=True):
         """Convert dds to non-dds."""
@@ -122,13 +104,13 @@ class Texconv:
             name = os.path.join(out, os.path.basename(file))
             name = '.'.join(name.split('.')[:-1] + [fmt])
             temp = ".".join(file.split(".")[:-1] + [ext])
-            self.cube_to_image(file, temp, args, cubemap_layout=cubemap_layout, verbose=verbose)
+            self.__cube_to_image(file, temp, args, cubemap_layout=cubemap_layout, verbose=verbose)
             if fmt == ext:
                 shutil.copy(temp, name)
             else:
-                self.texconv(temp, args2, out=out, verbose=verbose)
+                self.__texconv(temp, args2, out=out, verbose=verbose)
         else:
-            out = self.texconv(file, args + args2, out=out, verbose=verbose)
+            out = self.__texconv(file, args + args2, out=out, verbose=verbose)
             name = os.path.join(out, os.path.basename(file))
             name = '.'.join(name.split('.')[:-1] + [fmt])
         return name
@@ -173,34 +155,58 @@ class Texconv:
                 temp_args = ['-f', 'rgba']
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp = os.path.join(temp_dir, base_name)
-                self.image_to_cube(file, temp, temp_args, cubemap_layout=cubemap_layout, verbose=verbose)
-                out = self.texconv(temp, args, out=out, verbose=verbose, allow_slow_codec=allow_slow_codec)
+                self.__image_to_cube(file, temp, temp_args, cubemap_layout=cubemap_layout, verbose=verbose)
+                out = self.__texconv(temp, args, out=out, verbose=verbose, allow_slow_codec=allow_slow_codec)
         else:
-            out = self.texconv(file, args, out=out, verbose=verbose, allow_slow_codec=allow_slow_codec)
+            out = self.__texconv(file, args, out=out, verbose=verbose, allow_slow_codec=allow_slow_codec)
         name = os.path.join(out, base_name)
         return name
 
     def convert_nondds(self, file, out=None, fmt="tga", verbose=True):
         """Convert non-dds to non-dds."""
-        out = self.texconv(file, ['-ft', fmt], out=out, verbose=verbose)
+        out = self.__texconv(file, ['-ft', fmt], out=out, verbose=verbose)
         name = os.path.join(out, os.path.basename(file))
         name = '.'.join(name.split('.')[:-1] + [fmt])
         return name
 
-    def cube_to_image(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
+    def __texconv(self, file, args, out=None, verbose=True, allow_slow_codec=False):
+        """Run texconv."""
+        if out is not None and isinstance(out, str):
+            args += ['-o', out]
+        else:
+            out = '.'
+
+        if out not in ['.', ''] and not os.path.exists(out):
+            io_util.mkdir(out)
+
+        args += ["-y"]
+        args += [os.path.normpath(file)]
+
+        args_p = [ctypes.c_wchar_p(arg) for arg in args]
+        args_p = (ctypes.c_wchar_p*len(args_p))(*args_p)
+        err_buf = ctypes.create_unicode_buffer(512)
+        result = self.dll.texconv(len(args), args_p, verbose, not self.com_initialized, allow_slow_codec, err_buf, 512)
+        self.com_initialized = True
+
+        if result != 0:
+            raise RuntimeError(err_buf.value)
+
+        return out
+
+    def __cube_to_image(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
         """Genarate an image from a cubemap with texassemble."""
         if cubemap_layout.endswith("-fnz"):
             cubemap_layout = cubemap_layout[:-4]
         args = [cubemap_layout] + args
-        self.texassemble(file, new_file, args, verbose=verbose)
+        self.__texassemble(file, new_file, args, verbose=verbose)
 
-    def image_to_cube(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
+    def __image_to_cube(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
         """Generate a cubemap from an image with texassemble."""
         cmd = "cube-from-" + cubemap_layout[0] + cubemap_layout[2]
         args = [cmd] + args
-        self.texassemble(file, new_file, args, verbose=verbose)
+        self.__texassemble(file, new_file, args, verbose=verbose)
 
-    def texassemble(self, file, new_file, args, verbose=True):
+    def __texassemble(self, file, new_file, args, verbose=True):
         """Run texassemble."""
         out = os.path.dirname(new_file)
         if out not in ['.', ''] and not os.path.exists(out):

@@ -10,10 +10,10 @@ from contextlib import redirect_stdout
 from io_util import compare, get_ext, get_temp_dir
 from unreal.utexture import get_pf_from_uexp, PF_TO_DXGI
 from unreal.uasset import Uasset
-from dds import DDS
-from dxgi_format import DXGI_FORMAT
+from directx.dds import DDS
+from directx.dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt
-from texconv import Texconv, is_windows
+from directx.texconv import Texconv, is_windows
 
 TOOL_VERSION = '0.4.3'
 
@@ -129,6 +129,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     texture.inject_dds(dds)
     if args.no_mipmaps:
         texture.remove_mipmaps()
+    asset.update_package_source(is_official=False)
     asset.save(new_file)
 
 
@@ -223,7 +224,6 @@ def convert(folder, file, args, texconv=None):
         texconv.convert_nondds(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
 
 
-# main
 if __name__ == '__main__':
     start_time = time.time()
 

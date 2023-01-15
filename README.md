@@ -66,7 +66,7 @@ This tool can convert textures between the following file formats.
 </details>
 
 > Note that Unreal Engine supports more [pixel formats](https://docs.unrealengine.com/5.0/en-US/API/Runtime/Core/EPixelFormat/).  
-> You will get the `Unsupported pixel format.` error for them.  
+> You will get an `Unsupported pixel format.` error for them.  
 
 ## Download
 

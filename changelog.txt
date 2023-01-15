@@ -1,5 +1,6 @@
 ver 0.4.3
 - Supported LightMapTexture2D
+- Added a function to update PackageSource (use "MOD " for PackageSource)
 
 ver 0.4.2
 - Supported UE5.1
