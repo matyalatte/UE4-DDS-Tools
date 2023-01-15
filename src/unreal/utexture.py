@@ -129,6 +129,11 @@ class Utexture:
         offset = f.tell()
         b = f.read(8)
         while (b != b'\x01\x00\x01\x00\x01\x00\x00\x00'):
+            """
+            \x01\x00 is StripFlags for UTexture
+            \x01\x00 is StripFlags for UTexture2D (or Cube)
+            \x01\x00\x00\x00 is bCooked for UTexture2D (or Cube)
+            """
             b = b''.join([b[1:], f.read(1)])
             if f.tell() - offset > 1000:
                 raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
@@ -258,6 +263,7 @@ class Utexture:
 
         # write meta data
         io_util.write_uint64(f, self.pixel_format_name_id)
+        self.offset_to_end_offset = f.tell()
         f.seek(4, 1)  # for self.end_offset. write here later
         if self.version >= '4.20':
             io_util.write_null(f)
