@@ -3,6 +3,10 @@ import struct
 import tempfile
 
 
+def flush_stdout():
+    print("", end="", flush=True)
+
+
 def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
 

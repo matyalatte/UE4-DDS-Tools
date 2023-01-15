@@ -7,7 +7,7 @@ import time
 from contextlib import redirect_stdout
 
 # my scripts
-from io_util import compare, get_ext, get_temp_dir
+from io_util import compare, get_ext, get_temp_dir, flush_stdout
 from unreal.utexture import get_pf_from_uexp, PF_TO_DXGI
 from unreal.uasset import Uasset
 from directx.dds import DDS
@@ -97,38 +97,60 @@ def valid(folder, file, args, version=None, texconv=None):
                 compare(ubulk_name, new_ubulk_name)
 
 
+def search_texture_file(file_base, ext_list, index=None):
+    if index is not None:
+        file_base += f".{index}"
+    for ext in ext_list:
+        file = ".".join([file_base, ext])
+        if os.path.exists(file):
+            return file
+    raise RuntimeError(f"Texture file not found. ({file_base})")
+
+
 def inject(folder, file, args, texture_file=None, texconv=None):
     '''Inject mode (inject dds into the asset)'''
     if texture_file is None:
         texture_file = args.texture
-    if get_ext(texture_file) not in TEXTURES:
-        raise RuntimeError(f'Unsupported texture format. ({get_ext(texture_file)})')
+    file_base, ext = os.path.splitext(texture_file)
+    ext = ext[1:].lower()
+    if ext not in TEXTURES:
+        raise RuntimeError(f'Unsupported texture format. ({ext})')
 
     # read uasset
     uasset_file = os.path.join(folder, file)
     asset = Uasset(uasset_file, version=args.version)
-    texture = asset.get_texture()
+    textures = asset.get_texture_list()
 
     # read and inject dds
-    src_file = texture_file
+    ext_list = [ext] + TEXTURES
+    if len(textures) == 1:
+        src_files = [search_texture_file(file_base, ext_list)]
+    else:
+        splitted = file_base.split(".")
+        if len(splitted) >= 2 and splitted[-1] == "0":
+            file_base = ".".join(splitted[:-1])
+        src_files = [search_texture_file(file_base, ext_list, index=i) for i in range(len(textures))]
     new_file = os.path.join(args.save_folder, file)
 
-    if args.force_uncompressed:
-        texture.to_uncompressed()
+    for tex, src in zip(textures, src_files):
+        if args.force_uncompressed:
+            tex.to_uncompressed()
 
-    if get_ext(src_file) == 'dds':
-        dds = DDS.load(src_file)
-    else:
-        with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
-            temp_dds = texconv.convert_to_dds(src_file, texture.dxgi_format,
-                                              out=temp_dir, export_as_cubemap=texture.is_cube,
-                                              no_mip=len(texture.mipmaps) <= 1 or args.no_mipmaps,
-                                              allow_slow_codec=True, verbose=False)
-            dds = DDS.load(temp_dds)
+        if get_ext(src) == 'dds':
+            dds = DDS.load(src)
+        else:
+            with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
+                temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
+                                                  out=temp_dir, export_as_cubemap=tex.is_cube,
+                                                  no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
+                                                  allow_slow_codec=True, verbose=False)
+                dds = DDS.load(temp_dds)
 
-    texture.inject_dds(dds)
-    if args.no_mipmaps:
-        texture.remove_mipmaps()
+        tex.inject_dds(dds)
+        if args.no_mipmaps:
+            tex.remove_mipmaps()
+        flush_stdout()
+
     asset.update_package_source(is_official=False)
     asset.save(new_file)
 
@@ -158,6 +180,7 @@ def export(folder, file, args, texconv=None):
                 dds.save(temp_dds)
                 converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
                 print(f"convert to: {converted_file}")
+        flush_stdout()
 
 
 def remove_mipmaps(folder, file, args, texconv=None):
@@ -288,6 +311,7 @@ if __name__ == '__main__':
             else:
                 for file in file_list:
                     func(folder, file, args, texconv=texconv)
+                    flush_stdout()
         else:
             folder = os.path.dirname(file)
             file = os.path.basename(file)
@@ -295,20 +319,20 @@ if __name__ == '__main__':
     else:
         # folder method
         if mode == 'inject':
-            base = os.path.basename(file)
-            folder = os.path.dirname(file)
+            uasset_folder = file
             texture_folder = texture_file
             if not os.path.isdir(texture_folder):
                 raise RuntimeError(
                     f'The 1st parameter is a folder but the 2nd parameter is NOT a folder. ({texture_folder})'
                 )
-            texture_folder, texture_file_list = \
-                get_file_list_from_folder(texture_folder, ext=TEXTURES, include_base=False)
-            for texture_file in texture_file_list:
-                uasset_file = texture_file[:-len(get_ext(texture_file))] + 'uasset'
-                uasset_file = os.path.join(base, uasset_file)
-                func(folder, uasset_file, args,
-                     texture_file=os.path.join(texture_folder, texture_file), texconv=texconv)
+            uasset_folder, uasset_file_list = \
+                get_file_list_from_folder(uasset_folder, ext=["uasset"], include_base=False)
+            for uasset_file in uasset_file_list:
+                texture_file = uasset_file[:-6] + TEXTURES[0]
+                texture_file = os.path.join(texture_folder, texture_file)
+                func(uasset_folder, os.path.join(uasset_folder, uasset_file), args,
+                     texture_file=texture_file, texconv=texconv)
+                flush_stdout()
         else:
             if mode == 'convert':
                 ext_list = TEXTURES
@@ -317,6 +341,6 @@ if __name__ == '__main__':
             folder, file_list = get_file_list_from_folder(file, ext=ext_list)
             for file in file_list:
                 func(folder, file, args, texconv=texconv)
-
+                flush_stdout()
     if mode != "check":
         print(f'Success! Run time (s): {(time.time() - start_time)}')
