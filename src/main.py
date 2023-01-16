@@ -17,8 +17,8 @@ from directx.texconv import Texconv, is_windows
 
 TOOL_VERSION = '0.4.3'
 
-# UE version: 4.13 ~ 5.1, ff7r, borderlands3
-UE_VERSIONS = ['4.' + str(i+13) for i in range(15)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
+# UE version: 4.10 ~ 5.1, ff7r, borderlands3
+UE_VERSIONS = ['4.' + str(i + 10) for i in range(18)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
 
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
