@@ -46,7 +46,7 @@ class UassetFileSummary:
         tag = f.read(4)
         if tag == UassetFileSummary.TAG_SWAPPED:
             raise RuntimeError("Big endian files are unsupported.")
-        io_util.check(tag, UassetFileSummary.TAG)
+        io_util.check(tag, UassetFileSummary.TAG, msg="Not uasset file. (Invalid tag detected.)")
 
         """
         File version
@@ -55,8 +55,10 @@ class UassetFileSummary:
         7: 5.0 ~
         """
         self.file_version = -io_util.read_int32(f) - 1
-        if self.file_version not in [5, 6, 7]:
-            raise RuntimeError(f"Unsupported .uasset version ({self.file_version})")
+        if self.file_version < 5:
+            raise RuntimeError(f"An old file version detected. This is unsupported. ({self.file_version})")
+        if self.file_version > 7:
+            raise RuntimeError(f"Unsupported file version detected. ({self.file_version})")
         io_util.check(self.file_version, 6 - (version <= '4.13') + (version >= '5.0'))
 
         """ version_info (16 or 20 bytes)
@@ -332,7 +334,7 @@ class UassetExport:
         self.offset = io_util.read_uint32(f)
 
         # packageguid and other flags.
-        self.remainings = f.read(64 - 4 * (version <= '4.15') - 20 * (version <= '4.13') +
+        self.remainings = f.read(64 - 4 * (version <= '4.10') - 4 * (version <= '4.15') - 20 * (version <= '4.13') +
                                  4 * (version == '5.0') - 8 * (version >= '5.1'))
 
     def write(self, f, version):
@@ -409,9 +411,11 @@ class Uasset:
             # read name map
             def read_names(f, i):
                 name = io_util.read_str(f)
-                hash = f.read(4)
                 if verbose:
                     print('  {}: {}'.format(i, name))
+                if self.version <= "4.11":
+                    return name, None
+                hash = f.read(4)
                 return name, hash
             names = [read_names(f, i) for i in range(self.header.name_count)]
             self.name_list = [x[0] for x in names]
@@ -499,7 +503,8 @@ class Uasset:
             # write names
             for name, hash in zip(self.name_list, self.hash_list):
                 io_util.write_str(f, name)
-                f.write(hash)
+                if self.version >= "4.12":
+                    f.write(hash)
 
             # write imports
             self.header.import_offset = f.tell()
@@ -547,7 +552,8 @@ class Uasset:
     def update_name_list(self, i, new_name):
         old_name = self.name_list[i]
         self.name_list[i] = new_name
-        self.hash_list[i] = generate_hash(new_name)
+        if self.version >= "4.12":
+            self.hash_list[i] = generate_hash(new_name)
 
         def get_size(string):
             is_utf16 = not string.isascii()
