@@ -458,7 +458,6 @@ class Uasset:
                 io_util.check(f.read(), UassetFileSummary.TAG)
 
         self.read_export_objects(verbose=verbose)
-        self.texture = self.get_texture
 
     def read_export_objects(self, verbose=False):
         uexp_io = self.get_uexp_io(rb=True)
@@ -568,6 +567,9 @@ class Uasset:
             raise RuntimeError("Failed to detect the main export object.")
         return main_list[0]
 
+    def get_main_class_name(self):
+        return self.get_main_export().class_name
+
     def has_uexp(self):
         return self.version >= '4.16'
 
@@ -577,18 +579,18 @@ class Uasset:
                 return True
         return False
 
+    def has_textures(self):
+        for exp in self.exports:
+            if exp.is_texture():
+                return True
+        return False
+
     def get_texture_list(self):
         textures = []
         for exp in self.exports:
             if exp.is_texture():
                 textures.append(exp.object)
         return textures
-
-    def get_texture(self):
-        textures = self.get_texture_list()
-        if len(textures) != 1:
-            raise RuntimeError("This is not a texture asset.")
-        return textures[0]
 
     def __get_io(self, file, bin, rb):
         if self.has_uexp():

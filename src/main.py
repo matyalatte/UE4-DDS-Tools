@@ -119,6 +119,8 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     # read uasset
     uasset_file = os.path.join(folder, file)
     asset = Uasset(uasset_file, version=args.version)
+    if not asset.has_textures():
+        raise RuntimeError(f"This uasset has no textures. (file: {uasset_file}, class: {asset.get_main_class_name()})")
     textures = asset.get_texture_list()
 
     # read and inject dds
@@ -162,6 +164,8 @@ def export(folder, file, args, texconv=None):
     new_dir = os.path.dirname(new_file)
 
     asset = Uasset(src_file, version=args.version)
+    if not asset.has_textures():
+        raise RuntimeError(f"This uasset has no textures. (file: {src_file}, class: {asset.get_main_class_name()})")
     textures = asset.get_texture_list()
     multi = len(textures) > 1
     for tex, i in zip(textures, range(len(textures))):
