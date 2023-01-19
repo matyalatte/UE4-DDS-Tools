@@ -3,6 +3,7 @@ ver 0.4.3
 - Supported assets that have multiple texture objects
 - Supported LightMapTexture2D
 - Added a function to update PackageSource (use "MOD " for PackageSource)
+- Updated texconv
 
 ver 0.4.2
 - Supported UE5.1

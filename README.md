@@ -17,7 +17,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 ## Supported UE versions
 
 - UE5.0 ~ 5.1
-- UE4.13 ~ 4.27
+- UE4.10 ~ 4.27
 - FF7R
 - Borderlands3
 

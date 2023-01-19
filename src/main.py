@@ -12,7 +12,7 @@ from unreal.utexture import get_pf_from_uexp, PF_TO_DXGI
 from unreal.uasset import Uasset
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
-from file_list import get_file_list_from_folder, get_file_list_from_txt
+from file_list import get_file_list_from_folder, get_file_list_from_txt, get_base_folder
 from directx.texconv import Texconv, is_windows
 
 TOOL_VERSION = '0.4.3'
@@ -318,27 +318,25 @@ if __name__ == '__main__':
             func(folder, file, args, texconv=texconv)
     else:
         # folder method
+        if mode == 'convert':
+            ext_list = TEXTURES
+        else:
+            ext_list = ['uasset']
+        folder, file_list = get_file_list_from_folder(file, ext=ext_list, include_base=mode!="inject")
+
         if mode == 'inject':
-            uasset_folder = file
             texture_folder = texture_file
             if not os.path.isdir(texture_folder):
                 raise RuntimeError(
                     f'The 1st parameter is a folder but the 2nd parameter is NOT a folder. ({texture_folder})'
                 )
-            uasset_folder, uasset_file_list = \
-                get_file_list_from_folder(uasset_folder, ext=["uasset"], include_base=False)
-            for uasset_file in uasset_file_list:
-                texture_file = uasset_file[:-6] + TEXTURES[0]
-                texture_file = os.path.join(texture_folder, texture_file)
-                func(uasset_folder, os.path.join(uasset_folder, uasset_file), args,
-                     texture_file=texture_file, texconv=texconv)
+            texture_file_list = [os.path.join(texture_folder, file[:-6] + TEXTURES[0]) for file in file_list]
+            base_folder, folder = get_base_folder(folder)
+            file_list = [os.path.join(folder, file) for file in file_list]
+            for file, texture in zip(file_list, texture_file_list):
+                func(base_folder, file, args, texture_file=texture, texconv=texconv)
                 flush_stdout()
         else:
-            if mode == 'convert':
-                ext_list = TEXTURES
-            else:
-                ext_list = ['uasset']
-            folder, file_list = get_file_list_from_folder(file, ext=ext_list)
             for file in file_list:
                 func(folder, file, args, texconv=texconv)
                 flush_stdout()
