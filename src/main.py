@@ -8,7 +8,6 @@ from contextlib import redirect_stdout
 
 # my scripts
 from io_util import compare, get_ext, get_temp_dir, flush_stdout
-from unreal.utexture import get_pf_from_uexp, PF_TO_DXGI
 from unreal.uasset import Uasset
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
@@ -19,6 +18,15 @@ TOOL_VERSION = '0.4.4'
 
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
+
+# UE version for textures
+UTEX_VERSIONS = [
+    "5.1", "5.0",
+    "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
+    "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
+    "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
+    "ff7r", "borderlands3"
+]
 
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
@@ -185,7 +193,7 @@ def export(folder, file, args, texconv=None):
             file_name = os.path.splitext(new_file)[0] + '.dds'
         if args.no_mipmaps:
             tex.remove_mipmaps()
-        dds = DDS.utexture_to_DDS(tex)
+        dds = tex.get_dds()
         if args.export_as == 'dds':
             dds.save(file_name)
         else:
@@ -210,24 +218,19 @@ def remove_mipmaps(folder, file, args, texconv=None):
 
 def check_version(folder, file, args, texconv=None):
     '''Check mode (check pixel format and file version)'''
-    pixel_format = get_pf_from_uexp(os.path.join(folder, file[:-len(get_ext(file))]+'uasset'))
-    print(f'Pixel format: {pixel_format}')
-    if pixel_format not in PF_TO_DXGI.keys():
-        raise RuntimeError(f"Unsupported pixel format. ({pixel_format})")
-
     print('Running valid mode with each version...')
     passed_version = []
-    for v in UE_VERSIONS:
+    for ver in UTEX_VERSIONS:
         try:
             with redirect_stdout(open(os.devnull, 'w')):
-                valid(folder, file, args, v)
-            print(f'  {v}: Passed')
-            passed_version.append(v)
+                valid(folder, file, args, ver.split(" ~ ")[0])
+            print(f'  {(ver + " " * 11)[:11]}: Passed')
+            passed_version.append(ver)
         except Exception:
-            print(f'  {v}: Failed')
+            print(f'  {(ver + " " * 11)[:11]}: Failed')
     if len(passed_version) == 0:
         print('Failed for all supported versions. You can not mod the asset with this tool.')
-    elif len(passed_version) == 1:
+    elif len(passed_version) == 1 and ("~" not in passed_version[0]):
         print(f'The version is {passed_version[0]}.')
     else:
         s = f'{passed_version}'[1:-1].replace("'", "")

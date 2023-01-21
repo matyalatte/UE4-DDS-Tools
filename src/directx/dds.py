@@ -347,26 +347,6 @@ class DDS:
 
         return DDS(header, mipmap_data, mipmap_size)
 
-    @staticmethod
-    def utexture_to_DDS(utexture):
-        # make dds header
-        header = DDSHeader()
-        header.update(0, 0, 0, utexture.dxgi_format, utexture.is_cube)
-
-        mipmap_data = []
-        mipmap_size = []
-
-        # get mipmaps
-        for mip in utexture.mipmaps:
-            mipmap_data.append(mip.data)
-            mipmap_size.append([mip.width, mip.height])
-
-        # update header
-        header.width, header.height = utexture.get_max_size()
-        header.mipmap_num = len(mipmap_data)
-
-        return DDS(header, mipmap_data, mipmap_size)
-
     # save as dds
     def save(self, file):
         print('save: {}'.format(file))
