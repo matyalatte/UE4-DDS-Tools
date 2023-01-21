@@ -121,12 +121,16 @@ class Utexture:
             first_property = self.name_list[first_property_id]
             f.seek(start_offset)
             if first_property == 'ImportedSize':
-                self.bin1 = f.read(49)
+                if self.version <= '4.7':
+                    self.bin1 = f.read(24)
+                else:
+                    self.bin1 = f.read(49)
                 self.imported_width = io_util.read_uint32(f)
                 self.imported_height = io_util.read_uint32(f)
 
         # skip property part
         offset = f.tell()
+        end = io_util.get_size(f)
         b = f.read(8)
         while (b != b'\x01\x00\x01\x00\x01\x00\x00\x00'):
             """
@@ -135,7 +139,7 @@ class Utexture:
             \x01\x00\x00\x00 is bCooked for UTexture2D (or Cube)
             """
             b = b''.join([b[1:], f.read(1)])
-            if f.tell() - offset > 1000:
+            if f.tell() - offset > 1000 or f.tell() == end:
                 raise RuntimeError('Parse Failed. ' + VERSION_ERR_MSG)
         s = f.tell() - offset
         f.seek(offset)
@@ -320,18 +324,23 @@ class Utexture:
         if self.is_light_map:
             io_util.write_uint32(f, self.light_map_flags)
 
-        if self.version >= '4.16' and self.version <= '4.25' and self.version != 'ff7r':
-            # ubulk mipmaps have wierd offset data. (Fixed at 4.26)
-            ubulk_offset_base = -uasset_size - f.tell()
-            for mip in self.mipmaps:
-                if not mip.uexp:
-                    mip.rewrite_offset(f, ubulk_offset_base + mip.offset)
-
         current = f.tell()
         f.seek(self.offset_to_end_offset)
         io_util.write_uint32(f, new_end_offset)
         f.seek(current)
         self.uexp_size = current - start_offset
+
+    def rewrite_offset_data(self):
+        if self.version <= '4.15' or self.version >= '4.26' or self.version == 'ff7r':
+            return
+        # ubulk mipmaps have wierd offset data. (Fixed at 4.26)
+        f = self.uasset.get_uexp_io(rb=False)
+        uasset_size = self.uasset.get_size()
+        uexp_size = self.uasset.get_uexp_size()
+        ubulk_offset_base = -uasset_size - uexp_size
+        for mip in self.mipmaps:
+            if not mip.uexp:
+                mip.rewrite_offset(f, ubulk_offset_base + mip.offset)
 
     # remove mipmaps except the largest one
     def remove_mipmaps(self):

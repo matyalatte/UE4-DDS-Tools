@@ -15,10 +15,10 @@ from directx.dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_base_folder
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = '0.4.3'
+TOOL_VERSION = '0.4.4'
 
-# UE version: 4.10 ~ 5.1, ff7r, borderlands3
-UE_VERSIONS = ['4.' + str(i + 10) for i in range(18)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
+# UE version: 4.0 ~ 5.1, ff7r, borderlands3
+UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
 
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
@@ -45,6 +45,8 @@ def get_args():
                         help='Use uncompressed format for BC1, BC6, and BC7.')
     parser.add_argument('--disable_tempfile', action='store_true',
                         help="Store temporary files in the tool's directory.")
+    parser.add_argument('--skip_non_texture', action='store_true',
+                        help="Disable errors about non-texture assets.")
     return parser.parse_args()
 
 
@@ -120,7 +122,11 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     uasset_file = os.path.join(folder, file)
     asset = Uasset(uasset_file, version=args.version)
     if not asset.has_textures():
-        raise RuntimeError(f"This uasset has no textures. (file: {uasset_file}, class: {asset.get_main_class_name()})")
+        desc = f"(file: {uasset_file}, class: {asset.get_main_class_name()})"
+        if args.skip_non_texture:
+            print("Skipped a non-texture asset. " + desc)
+            return
+        raise RuntimeError("This uasset has no textures. " + desc)
     textures = asset.get_texture_list()
 
     # read and inject dds
@@ -165,7 +171,11 @@ def export(folder, file, args, texconv=None):
 
     asset = Uasset(src_file, version=args.version)
     if not asset.has_textures():
-        raise RuntimeError(f"This uasset has no textures. (file: {src_file}, class: {asset.get_main_class_name()})")
+        desc = f"(file: {src_file}, class: {asset.get_main_class_name()})"
+        if args.skip_non_texture:
+            print("Skipped a non-texture asset. " + desc)
+            return
+        raise RuntimeError("This uasset has no textures. " + desc)
     textures = asset.get_texture_list()
     multi = len(textures) > 1
     for tex, i in zip(textures, range(len(textures))):
@@ -326,7 +336,7 @@ if __name__ == '__main__':
             ext_list = TEXTURES
         else:
             ext_list = ['uasset']
-        folder, file_list = get_file_list_from_folder(file, ext=ext_list, include_base=mode!="inject")
+        folder, file_list = get_file_list_from_folder(file, ext=ext_list, include_base=mode != "inject")
 
         if mode == 'inject':
             texture_folder = texture_file

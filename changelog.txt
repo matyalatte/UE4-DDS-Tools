@@ -1,3 +1,8 @@
+ver 0.4.4
+- Supported UE4.0 ~ 4.9.
+- Added "Skip non-texture assets" option.
+- Fixed an error when loading assets that have multiple textures.
+
 ver 0.4.3
 - Supported UE4.10 ~ 4.12
 - Supported assets that have multiple texture objects
