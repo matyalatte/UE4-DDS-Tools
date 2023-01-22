@@ -19,15 +19,6 @@ TOOL_VERSION = '0.4.4'
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
 
-# UE version for textures
-UTEX_VERSIONS = [
-    "5.1", "5.0",
-    "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
-    "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
-    "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
-    "ff7r", "borderlands3"
-]
-
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
     TEXTURES += ["bmp", "jpg", "png"]
@@ -89,7 +80,7 @@ def valid(folder, file, args, version=None, texconv=None):
             dds = DDS.load(src_file)
             dds.save(new_file)
 
-            # compare and remove files
+            # compare files
             compare(src_file, new_file)
 
         else:
@@ -99,7 +90,7 @@ def valid(folder, file, args, version=None, texconv=None):
             asset.save(new_file, valid=True)
             new_uasset_name, new_uexp_name, new_ubulk_name = asset.get_all_file_path()
 
-            # compare and remove files
+            # compare files
             compare(uasset_name, new_uasset_name)
             if new_uexp_name is not None:
                 compare(uexp_name, new_uexp_name)
@@ -108,6 +99,7 @@ def valid(folder, file, args, version=None, texconv=None):
 
 
 def search_texture_file(file_base, ext_list, index=None):
+    """Sarch a texture file for injection mode."""
     if index is not None:
         file_base += f".{index}"
     for ext in ext_list:
@@ -126,32 +118,34 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     if ext not in TEXTURES:
         raise RuntimeError(f'Unsupported texture format. ({ext})')
 
-    # read uasset
+    # Read uasset
     uasset_file = os.path.join(folder, file)
     asset = Uasset(uasset_file, version=args.version)
+
     if not asset.has_textures():
+        # Skip or raise an error for non-texture asset
         desc = f"(file: {uasset_file}, class: {asset.get_main_class_name()})"
         if args.skip_non_texture:
             print("Skipped a non-texture asset. " + desc)
             return
         raise RuntimeError("This uasset has no textures. " + desc)
-    textures = asset.get_texture_list()
 
-    # read and inject dds
+    textures = asset.get_texture_list()
     ext_list = [ext] + TEXTURES
     if len(textures) == 1:
         src_files = [search_texture_file(file_base, ext_list)]
     else:
+        # Find other files for multiple textures
         splitted = file_base.split(".")
         if len(splitted) >= 2 and splitted[-1] == "0":
             file_base = ".".join(splitted[:-1])
         src_files = [search_texture_file(file_base, ext_list, index=i) for i in range(len(textures))]
-    new_file = os.path.join(args.save_folder, file)
 
     for tex, src in zip(textures, src_files):
         if args.force_uncompressed:
             tex.to_uncompressed()
 
+        # Get a image as a DDS object
         if get_ext(src) == 'dds':
             dds = DDS.load(src)
         else:
@@ -162,12 +156,15 @@ def inject(folder, file, args, texture_file=None, texconv=None):
                                                   allow_slow_codec=True, verbose=False)
                 dds = DDS.load(temp_dds)
 
+        # inject the DDS
         tex.inject_dds(dds)
         if args.no_mipmaps:
             tex.remove_mipmaps()
-        flush_stdout()
+        flush_stdout()  # Need to flush to see the result for each asset
 
+    # Write uasset
     asset.update_package_source(is_official=False)
+    new_file = os.path.join(args.save_folder, file)
     asset.save(new_file)
 
 
@@ -178,31 +175,39 @@ def export(folder, file, args, texconv=None):
     new_dir = os.path.dirname(new_file)
 
     asset = Uasset(src_file, version=args.version)
+
     if not asset.has_textures():
+        # Skip or raise an error for non-texture asset
         desc = f"(file: {src_file}, class: {asset.get_main_class_name()})"
         if args.skip_non_texture:
             print("Skipped a non-texture asset. " + desc)
             return
         raise RuntimeError("This uasset has no textures. " + desc)
+
     textures = asset.get_texture_list()
-    multi = len(textures) > 1
+    has_multi = len(textures) > 1
     for tex, i in zip(textures, range(len(textures))):
-        if multi:
+        if has_multi:
+            # Add indices for multiple textures
             file_name = os.path.splitext(new_file)[0] + f'.{i}.dds'
         else:
             file_name = os.path.splitext(new_file)[0] + '.dds'
+        
         if args.no_mipmaps:
             tex.remove_mipmaps()
+        
+        # Save texture
         dds = tex.get_dds()
         if args.export_as == 'dds':
             dds.save(file_name)
         else:
+            # Convert if the export format is not DDS
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
                 temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
                 dds.save(temp_dds)
                 converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
                 print(f"convert to: {converted_file}")
-        flush_stdout()
+        flush_stdout()  # Need to flush to see the result for each asset
 
 
 def remove_mipmaps(folder, file, args, texconv=None):
@@ -216,18 +221,32 @@ def remove_mipmaps(folder, file, args, texconv=None):
     asset.save(new_file)
 
 
+# UE version for textures
+UTEX_VERSIONS = [
+    "5.1", "5.0",
+    "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
+    "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
+    "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
+    "ff7r", "borderlands3"
+]
+
+
 def check_version(folder, file, args, texconv=None):
-    '''Check mode (check pixel format and file version)'''
+    '''Check mode (check file version)'''
+
     print('Running valid mode with each version...')
     passed_version = []
     for ver in UTEX_VERSIONS:
         try:
+            # try to parse with null stdout
             with redirect_stdout(open(os.devnull, 'w')):
                 valid(folder, file, args, ver.split(" ~ ")[0])
             print(f'  {(ver + " " * 11)[:11]}: Passed')
             passed_version.append(ver)
         except Exception:
             print(f'  {(ver + " " * 11)[:11]}: Failed')
+
+    # Show the result.
     if len(passed_version) == 0:
         print('Failed for all supported versions. You can not mod the asset with this tool.')
     elif len(passed_version) == 1 and ("~" not in passed_version[0]):
@@ -243,10 +262,12 @@ def convert(folder, file, args, texconv=None):
     new_file = os.path.join(args.save_folder, file)
 
     if args.convert_to.lower() in TEXTURES[1:]:
+        # not DDS
         ext = args.convert_to.lower()
     else:
         if not DXGI_FORMAT.is_valid_format("DXGI_FORMAT_" + args.convert_to):
             raise RuntimeError(f"The specified format is undefined. ({args.convert_to})")
+        # a DXGI format
         ext = "dds"
 
     new_file = os.path.splitext(new_file)[0] + "." + ext
@@ -254,13 +275,16 @@ def convert(folder, file, args, texconv=None):
     print(f"Converting {src_file} to {new_file}...")
 
     if ext == "dds":
+        # image to dds
         texconv.convert_to_dds(src_file, DXGI_FORMAT["DXGI_FORMAT_" + args.convert_to],
                                out=os.path.dirname(new_file), export_as_cubemap=False,
                                no_mip=args.no_mipmaps,
                                allow_slow_codec=True, verbose=False)
     elif get_ext(file) == "dds":
+        # dds to non-dds
         texconv.convert_dds_to(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
     else:
+        # non-dds to non-dds
         texconv.convert_nondds(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
 
 
@@ -345,7 +369,7 @@ if __name__ == '__main__':
             texture_folder = texture_file
             if not os.path.isdir(texture_folder):
                 raise RuntimeError(
-                    f'The 1st parameter is a folder but the 2nd parameter is NOT a folder. ({texture_folder})'
+                    f'Specified a folder as uasset path. But texture path is not a folder. ({texture_folder})'
                 )
             texture_file_list = [os.path.join(texture_folder, file[:-6] + TEXTURES[0]) for file in file_list]
             base_folder, folder = get_base_folder(folder)

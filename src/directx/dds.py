@@ -9,6 +9,7 @@ Notes:
 
 import ctypes as c
 from enum import IntEnum
+from io import IOBase
 import os
 
 from .dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
@@ -91,15 +92,15 @@ TGA_SUPPORTED = [
 ]
 
 
-def is_hdr(name):
+def is_hdr(name: str):
     return 'BC6' in name or 'FLOAT' in name or 'INT' in name or 'SNORM' in name
 
 
-def convertible_to_tga(name):
+def convertible_to_tga(name: str):
     return name in TGA_SUPPORTED
 
 
-def convertible_to_hdr(name):
+def convertible_to_hdr(name: str):
     return name in HDR_SUPPORTED
 
 
@@ -135,7 +136,7 @@ class DDSHeader(c.LittleEndianStructure):
         self.byte_per_pixel = 0
 
     @staticmethod
-    def read(f):
+    def read(f: IOBase) -> "DDSHeader":
         """Read dds header."""
         head = DDSHeader()
         f.readinto(head)
@@ -165,13 +166,13 @@ class DDSHeader(c.LittleEndianStructure):
         return head
 
     @staticmethod
-    def read_from_file(file_name):
+    def read_from_file(file_name: str) -> "DDSHeader":
         """Read dds header from a file."""
         with open(file_name, 'rb') as f:
             head = DDSHeader.read(f)
         return head
 
-    def write(self, f):
+    def write(self, f: IOBase):
         f.write(self)
         # DXT10 header
         if self.fourCC == b'DX10':
@@ -181,7 +182,7 @@ class DDSHeader(c.LittleEndianStructure):
             io_util.write_uint32(f, 1)
             io_util.write_uint32(f, 0)
 
-    def update(self, width, height, mipmap_num, dxgi_format, is_cube):
+    def update(self, width, height, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube):
         self.width = width
         self.height = height
         self.mipmap_num = mipmap_num
@@ -215,7 +216,7 @@ class DDSHeader(c.LittleEndianStructure):
                 return False
         return True
 
-    def get_dxgi_from_header(self):
+    def get_dxgi_from_header(self) -> DXGI_FORMAT:
         '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
         # Try to detect DXGI from fourCC.
         if self.pfflags & PF_FLAGS.DDS_FOURCC:
@@ -287,13 +288,13 @@ class DDSHeader(c.LittleEndianStructure):
 
 
 class DDS:
-    def __init__(self, header, mipmap_data, mipmap_size):
+    def __init__(self, header: DDSHeader, mipmap_data: list[bytes], mipmap_size: list[list[int]]):
         self.header = header
         self.mipmap_data = mipmap_data
         self.mipmap_size = mipmap_size
 
     @staticmethod
-    def load(file, verbose=False):
+    def load(file: str, verbose=False):
         if file[-3:] not in ['dds', 'DDS']:
             raise RuntimeError(f'Not DDS. ({file})')
         print('load: ' + file)
@@ -348,7 +349,7 @@ class DDS:
         return DDS(header, mipmap_data, mipmap_size)
 
     # save as dds
-    def save(self, file):
+    def save(self, file: str):
         print('save: {}'.format(file))
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):

@@ -1,8 +1,10 @@
 '''Classes for .uasset'''
-import io
-import os
-import ctypes as c
+import ctypes
 from enum import IntEnum
+import io
+from io import IOBase
+import os
+
 import io_util
 from .crc import generate_hash, strcrc_deprecated
 from .utexture import Utexture
@@ -12,7 +14,7 @@ from .version import VersionInfo
 EXT = ['.uasset', '.uexp', '.ubulk']
 
 
-def get_all_file_path(file):
+def get_all_file_path(file: str) -> list[str]:
     '''Get all file paths for texture asset from a file path.'''
     base_name, ext = os.path.splitext(file)
     if ext not in EXT:
@@ -39,7 +41,7 @@ class UassetFileSummary:
     TAG = b'\xC1\x83\x2A\x9E'  # Magic for uasset files
     TAG_SWAPPED = b'\x9E\x2A\x83\xC1'  # for big endian files
 
-    def __init__(self, f, version):
+    def __init__(self, f: IOBase, version: VersionInfo):
         self.file_name = f.name
 
         tag = f.read(4)
@@ -178,7 +180,7 @@ class UassetFileSummary:
         # Location into the file on disk for the payload table of contents data
         self.payload_toc_offset = io_util.read_int64(f)
 
-    def write(self, f, version):
+    def write(self, f: IOBase, version: VersionInfo):
         f.write(UassetFileSummary.TAG)
         io_util.write_int32(f, self.file_version)
         io_util.write_uint32(f, self.ue3_ver)
@@ -260,7 +262,7 @@ class UassetFileSummary:
         self.package_source = crc
 
 
-class UassetImport(c.LittleEndianStructure):
+class UassetImport(ctypes.LittleEndianStructure):
     """Meta data for an object that is contained within another file. (FObjectImport)
 
     Notes:
@@ -269,29 +271,30 @@ class UassetImport(c.LittleEndianStructure):
 
     _pack_ = 1
     _fields_ = [  # 28 bytes
-        ("class_package_name_id", c.c_uint32),  # name id for the file path of the class
-        ("class_package_name_number", c.c_uint32),  # null
-        ("class_name_id", c.c_uint32),  # name id for the class
-        ("class_name_number", c.c_uint32),  # null
-        ("class_package_import_id", c.c_int32),  # import id for the class
-        ("name_id", c.c_uint32),  # name id for the object name
-        ("package_name_id", c.c_uint32),  # name id for the package
+        ("class_package_name_id", ctypes.c_uint32),  # name id for the file path of the class
+        ("class_package_name_number", ctypes.c_uint32),  # null
+        ("class_name_id", ctypes.c_uint32),  # name id for the class
+        ("class_name_number", ctypes.c_uint32),  # null
+        ("class_package_import_id", ctypes.c_int32),  # import id for the class
+        ("name_id", ctypes.c_uint32),  # name id for the object name
+        ("package_name_id", ctypes.c_uint32),  # name id for the package
     ]
 
     @staticmethod
-    def read(f, version):
+    def read(f: IOBase, version: VersionInfo) -> "UassetImport":
         imp = UassetImport()
+        imp.version = version
         f.readinto(imp)
         if version >= '5.0':
             imp.optional = io_util.read_uint32(f)  # bImportOptional
         return imp
 
-    def write(self, f, version):
+    def write(self, f: IOBase, version: VersionInfo):
         f.write(self)
         if version >= '5.0':
             io_util.write_uint32(f, self.optional)
 
-    def name_import(self, name_list):
+    def name_import(self, name_list: list[str]) -> str:
         self.name = name_list[self.name_id]
         self.class_name = name_list[self.class_name_id]
         self.class_package_name = name_list[self.class_package_name_id]
@@ -332,11 +335,12 @@ class UassetExport:
     """
     TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D"]
 
-    def __init__(self, f, version):
+    def __init__(self, f: IOBase, version: VersionInfo):
         self.object = None  # The actual data will be stored here
+
         self.class_import_id = io_util.read_int32(f)
         if version >= '4.14':
-            io_util.read_null(f)  # TemplateIndex
+            self.template_index = io_util.read_int32(f)  # TemplateIndex
         self.super_import_id = io_util.read_int32(f)
         self.outer_index = io_util.read_uint32(f)  # 0: main object, 1: not main
         self.name_id = io_util.read_uint32(f)
@@ -352,7 +356,7 @@ class UassetExport:
         self.remainings = f.read(self.get_remainings_size(version))
 
     @staticmethod
-    def get_remainings_size(version):
+    def get_remainings_size(version: VersionInfo) -> int:
         sizes = [
             ['4.2', 32],
             ['4.10', 36],
@@ -367,10 +371,10 @@ class UassetExport:
         # 5.1 ~
         return 56
 
-    def write(self, f, version):
+    def write(self, f: IOBase, version: VersionInfo):
         io_util.write_int32(f, self.class_import_id)
         if version >= '4.14':
-            io_util.write_null(f)
+            io_util.write_int32(f, self.template_index)
         io_util.write_int32(f, self.super_import_id)
         io_util.write_uint32(f, self.outer_index)
         io_util.write_uint32(f, self.name_id)
@@ -387,7 +391,7 @@ class UassetExport:
         self.size = size
         self.offset = offset
 
-    def name_export(self, imports, name_list):
+    def name_export(self, imports: list[UassetImport], name_list: list[str]):
         self.name = name_list[self.name_id]
         self.class_name = imports[-self.class_import_id-1].name
         self.super_name = imports[-self.super_import_id-1].name
@@ -412,7 +416,7 @@ class UassetExport:
 
 
 class Uasset:
-    def __init__(self, file_path, version="ff7r", verbose=False):
+    def __init__(self, file_path: str, version: str = "ff7r", verbose=False):
         if not os.path.isfile(file_path):
             raise RuntimeError(f'Not File. ({file_path})')
 
@@ -515,7 +519,7 @@ class Uasset:
         self.close_uexp_io(rb=False)
         self.close_ubulk_io(rb=False)
 
-    def save(self, file, valid=False):
+    def save(self, file: str, valid=False):
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
             io_util.mkdir(folder)
@@ -546,7 +550,7 @@ class Uasset:
             # skip exports part
             self.header.export_offset = f.tell()
             list(map(lambda x: x.write(f, self.version), self.exports))
-            if self.version != ['4.15', '4.14']:
+            if self.version not in ['4.15', '4.14']:
                 self.header.depends_offset = f.tell()
 
             io_util.write_null_array(f, self.header.export_count)
@@ -582,7 +586,7 @@ class Uasset:
                 f.write(self.ubulk_bin)
                 f.write(UassetFileSummary.TAG)
 
-    def update_name_list(self, i, new_name):
+    def update_name_list(self, i: int, new_name: str):
         old_name = self.name_list[i]
         self.name_list[i] = new_name
         if self.version >= "4.12":
@@ -595,7 +599,7 @@ class Uasset:
         # Update file size
         self.header.uasset_size += get_size(new_name) - get_size(old_name)
 
-    def get_main_export(self):
+    def get_main_export(self) -> UassetExport:
         main_list = [exp for exp in self.exports if exp.is_main()]
         if len(main_list) != 1:
             raise RuntimeError("Failed to detect the main export object.")
@@ -619,14 +623,14 @@ class Uasset:
                 return True
         return False
 
-    def get_texture_list(self):
+    def get_texture_list(self) -> list[Utexture]:
         textures = []
         for exp in self.exports:
             if exp.is_texture():
                 textures.append(exp.object)
         return textures
 
-    def __get_io(self, file, bin, rb):
+    def __get_io(self, file: str, bin: bytes, rb: bool) -> IOBase:
         if self.has_uexp():
             if rb:
                 return open(file, 'rb')
@@ -638,12 +642,12 @@ class Uasset:
             else:
                 return io.BytesIO(b'')
 
-    def get_uexp_io(self, rb=True):
+    def get_uexp_io(self, rb=True) -> IOBase:
         if self.uexp_io is None:
             self.uexp_io = self.__get_io(self.uexp_file, self.uexp_bin, rb)
         return self.uexp_io
 
-    def get_ubulk_io(self, rb=True):
+    def get_ubulk_io(self, rb=True) -> IOBase:
         if self.ubulk_io is None:
             self.ubulk_io = self.__get_io(self.ubulk_file, self.ubulk_bin, rb)
         return self.ubulk_io

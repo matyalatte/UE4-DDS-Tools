@@ -1,3 +1,4 @@
+from io import IOBase
 import os
 import struct
 import tempfile
@@ -22,23 +23,23 @@ class NonTempDir:
         pass
 
 
-def get_temp_dir(disable_tempfile=True):
+def get_temp_dir(disable_tempfile=False):
     if disable_tempfile:
         return NonTempDir("tmp")
     else:
         return tempfile.TemporaryDirectory()
 
 
-def get_ext(file):
+def get_ext(file: str):
     """Get file extension."""
     return file.split('.')[-1].lower()
 
 
-def get_size(file):
-    pos = file.tell()
-    file.seek(0, 2)
-    size = file.tell()
-    file.seek(pos)
+def get_size(f: IOBase):
+    pos = f.tell()
+    f.seek(0, 2)
+    size = f.tell()
+    f.seek(pos)
     return size
 
 
@@ -51,40 +52,40 @@ def check(actual, expected, f=None, msg='Parse failed. Make sure you specified U
         raise RuntimeError(msg)
 
 
-def read_uint64(file):
-    bin = file.read(8)
+def read_uint64(f: IOBase) -> int:
+    bin = f.read(8)
     return int.from_bytes(bin, "little")
 
 
-def read_uint32(file):
-    bin = file.read(4)
+def read_uint32(f: IOBase) -> int:
+    bin = f.read(4)
     return int.from_bytes(bin, "little")
 
 
-def read_uint16(file):
-    bin = file.read(2)
+def read_uint16(f: IOBase) -> int:
+    bin = f.read(2)
     return int.from_bytes(bin, "little")
 
 
-def read_uint8(file):
-    bin = file.read(1)
+def read_uint8(f: IOBase) -> int:
+    bin = f.read(1)
     return int(bin[0])
 
 
-def read_int64(file):
-    bin = file.read(8)
+def read_int64(f: IOBase) -> int:
+    bin = f.read(8)
     return int.from_bytes(bin, "little", signed=True)
 
 
-def read_int32(file):
-    bin = file.read(4)
+def read_int32(f: IOBase) -> int:
+    bin = f.read(4)
     return int.from_bytes(bin, "little", signed=True)
 
 
-def read_array(file, read_func, len=None):
+def read_array(f: IOBase, read_func, len=None):
     if len is None:
-        len = read_uint32(file)
-    ary = [read_func(file) for i in range(len)]
+        len = read_uint32(f)
+    ary = [read_func(f) for i in range(len)]
     return ary
 
 
@@ -92,33 +93,33 @@ st_list = ['b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'f', 'd']
 st_size = [1, 1, 2, 2, 4, 4, 8, 8, 4, 8]
 
 
-def read_num_array(file, st, len=None):
+def read_num_array(f: IOBase, st: str, len=None):
     if st not in st_list:
         raise RuntimeError('Structure not found. {}'.format(st))
     if len is None:
-        len = read_uint32(file)
-    bin = file.read(st_size[st_list.index(st)] * len)
+        len = read_uint32(f)
+    bin = f.read(st_size[st_list.index(st)] * len)
     return list(struct.unpack(st * len, bin))
 
 
-def read_uint32_array(file, len=None):
-    return read_num_array(file, 'I', len=len)
+def read_uint32_array(f: IOBase, len=None) -> list[int]:
+    return read_num_array(f, 'I', len=len)
 
 
-def read_uint16_array(file, len=None):
-    return read_num_array(file, 'H', len=len)
+def read_uint16_array(f: IOBase, len=None) -> list[int]:
+    return read_num_array(f, 'H', len=len)
 
 
-def read_uint8_array(file, len=None):
-    return read_num_array(file, 'B', len=len)
+def read_uint8_array(f: IOBase, len=None) -> list[int]:
+    return read_num_array(f, 'B', len=len)
 
 
-def read_int32_array(file, len=None):
-    return read_num_array(file, 'i', len=len)
+def read_int32_array(f: IOBase, len=None) -> list[int]:
+    return read_num_array(f, 'i', len=len)
 
 
-def read_str(file):
-    num = read_int32(file)
+def read_str(f: IOBase) -> str:
+    num = read_int32(f)
     if num == 0:
         return None
 
@@ -129,26 +130,26 @@ def read_str(file):
     else:
         encode = 'ascii'
 
-    string = file.read((num - 1) * (1 + utf16)).decode(encode)
-    file.seek(1 + utf16, 1)
+    string = f.read((num - 1) * (1 + utf16)).decode(encode)
+    f.seek(1 + utf16, 1)
     return string
 
 
-def read_const_uint32(f, n, msg='Unexpected Value!'):
+def read_const_uint32(f: IOBase, n: int, msg='Unexpected Value!'):
     const = read_uint32(f)
     check(const, n, f, msg)
 
 
-def read_null(f, msg='Not NULL!'):
+def read_null(f: IOBase, msg='Not NULL!'):
     read_const_uint32(f, 0, msg)
 
 
-def read_null_array(f, len, msg='Not NULL!'):
+def read_null_array(f: IOBase, len, msg='Not NULL!'):
     null = read_uint32_array(f, len=len)
     check(null, [0] * len, f, msg)
 
 
-def read_struct_array(f, obj, len=None):
+def read_struct_array(f: IOBase, obj, len=None):
     if len is None:
         len = read_uint32(f)
     objects = [obj() for i in range(len)]
@@ -156,77 +157,77 @@ def read_struct_array(f, obj, len=None):
     return objects
 
 
-def write_uint64(file, n):
+def write_uint64(f: IOBase, n: int):
     bin = n.to_bytes(8, byteorder="little")
-    file.write(bin)
+    f.write(bin)
 
 
-def write_uint32(file, n):
+def write_uint32(f: IOBase, n: int):
     bin = n.to_bytes(4, byteorder="little")
-    file.write(bin)
+    f.write(bin)
 
 
-def write_uint16(file, n):
+def write_uint16(f: IOBase, n: int):
     bin = n.to_bytes(2, byteorder="little")
-    file.write(bin)
+    f.write(bin)
 
 
-def write_uint8(file, n):
+def write_uint8(f: IOBase, n: int):
     bin = n.to_bytes(1, byteorder="little")
-    file.write(bin)
+    f.write(bin)
 
 
-def write_int64(file, n):
+def write_int64(f: IOBase, n: int):
     bin = n.to_bytes(8, byteorder="little", signed=True)
-    file.write(bin)
+    f.write(bin)
 
 
-def write_int32(file, n):
+def write_int32(f: IOBase, n: int):
     bin = n.to_bytes(4, byteorder="little", signed=True)
-    file.write(bin)
+    f.write(bin)
 
 
-def write_array(file, ary, write_func, with_length=False):
+def write_array(f: IOBase, ary: list, write_func, with_length=False):
     if with_length:
-        write_uint32(file, len(ary))
+        write_uint32(f, len(ary))
     for a in ary:
-        write_func(file, a)
+        write_func(f, a)
 
 
-def write_uint32_array(file, ary, with_length=False):
-    write_array(file, ary, write_uint32, with_length=with_length)
+def write_uint32_array(f: IOBase, ary: list, with_length=False):
+    write_array(f, ary, write_uint32, with_length=with_length)
 
 
-def write_uint16_array(file, ary, with_length=False):
-    write_array(file, ary, write_uint16, with_length=with_length)
+def write_uint16_array(f: IOBase, ary: list, with_length=False):
+    write_array(f, ary, write_uint16, with_length=with_length)
 
 
-def write_uint8_array(file, ary, with_length=False):
-    write_array(file, ary, write_uint8, with_length=with_length)
+def write_uint8_array(f: IOBase, ary: list, with_length=False):
+    write_array(f, ary, write_uint8, with_length=with_length)
 
 
-def write_int32_array(file, ary, with_length=False):
-    write_array(file, ary, write_int32, with_length=with_length)
+def write_int32_array(f: IOBase, ary: list, with_length=False):
+    write_array(f, ary, write_int32, with_length=with_length)
 
 
-def write_str(file, string):
+def write_str(f: IOBase, string: str):
     num = len(string) + 1
     utf16 = not string.isascii()
-    write_int32(file, num * (1 - 2 * utf16))
+    write_int32(f, num * (1 - 2 * utf16))
     encode = 'utf-16-le' if utf16 else 'ascii'
     str_byte = string.encode(encode)
-    file.write(str_byte + b'\x00' * (1 + utf16))
+    f.write(str_byte + b'\x00' * (1 + utf16))
 
 
-def write_null(f):
+def write_null(f: IOBase):
     write_uint32(f, 0)
 
 
-def write_null_array(f, len):
+def write_null_array(f: IOBase, len):
     write_uint32_array(f, [0]*len)
 
 
-def compare(file1, file2):
+def compare(file1: str, file2: str):
     f1 = open(file1, 'rb')
     f2 = open(file2, 'rb')
     print(f'Comparing {file1} and {file2}...')
@@ -234,7 +235,6 @@ def compare(file1, file2):
     f1_size = get_size(f1)
     f2_size = get_size(f2)
 
-    i = 0
     f1_bin = f1.read()
     f2_bin = f2.read()
     f1.close()
@@ -244,10 +244,10 @@ def compare(file1, file2):
         print('Same data!')
         return
 
-    i = -1
+    i = 0
     for b1, b2 in zip(f1_bin, f2_bin):
-        i += 1
         if b1 != b2:
             break
+        i += 1
 
     raise RuntimeError(f'Not same :{i}')

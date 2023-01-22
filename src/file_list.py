@@ -28,7 +28,7 @@ import os
 from io_util import get_ext
 
 
-def remove_quotes(string):
+def remove_quotes(string: str) -> str:
     if string[-1] == '\n':
         string = string[:-1]
     if string in ['', '"']:
@@ -40,7 +40,7 @@ def remove_quotes(string):
     return string
 
 
-def get_file_list_from_txt(file):
+def get_file_list_from_txt(file: str) -> tuple[str, list[str]]:
     with open(file, 'r') as f:
         lines = f.readlines()
 
@@ -54,7 +54,7 @@ def get_file_list_from_txt(file):
     return directory, file_list
 
 
-def get_base_folder(p):
+def get_base_folder(p: str) -> tuple[str, str]:
     folder = os.path.basename(p)
     directory = os.path.dirname(p)
     if folder == "":
@@ -65,7 +65,7 @@ def get_base_folder(p):
     return directory, folder
 
 
-def get_file_list_from_folder(folder, ext=None, include_base=True):
+def get_file_list_from_folder(folder: str, ext: str = None, include_base=True):
     file_list = get_file_list_rec(folder)
     if ext is not None:
         file_list = [f for f in file_list if get_ext(f) in ext]
@@ -77,7 +77,7 @@ def get_file_list_from_folder(folder, ext=None, include_base=True):
     return directory, file_list
 
 
-def get_file_list_rec(folder):
+def get_file_list_rec(folder: str) -> list[str]:
     file_list = []
     for file in sorted(os.listdir(folder)):
         file_path = os.path.join(folder, file)
