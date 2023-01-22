@@ -28,8 +28,11 @@ class PackageFlags(IntEnum):
 
 
 class ObjectFlags(IntEnum):
+    RF_Public = 1
     RF_Standalone = 2  # Main object in the asset
     RF_Transactional = 8
+    RF_ClassDefaultObject = 0x10  # Default object
+    RF_ArchetypeObject = 0x20  # Template for another object
 
 
 class UassetFileSummary:
@@ -142,7 +145,7 @@ class UassetFileSummary:
         self.empty_engine_version = f.read(14 * (1 + (version >= '4.8')))
 
         # CompressionFlags, CompressedChunks
-        io_util.read_null_array(f, 2)
+        self.compression_info = f.read(8)
 
         """
         PackageSource:
@@ -151,18 +154,19 @@ class UassetFileSummary:
         """
         self.package_source = io_util.read_uint32(f)
 
-        io_util.read_null(f)  # AdditionalPackagesToCook (zero length array)
+        # AdditionalPackagesToCook (zero length array)
+        io_util.read_null(f, msg="AdditionalPackagesToCook is unsupported.")
+
         if version <= '4.13':
             io_util.read_null(f)  # NumTextureAllocations
         self.asset_registry_data_offset = io_util.read_uint32(f)
         self.bulk_offset = io_util.read_uint32(f)  # .uasset + .uexp - 4 (BulkDataStartOffset)
 
-        """
-        - WorldTileInfoDataOffset
-        - ChunkIDs (zero length array)
-        - ChunkID
-        """
-        io_util.read_null_array(f, 3)
+        # WorldTileInfoDataOffset
+        io_util.read_null(f, msg="WorldTileInfoDataOffset is unsupported.")
+
+        # ChunkIDs (zero length array), ChunkID
+        io_util.read_null_array(f, 2, msg="ChunkIDs are unsupported.")
 
         if version <= '4.13':
             return
@@ -213,7 +217,7 @@ class UassetFileSummary:
         io_util.write_uint32(f, self.generation_count)
         io_util.write_uint32_array(f, self.generation_data)
         f.write(self.empty_engine_version)
-        io_util.write_null_array(f, 2)
+        f.write(self.compression_info)
         io_util.write_uint32(f, self.package_source)
         io_util.write_null(f)
         if version <= '4.13':
@@ -272,12 +276,12 @@ class UassetImport(ctypes.LittleEndianStructure):
     _pack_ = 1
     _fields_ = [  # 28 bytes
         ("class_package_name_id", ctypes.c_uint32),  # name id for the file path of the class
-        ("class_package_name_number", ctypes.c_uint32),  # null
+        ("class_package_name_number", ctypes.c_uint32),  # a value for FName
         ("class_name_id", ctypes.c_uint32),  # name id for the class
-        ("class_name_number", ctypes.c_uint32),  # null
+        ("class_name_number", ctypes.c_uint32),  # a value for FName
         ("class_package_import_id", ctypes.c_int32),  # import id for the class
         ("name_id", ctypes.c_uint32),  # name id for the object name
-        ("package_name_id", ctypes.c_uint32),  # name id for the package
+        ("name_number", ctypes.c_uint32),  # a value for FName
     ]
 
     @staticmethod
@@ -298,13 +302,11 @@ class UassetImport(ctypes.LittleEndianStructure):
         self.name = name_list[self.name_id]
         self.class_name = name_list[self.class_name_id]
         self.class_package_name = name_list[self.class_package_name_id]
-        self.package_name = name_list[self.package_name_id]
         return self.name
 
     def print(self, padding=2):
         pad = ' ' * padding
         print(pad + self.name)
-        print(pad + '  file: ' + self.package_name)
         print(pad + '  class: ' + self.class_name)
         print(pad + '  class_file: ' + self.class_package_name)
 
@@ -333,7 +335,7 @@ class UassetExport:
     Notes:
         UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/ObjectResource.cpp
     """
-    TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D"]
+    TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D", "ShadowMapTexture2D"]
 
     def __init__(self, f: IOBase, version: VersionInfo):
         self.object = None  # The actual data will be stored here
@@ -396,8 +398,15 @@ class UassetExport:
         self.class_name = imports[-self.class_import_id-1].name
         self.super_name = imports[-self.super_import_id-1].name
 
-    def is_main(self):
+    def is_base(self):
+        return (self.object_flags & ObjectFlags.RF_ArchetypeObject > 0
+                or self.object_flags & ObjectFlags.RF_ClassDefaultObject > 0)
+
+    def is_standalone(self):
         return self.object_flags & ObjectFlags.RF_Standalone > 0
+
+    def is_public(self):
+        return self.object_flags & ObjectFlags.RF_Public > 0
 
     def is_texture(self):
         return self.class_name in UassetExport.TEXTURE_CLASSES
@@ -412,7 +421,10 @@ class UassetExport:
         print(pad + f'  super: {self.super_name}')
         print(pad + f'  size: {self.size}')
         print(pad + f'  offset: {self.offset}')
-        print(pad + f'  main object: {self.is_main()}')
+        print(pad + f'  is public: {self.is_public()}')
+        print(pad + f'  is standalone: {self.is_standalone()}')
+        print(pad + f'  is base: {self.is_base()}')
+        print(pad + f'  object flags: {self.object_flags}')
 
 
 class Uasset:
@@ -469,7 +481,10 @@ class Uasset:
                 print('Exports')
                 list(map(lambda x: x.print(), self.exports))
 
-            io_util.read_null_array(f, self.header.export_count)
+            # read depends map
+            if self.version not in ['4.15', '4.14']:
+                io_util.check(f.tell(), self.header.depends_offset, msg="Invalid depends offset value.")
+            self.depends_map = io_util.read_int32_array(f, len=self.header.export_count)
 
             # read asset registry data
             io_util.check(self.header.asset_registry_data_offset, f.tell())
@@ -553,7 +568,8 @@ class Uasset:
             if self.version not in ['4.15', '4.14']:
                 self.header.depends_offset = f.tell()
 
-            io_util.write_null_array(f, self.header.export_count)
+            # write depends map
+            io_util.write_int32_array(f, self.depends_map)
 
             # write asset registry data
             self.header.asset_registry_data_offset = f.tell()
@@ -600,13 +616,17 @@ class Uasset:
         self.header.uasset_size += get_size(new_name) - get_size(old_name)
 
     def get_main_export(self) -> UassetExport:
-        main_list = [exp for exp in self.exports if exp.is_main()]
-        if len(main_list) != 1:
-            raise RuntimeError("Failed to detect the main export object.")
+        main_list = [exp for exp in self.exports if exp.is_standalone()]
+        if len(main_list) == 0:
+            return None
         return main_list[0]
 
     def get_main_class_name(self):
-        return self.get_main_export().class_name
+        main_obj = self.get_main_export()
+        if main_obj is None:
+            return "None"
+        else:
+            return main_obj.class_name
 
     def has_uexp(self):
         return self.version >= '4.16'
@@ -675,7 +695,7 @@ class Uasset:
         f = self.ubulk_io
         if rb:
             size = io_util.get_size(f)
-            io_util.check(size, f.tell())
+            io_util.check(f.tell(), size)
         else:
             if not self.has_uexp():
                 f.seek(0)

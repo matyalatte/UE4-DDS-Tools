@@ -120,15 +120,16 @@ class Utexture:
         f.seek(start_offset)
         self.unk = f.read(s)
 
-        # read meta data
+        # UTexture::SerializeCookedPlatformData
         self.pixel_format_name_id = io_util.read_uint64(f)
-        self.offset_to_end_offset = f.tell()
-        self.end_offset = io_util.read_uint32(f)  # Offset to the end of this object
+        self.skip_offset_location = f.tell()  # offset to self.skip_offset
+        self.skip_offset = io_util.read_uint32(f)  # Offset to the end of this object
         if self.version >= '4.20':
-            io_util.read_null(f)
+            io_util.read_null(f)  # ?
         if self.version >= '5.0':
-            io_util.read_null_array(f, 4)
+            self.placeholder = f.read(16)  # PlaceholderDerivedData
 
+        # FTexturePlatformData::SerializeCooked (SerializePlatformData)
         self.original_width = io_util.read_uint32(f)
         self.original_height = io_util.read_uint32(f)
         self.__read_packed_data(io_util.read_uint32(f))  # PlatformData->PackedData
@@ -229,12 +230,12 @@ class Utexture:
 
         # write meta data
         io_util.write_uint64(f, self.pixel_format_name_id)
-        self.offset_to_end_offset = f.tell()
-        f.seek(4, 1)  # for self.end_offset. write here later
+        self.skip_offset_location = f.tell()
+        f.seek(4, 1)  # for self.skip_offset. write here later
         if self.version >= '4.20':
             io_util.write_null(f)
         if self.version >= '5.0':
-            io_util.write_null_array(f, 4)
+            f.write(self.placeholder)
 
         io_util.write_uint32(f, self.original_width)
         io_util.write_uint32(f, self.original_height)
@@ -278,17 +279,17 @@ class Utexture:
             io_util.write_null(f)
 
         if self.version >= '5.0':
-            new_end_offset = f.tell() - self.offset_to_end_offset
+            self.skip_offset = f.tell() - self.skip_offset_location
         else:
-            new_end_offset = f.tell() + uasset_size
+            self.skip_offset = f.tell() + uasset_size
         io_util.write_uint64(f, self.none_name_id)
 
         if self.is_light_map:
             io_util.write_uint32(f, self.light_map_flags)
 
         current = f.tell()
-        f.seek(self.offset_to_end_offset)
-        io_util.write_uint32(f, new_end_offset)
+        f.seek(self.skip_offset_location)
+        io_util.write_uint32(f, self.skip_offset)
         f.seek(current)
         self.uexp_size = current - start_offset
 

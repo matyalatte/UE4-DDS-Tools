@@ -1,8 +1,11 @@
+ver 0.4.5
+- Supported ShadowMapTexture2D
+- Fixed an error when loading non-zero values for FObjectExport.TemplateIndex
+
 ver 0.4.4
 - Supported UE4.0 ~ 4.9.
 - Added "Skip non-texture assets" option.
 - Fixed an error when loading assets that have multiple textures.
-- Fixed an error when loading non-zero values for FObjectExport.TemplateIndex
 - Improved check mode (removed uneccessary versions from the check list)
 - Removed parse errors for unsupported pixel formats
 - Refined codes

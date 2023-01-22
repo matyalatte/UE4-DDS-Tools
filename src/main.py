@@ -14,7 +14,7 @@ from directx.dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_base_folder
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = '0.4.4'
+TOOL_VERSION = '0.4.5'
 
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
@@ -111,12 +111,6 @@ def search_texture_file(file_base, ext_list, index=None):
 
 def inject(folder, file, args, texture_file=None, texconv=None):
     '''Inject mode (inject dds into the asset)'''
-    if texture_file is None:
-        texture_file = args.texture
-    file_base, ext = os.path.splitext(texture_file)
-    ext = ext[1:].lower()
-    if ext not in TEXTURES:
-        raise RuntimeError(f'Unsupported texture format. ({ext})')
 
     # Read uasset
     uasset_file = os.path.join(folder, file)
@@ -129,6 +123,13 @@ def inject(folder, file, args, texture_file=None, texconv=None):
             print("Skipped a non-texture asset. " + desc)
             return
         raise RuntimeError("This uasset has no textures. " + desc)
+
+    if texture_file is None:
+        texture_file = args.texture
+    file_base, ext = os.path.splitext(texture_file)
+    ext = ext[1:].lower()
+    if ext not in TEXTURES:
+        raise RuntimeError(f'Unsupported texture format. ({ext})')
 
     textures = asset.get_texture_list()
     ext_list = [ext] + TEXTURES
@@ -192,10 +193,10 @@ def export(folder, file, args, texconv=None):
             file_name = os.path.splitext(new_file)[0] + f'.{i}.dds'
         else:
             file_name = os.path.splitext(new_file)[0] + '.dds'
-        
+
         if args.no_mipmaps:
             tex.remove_mipmaps()
-        
+
         # Save texture
         dds = tex.get_dds()
         if args.export_as == 'dds':
