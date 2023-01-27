@@ -480,6 +480,7 @@ class Uasset:
             if verbose:
                 print('Exports')
                 list(map(lambda x: x.print(), self.exports))
+                print(f'Main Export Class: {self.get_main_class_name()}')
 
             # read depends map
             if self.version not in ['4.15', '4.14']:
@@ -616,10 +617,13 @@ class Uasset:
         self.header.uasset_size += get_size(new_name) - get_size(old_name)
 
     def get_main_export(self) -> UassetExport:
-        main_list = [exp for exp in self.exports if exp.is_standalone()]
-        if len(main_list) == 0:
-            return None
-        return main_list[0]
+        main_list = [exp for exp in self.exports if (exp.is_public() and not exp.is_base())]
+        standalone_list = [exp for exp in main_list if exp.is_standalone()]
+        if len(standalone_list) > 0:
+            return standalone_list[0]
+        if len(main_list) > 0:
+            return main_list[0]
+        return None
 
     def get_main_class_name(self):
         main_obj = self.get_main_export()

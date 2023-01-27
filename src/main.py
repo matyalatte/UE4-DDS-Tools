@@ -19,9 +19,13 @@ TOOL_VERSION = '0.4.5'
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
 
+# Supported file extensions.
 TEXTURES = ['dds', 'tga', 'hdr']
 if is_windows():
     TEXTURES += ["bmp", "jpg", "png"]
+
+# Supported image filters.
+IMAGE_FILTERS = ["point", "linear", "cubic"]
 
 
 def get_args():
@@ -37,7 +41,7 @@ def get_args():
                         help='Format for export mode. dds, tga, png, jpg, and bmp are available.')
     parser.add_argument('--convert_to', default='tga', type=str,
                         help=("Format for convert mode."
-                              "tga, hdr, png, jpg, bmp, or DXGI formats (e.g. BC1_UNORM) are available."))
+                              "tga, hdr, png, jpg, bmp, and DXGI formats (e.g. BC1_UNORM) are available."))
     parser.add_argument('--no_mipmaps', action='store_true',
                         help='Force no mips to dds and uasset.')
     parser.add_argument('--force_uncompressed', action='store_true',
@@ -46,6 +50,9 @@ def get_args():
                         help="Store temporary files in the tool's directory.")
     parser.add_argument('--skip_non_texture', action='store_true',
                         help="Disable errors about non-texture assets.")
+    parser.add_argument('--image_filter', default='linear', type=str,
+                        help=("Image filter for mip generation."
+                              "point, linear, and cubic are available."))
     return parser.parse_args()
 
 
@@ -154,6 +161,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
                 temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
                                                   out=temp_dir, export_as_cubemap=tex.is_cube,
                                                   no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
+                                                  image_filter=arg.image_filter,
                                                   allow_slow_codec=True, verbose=False)
                 dds = DDS.load(temp_dds)
 
@@ -280,6 +288,7 @@ def convert(folder, file, args, texconv=None):
         texconv.convert_to_dds(src_file, DXGI_FORMAT["DXGI_FORMAT_" + args.convert_to],
                                out=os.path.dirname(new_file), export_as_cubemap=False,
                                no_mip=args.no_mipmaps,
+                               image_filter=arg.image_filter,
                                allow_slow_codec=True, verbose=False)
     elif get_ext(file) == "dds":
         # dds to non-dds
@@ -333,7 +342,9 @@ if __name__ == '__main__':
     if args.version not in UE_VERSIONS:
         raise RuntimeError(f'Unsupported version. ({args.version})')
     if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
-        raise RuntimeError(f'Unsupported format to export ({args.export_as})')
+        raise RuntimeError(f'Unsupported format to export. ({args.export_as})')
+    if args.image_filter.lower() not in IMAGE_FILTERS:
+        raise RuntimeError(f'Unsupported image filter. ({args.image_filter})')
 
     # load texconv
     texconv = None

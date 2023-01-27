@@ -43,7 +43,7 @@ class VersionInfo:
         else:
             return VersionInfo(self.custom, base_int=self.base_int)
 
-    def __eq__(self, v: str):  # self == item
+    def __eq__(self, v: str):  # self == string
         return v in [self.base, self.custom]
 
     def __contains__(self, versions: list[str]):  # self in list

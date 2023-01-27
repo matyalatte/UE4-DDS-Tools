@@ -1,6 +1,9 @@
 ver 0.4.5
 - Supported ShadowMapTexture2D
+- Added filter options (Possible to use bicubic interpolation for mip generation)
 - Fixed an error when loading non-zero values for FObjectExport.TemplateIndex
+- Updated GUI to v0.2.2
+- GUI can save output path for each mode
 
 ver 0.4.4
 - Supported UE4.0 ~ 4.9.
