@@ -161,7 +161,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
                 temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
                                                   out=temp_dir, export_as_cubemap=tex.is_cube,
                                                   no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
-                                                  image_filter=arg.image_filter,
+                                                  image_filter=args.image_filter,
                                                   allow_slow_codec=True, verbose=False)
                 dds = DDS.load(temp_dds)
 
@@ -288,7 +288,7 @@ def convert(folder, file, args, texconv=None):
         texconv.convert_to_dds(src_file, DXGI_FORMAT["DXGI_FORMAT_" + args.convert_to],
                                out=os.path.dirname(new_file), export_as_cubemap=False,
                                no_mip=args.no_mipmaps,
-                               image_filter=arg.image_filter,
+                               image_filter=args.image_filter,
                                allow_slow_codec=True, verbose=False)
     elif get_ext(file) == "dds":
         # dds to non-dds
