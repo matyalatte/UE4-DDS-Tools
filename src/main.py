@@ -257,7 +257,7 @@ def check_version(folder, file, args, texconv=None):
 
     # Show the result.
     if len(passed_version) == 0:
-        print('Failed for all supported versions. You can not mod the asset with this tool.')
+        raise RuntimeError('Failed for all supported versions. You can not mod the asset with this tool.')
     elif len(passed_version) == 1 and ("~" not in passed_version[0]):
         print(f'The version is {passed_version[0]}.')
     else:
@@ -298,19 +298,12 @@ def convert(folder, file, args, texconv=None):
         texconv.convert_nondds(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
 
 
-if __name__ == '__main__':
-    start_time = time.time()
-
-    print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')
-
-    # get arguments
-    args = get_args()
+def main(args, config={}, texconv=None):
     file = args.file
     texture_file = args.texture
     mode = args.mode
 
     # get config
-    config = get_config()
     if (args.version is None) and ('version' in config) and (config['version'] is not None):
         args.version = config['version']
 
@@ -347,9 +340,9 @@ if __name__ == '__main__':
         raise RuntimeError(f'Unsupported image filter. ({args.image_filter})')
 
     # load texconv
-    texconv = None
     if (mode == "export" and args.export_as != "dds") or mode in ["inject", "convert"]:
-        texconv = Texconv()
+        if texconv is None:
+            texconv = Texconv()
 
     func = mode_functions[mode]
 
@@ -393,5 +386,16 @@ if __name__ == '__main__':
             for file in file_list:
                 func(folder, file, args, texconv=texconv)
                 flush_stdout()
-    if mode != "check":
+
+
+if __name__ == '__main__':
+    start_time = time.time()
+
+    print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')
+
+    args = get_args()
+    config = get_config()
+    main(args, config=config)
+
+    if args.mode != "check":
         print(f'Success! Run time (s): {(time.time() - start_time)}')

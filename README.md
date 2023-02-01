@@ -1,5 +1,6 @@
 [![discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/Qx2Ff3MByF)
-![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
+![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/build.yml/badge.svg)
+![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # UE4-DDS-Tools ver0.4.5

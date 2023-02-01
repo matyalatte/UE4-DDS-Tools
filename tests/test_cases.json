@@ -1,0 +1,48 @@
+{
+    "valid": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.18",
+            "version": "4.18"
+        },
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27",
+            "version": "4.27"
+        },
+        {
+            "file": "external\\Matya-Uasset-Samples\\5.0",
+            "version": "5.0"
+        }
+    ],
+    "folders": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\5.0",
+            "version": "5.0"
+        }
+    ],
+    "files": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27\\T_Worm_A.uasset",
+            "version": "4.27"
+        }
+    ],
+    "options": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27\\T_Worm_A.uasset",
+            "version": "4.27",
+            "no_mipmaps": true
+        },
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27\\T_Worm_A.uasset",
+            "version": "4.27",
+            "export_as": "png",
+            "image_filter": "cubic",
+            "force_uncompressed": true
+        },
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27\\T_Worm_A.uasset",
+            "version": "4.27",
+            "export_as": "tga",
+            "image_filter": "cubic"
+        }
+    ]
+}

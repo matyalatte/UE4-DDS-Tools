@@ -1,6 +1,9 @@
 #python
 *__pycache__
 python
+.pytest_cache
+.coverage
+htmlcov
 
 #generated files
 *.exe
@@ -15,14 +18,12 @@ converted
 test
 
 #for testing
-*test*
-*sample*
 *.bat
 !bat/*.bat
 *.sh
-*.cfg
 *.txt
-!chagelog.txt
+!changelog.txt
+tests/local_test_cases.json
 
 #texture files
 *.dds

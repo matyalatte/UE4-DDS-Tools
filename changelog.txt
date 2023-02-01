@@ -5,6 +5,7 @@ ver 0.4.5
 - Updated GUI to v0.2.2
 - GUI can save output path for each mode
 - Improved error massages for unsupported dds files
+- Added tests
 
 ver 0.4.4
 - Supported UE4.0 ~ 4.9.

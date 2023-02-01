@@ -27,8 +27,7 @@ jobs:
         shell: bash
         
       - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      - run: git submodule update --init --recursive external/Texconv-Custom-DLL
       
       - name: Download embeddable python
         run: |
