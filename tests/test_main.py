@@ -81,3 +81,22 @@ def test_options(json_args):
     args.mode = "inject"
     main(args=args, texconv=util.get_texconv())
     shutil.rmtree("test_out")
+
+
+@pytest.mark.parametrize("json_args", util.get_test_cases("files"))
+def test_offset_data(json_args):
+    """Test if the tool can save offset data correctly."""
+    args = util.Args(json_args)
+    args.mode = "export"
+    args.export_as = "png"
+    args.force_uncompressed = True
+    main(args=args, texconv=util.get_texconv())
+    uasset = os.path.basename(args.file)
+    texture = ".".join(uasset.split(".")[:-1])
+    args.texture = os.path.join("test_out", texture + "." + args.export_as)
+    args.mode = "inject"
+    main(args=args, texconv=util.get_texconv())
+    args.mode = "valid"
+    args.file = os.path.join("test_out", uasset)
+    main(args=args, texconv=util.get_texconv())
+    shutil.rmtree("test_out")

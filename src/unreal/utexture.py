@@ -83,9 +83,7 @@ class Utexture:
         if self.has_ubulk:
             f = self.uasset.get_ubulk_io(rb=True)
             for mip in self.mipmaps:
-                if mip.is_uexp:
-                    continue
-                mip.data = f.read(mip.data_size)
+                mip.read_ubulk(f)
 
         self.print(verbose)
 
@@ -125,7 +123,7 @@ class Utexture:
         self.skip_offset_location = f.tell()  # offset to self.skip_offset
         self.skip_offset = io_util.read_uint32(f)  # Offset to the end of this object
         if self.version >= '4.20':
-            io_util.read_null(f)  # ?
+            io_util.read_zero(f)  # ?
         if self.version >= '5.0':
             self.placeholder = f.read(16)  # PlaceholderDerivedData
 
@@ -136,8 +134,8 @@ class Utexture:
         self.__update_format(io_util.read_str(f))  # PixelFormatString
 
         if self.version == 'ff7r' and self.has_opt_data:
-            io_util.read_null(f)
-            io_util.read_null(f)
+            io_util.read_zero(f)
+            io_util.read_zero(f)
             f.seek(4, 1)  # NumMipsInTail ? (bulk map num + first_mip_to_serialize)
 
         self.first_mip_to_serialize = io_util.read_uint32(f)
@@ -157,7 +155,7 @@ class Utexture:
 
         if self.version >= '4.23':
             # bIsVirtual
-            io_util.read_null(f, msg='Virtual texture is unsupported.')
+            io_util.read_zero(f, msg='Virtual texture is unsupported.')
         self.none_name_id = io_util.read_uint64(f)
 
         if self.is_light_map:
@@ -233,7 +231,7 @@ class Utexture:
         self.skip_offset_location = f.tell()
         f.seek(4, 1)  # for self.skip_offset. write here later
         if self.version >= '4.20':
-            io_util.write_null(f)
+            io_util.write_zero(f)
         if self.version >= '5.0':
             f.write(self.placeholder)
 
@@ -244,8 +242,8 @@ class Utexture:
         io_util.write_str(f, self.pixel_format)
 
         if self.version == 'ff7r' and self.has_opt_data:
-            io_util.write_null(f)
-            io_util.write_null(f)
+            io_util.write_zero(f)
+            io_util.write_zero(f)
             io_util.write_uint32(f, ubulk_map_num + self.first_mip_to_serialize)
 
         io_util.write_uint32(f, self.first_mip_to_serialize)
@@ -255,7 +253,7 @@ class Utexture:
             # pack mipmaps in a mipmap object
             uexp_bulk = b''
             for mip in self.mipmaps:
-                mip.meta = True
+                mip.is_meta = True
                 if mip.is_uexp:
                     uexp_bulk = b''.join([uexp_bulk, mip.data])
             size = self.get_max_uexp_size()
@@ -276,7 +274,7 @@ class Utexture:
             mip.write(f, uasset_size)
 
         if self.version >= '4.23':
-            io_util.write_null(f)
+            io_util.write_zero(f)
 
         if self.version >= '5.0':
             self.skip_offset = f.tell() - self.skip_offset_location

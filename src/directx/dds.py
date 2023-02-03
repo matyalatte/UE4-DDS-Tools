@@ -247,6 +247,13 @@ class DDSHeader(c.LittleEndianStructure):
         else:
             return detected_dxgi
 
+    def is_compressed(self):
+        dxgi = self.get_format_as_str()
+        return "BC" in dxgi or "ASTC" in dxgi
+
+    def get_block_size(self):
+        return 4 if self.is_compressed() else 1
+
     def is_cube(self):
         return self.caps2[1] == 254
 
@@ -257,11 +264,11 @@ class DDSHeader(c.LittleEndianStructure):
         return is_hdr(self.dxgi_format.name)
 
     def is_normals(self):
-        dxgi = self.dxgi_format.name[12:]
+        dxgi = self.get_format_as_str()
         return 'BC5' in dxgi or dxgi == 'R8G8_UNORM'
 
     def get_format_as_str(self):
-        return self.dxgi_format.name
+        return self.dxgi_format.name[12:]
 
     def is_srgb(self):
         return 'SRGB' in self.dxgi_format.name
@@ -273,11 +280,11 @@ class DDSHeader(c.LittleEndianStructure):
         return self.fourCC not in UNCANONICAL_FOURCC
 
     def convertible_to_tga(self):
-        name = self.dxgi_format.name[12:]
+        name = self.get_format_as_str()
         return convertible_to_tga(name)
 
     def convertible_to_hdr(self):
-        name = self.dxgi_format.name[12:]
+        name = self.get_format_as_str()
         return convertible_to_hdr(name)
 
     def get_bpp(self):
@@ -289,7 +296,7 @@ class DDSHeader(c.LittleEndianStructure):
     def print(self):
         print(f'  width: {self.width}')
         print(f'  height: {self.height}')
-        print(f'  format: {self.dxgi_format.name[12:]}')
+        print(f'  format: {self.get_format_as_str()}')
         print(f'  mipmaps: {self.mipmap_num}')
         print(f'  cubemap: {self.is_cube()}')
 
@@ -315,18 +322,24 @@ class DDS:
             # calculate mipmap sizes
             mipmap_size = []
             height, width = header.height, header.width
+            block_size = header.get_block_size()
+
+            def cail(val, unit):
+                remain = val % unit
+                val += (unit - remain) * (remain != 0)
+                return val
+
             for i in range(mipmap_num):
                 _width, _height = width, height
-                if byte_per_pixel < 4:
+                if header.is_compressed():
                     # mipmap sizes should be multiples of 4
-                    _width += (4 - width % 4) * (width % 4 != 0)
-                    _height += (4 - height % 4) * (height % 4 != 0)
+                    _width = cail(width, block_size)
+                    _height = cail(height, block_size)
 
                 mipmap_size.append([_width, _height])
 
                 width, height = width // 2, height // 2
-                if byte_per_pixel < 4:
-                    width, height = max(4, width), max(4, height)
+                width, height = max(block_size, width), max(block_size, height)
 
             # read mipmaps
             mipmap_data = [b''] * mipmap_num
@@ -338,7 +351,7 @@ class DDS:
                         raise RuntimeError(
                             'The size of mipmap data is not int. This is unexpected.'
                         )
-                    data = f.read(int(size))
+                    data = io_util.read_buffer(f, int(size))
 
                     # store mipmap data
                     mipmap_data[i] = b''.join([mipmap_data[i], data])

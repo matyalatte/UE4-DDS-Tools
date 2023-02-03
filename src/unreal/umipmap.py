@@ -44,10 +44,13 @@ class Umipmap(ctypes.LittleEndianStructure):
 
     def __init__(self, version: VersionInfo):
         self.version = version
+        self.is_uexp = False
+        self.is_meta = False
+        self.is_upntl = False
 
     def update(self, data: bytes, size: int, is_uexp: bool):
         self.is_uexp = is_uexp
-        self.meta = False
+        self.is_meta = False
         self.data_size = len(data)
         self.data_size2 = len(data)
         self.data = data
@@ -58,7 +61,7 @@ class Umipmap(ctypes.LittleEndianStructure):
 
         # update bulk flags
         if self.is_uexp:
-            if self.meta:
+            if self.is_meta:
                 self.ubulk_flag = BulkDataFlags.BULKDATA_Unused
             else:
                 self.ubulk_flag = BulkDataFlags.BULKDATA_ForceInlinePayload
@@ -81,12 +84,12 @@ class Umipmap(ctypes.LittleEndianStructure):
         f.readinto(mip)
         mip.is_uexp = (mip.ubulk_flag & BulkDataFlags.BULKDATA_ForceInlinePayload > 0) or \
                       (mip.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0)
-        mip.meta = mip.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0
-        mip.upntl = mip.ubulk_flag & BulkDataFlags.BULKDATA_OptionalPayload > 0
-        if mip.upntl:
-            raise RuntimeError("Optional payload (.upntl) is unsupported.")
+        mip.is_meta = mip.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0
+        mip.is_upntl = mip.ubulk_flag & BulkDataFlags.BULKDATA_OptionalPayload > 0
+        if mip.is_upntl:
+            raise RuntimeError("Optional payload (.is_upntl) is unsupported.")
         if mip.is_uexp:
-            mip.data = f.read(mip.data_size)
+            mip.data = io_util.read_buffer(f, mip.data_size)
 
         if version == 'borderlands3':
             read_int = io_util.read_uint16
@@ -103,6 +106,11 @@ class Umipmap(ctypes.LittleEndianStructure):
         mip.pixel_num = mip.width * mip.height
         return mip
 
+    def read_ubulk(self, f: IOBase):
+        if self.is_uexp:
+            return
+        self.data = io_util.read_buffer(f, self.data_size)
+
     def print(self, padding: int = 2):
         pad = ' ' * padding
         print(pad + 'file: ' + 'uexp' * self.is_uexp + 'ubluk' * (not self.is_uexp))
@@ -117,14 +125,14 @@ class Umipmap(ctypes.LittleEndianStructure):
 
         if self.is_uexp:
             self.offset = uasset_size + f.tell() + 20
-            if self.meta:
+            if self.is_meta:
                 self.data_size = 0
                 self.data_size2 = 0
 
         self.offset_to_offset = f.tell() + 12
         f.write(self)
 
-        if self.is_uexp and not self.meta:
+        if self.is_uexp and not self.is_meta:
             f.write(self.data)
 
         if self.version == 'borderlands3':

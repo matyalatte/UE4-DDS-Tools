@@ -140,21 +140,23 @@ def read_const_uint32(f: IOBase, n: int, msg='Unexpected Value!'):
     check(const, n, f, msg)
 
 
-def read_null(f: IOBase, msg='Not NULL!'):
+def read_zero(f: IOBase, msg='Not NULL!'):
     read_const_uint32(f, 0, msg)
 
 
-def read_null_array(f: IOBase, len, msg='Not NULL!'):
+def read_zero_array(f: IOBase, len: int, msg='Not NULL!'):
     null = read_uint32_array(f, len=len)
     check(null, [0] * len, f, msg)
 
 
-def read_struct_array(f: IOBase, obj, len=None):
-    if len is None:
-        len = read_uint32(f)
-    objects = [obj() for i in range(len)]
-    list(map(f.readinto, objects))
-    return objects
+def read_buffer(f: IOBase, size: int):
+    end_offset = get_size(f)
+    if f.tell() + size > end_offset:
+        raise RuntimeError(
+            "There is no buffer that has specified size."
+            f" (Offset: {f.tell()}, Size: {size})"
+        )
+    return f.read(size)
 
 
 def write_uint64(f: IOBase, n: int):
@@ -219,12 +221,12 @@ def write_str(f: IOBase, string: str):
     f.write(str_byte + b'\x00' * (1 + utf16))
 
 
-def write_null(f: IOBase):
+def write_zero(f: IOBase):
     write_uint32(f, 0)
 
 
-def write_null_array(f: IOBase, len):
-    write_uint32_array(f, [0]*len)
+def write_zero_array(f: IOBase, len: int):
+    write_uint32_array(f, [0] * len)
 
 
 def compare(file1: str, file2: str):

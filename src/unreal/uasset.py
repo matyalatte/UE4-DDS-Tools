@@ -96,13 +96,13 @@ class UassetFileSummary:
 
         if version >= '5.1':
             # SoftObjectPaths
-            io_util.read_null(f, msg="Soft object paths are unsupported.")  # Count
+            io_util.read_zero(f, msg="Soft object paths are unsupported.")  # Count
             f.seek(4, 1)  # Offset (same as import_offset)
 
         if version >= '4.9':
             # GatherableTextData
-            io_util.read_null(f, msg="Gatherable text data is unsupported.")  # Count
-            io_util.read_null(f)  # Offset
+            io_util.read_zero(f, msg="Gatherable text data is unsupported.")  # Count
+            io_util.read_zero(f)  # Offset
 
         # Exports
         self.export_count = io_util.read_uint32(f)
@@ -117,18 +117,18 @@ class UassetFileSummary:
 
         if version >= '4.4' and version <= '4.14':
             # StringAssetReferencesCount
-            io_util.read_null(f, msg="String asset references are unsupported.")
+            io_util.read_zero(f, msg="String asset references are unsupported.")
             f.seek(4, 1)  # StringAssetReferencesOffset
         elif version >= '4.15':
             # SoftPackageReferencesCount
-            io_util.read_null(f, msg="Soft package references are unsupported.")
-            io_util.read_null(f)  # SoftPackageReferencesOffset
+            io_util.read_zero(f, msg="Soft package references are unsupported.")
+            io_util.read_zero(f)  # SoftPackageReferencesOffset
 
             # SearchableNamesOffset
-            io_util.read_null(f, msg="Searchable names are unsupported.")
+            io_util.read_zero(f, msg="Searchable names are unsupported.")
 
         # ThumbnailTableOffset
-        io_util.read_null(f, msg="Thumbnail table is unsupported.")
+        io_util.read_zero(f, msg="Thumbnail table is unsupported.")
 
         self.guid = f.read(16)  # GUID
 
@@ -155,18 +155,18 @@ class UassetFileSummary:
         self.package_source = io_util.read_uint32(f)
 
         # AdditionalPackagesToCook (zero length array)
-        io_util.read_null(f, msg="AdditionalPackagesToCook is unsupported.")
+        io_util.read_zero(f, msg="AdditionalPackagesToCook is unsupported.")
 
         if version <= '4.13':
-            io_util.read_null(f)  # NumTextureAllocations
+            io_util.read_zero(f)  # NumTextureAllocations
         self.asset_registry_data_offset = io_util.read_uint32(f)
         self.bulk_offset = io_util.read_uint32(f)  # .uasset + .uexp - 4 (BulkDataStartOffset)
 
         # WorldTileInfoDataOffset
-        io_util.read_null(f, msg="WorldTileInfoDataOffset is unsupported.")
+        io_util.read_zero(f, msg="WorldTileInfoDataOffset is unsupported.")
 
         # ChunkIDs (zero length array), ChunkID
-        io_util.read_null_array(f, 2, msg="ChunkIDs are unsupported.")
+        io_util.read_zero_array(f, 2, msg="ChunkIDs are unsupported.")
 
         if version <= '4.13':
             return
@@ -198,33 +198,33 @@ class UassetFileSummary:
         io_util.write_uint32(f, self.name_count)
         io_util.write_uint32(f, self.name_offset)
         if version >= '5.1':
-            io_util.write_null(f)
+            io_util.write_zero(f)
             io_util.write_uint32(f, self.import_offset)
         if version >= '4.9':
-            io_util.write_null_array(f, 2)
+            io_util.write_zero_array(f, 2)
         io_util.write_uint32(f, self.export_count)
         io_util.write_uint32(f, self.export_offset)
         io_util.write_uint32(f, self.import_count)
         io_util.write_uint32(f, self.import_offset)
         io_util.write_uint32(f, self.depends_offset)
         if version >= '4.4' and version <= '4.14':
-            io_util.write_null(f)
+            io_util.write_zero(f)
             io_util.write_uint32(f, self.asset_registry_data_offset)
         elif version >= '4.15':
-            io_util.write_null_array(f, 3)
-        io_util.write_null(f)
+            io_util.write_zero_array(f, 3)
+        io_util.write_zero(f)
         f.write(self.guid)
         io_util.write_uint32(f, self.generation_count)
         io_util.write_uint32_array(f, self.generation_data)
         f.write(self.empty_engine_version)
         f.write(self.compression_info)
         io_util.write_uint32(f, self.package_source)
-        io_util.write_null(f)
+        io_util.write_zero(f)
         if version <= '4.13':
-            io_util.write_null(f)
+            io_util.write_zero(f)
         io_util.write_uint32(f, self.asset_registry_data_offset)
         io_util.write_uint32(f, self.bulk_offset)
-        io_util.write_null_array(f, 3)
+        io_util.write_zero_array(f, 3)
 
         if version <= '4.13':
             return
@@ -489,7 +489,7 @@ class Uasset:
 
             # read asset registry data
             io_util.check(self.header.asset_registry_data_offset, f.tell())
-            io_util.read_null(f)  # zero length array?
+            io_util.read_zero(f)  # zero length array?
 
             if self.has_uexp():
                 # Preload dependencies (import and export ids that must be serialized before other exports)
@@ -574,7 +574,7 @@ class Uasset:
 
             # write asset registry data
             self.header.asset_registry_data_offset = f.tell()
-            io_util.write_null(f)
+            io_util.write_zero(f)
 
             # write preload dependencies
             self.header.preload_dependency_offset = f.tell()

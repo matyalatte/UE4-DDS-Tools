@@ -70,12 +70,12 @@ class Texconv:
 
         if dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical():
             raise RuntimeError(
-                f"DDS converter does NOT support {dds_header.dxgi_format.name[12:]}.\n"
+                f"DDS converter does NOT support {dds_header.get_format_as_str()}.\n"
                 "You should choose '.dds' as an export format."
             )
 
         if verbose:
-            print(f'DXGI_FORMAT: {dds_header.get_format_as_str()[12:]}')
+            print(f'DXGI_FORMAT: {dds_header.get_format_as_str()}')
 
         args = []
 

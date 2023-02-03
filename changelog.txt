@@ -1,10 +1,10 @@
 ver 0.4.5
 - Supported ShadowMapTexture2D
 - Added filter options (Possible to use bicubic interpolation for mip generation)
+- Updated GUI to v0.2.2 (GUI can save output path for each mode)
+- Improved error massages for dds files
+- Fixed a bug that the tool can't load uncompressed mipmaps correctly
 - Fixed an error when loading non-zero values for FObjectExport.TemplateIndex
-- Updated GUI to v0.2.2
-- GUI can save output path for each mode
-- Improved error massages for unsupported dds files
 - Added tests
 
 ver 0.4.4
