@@ -38,16 +38,12 @@ class VersionInfo:
             self.base_int = base_int
 
     def copy(self) -> "VersionInfo":
-        if self.custom is None:
-            return VersionInfo(self.base, base_int=self.base_int)
-        else:
-            return VersionInfo(self.custom, base_int=self.base_int)
+        new_ver = VersionInfo(self.base, base_int=self.base_int)
+        new_ver.custom = self.custom
+        return new_ver
 
     def __eq__(self, v: str):  # self == string
         return v in [self.base, self.custom]
-
-    def __contains__(self, versions: list[str]):  # self in list
-        return (self.base not in versions) and (self.custom not in versions)
 
     def __ne__(self, v: str):  # self != string
         return self.base != v and self.custom != v

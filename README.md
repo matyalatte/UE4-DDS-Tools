@@ -69,6 +69,15 @@ This tool can convert textures between the following file formats.
 > Note that Unreal Engine supports more [pixel formats](https://docs.unrealengine.com/5.0/en-US/API/Runtime/Core/EPixelFormat/).  
 > You will get `Unsupported pixel format.` errors for them.  
 
+## Supported Texture Classes
+
+- Texture2D
+- TextureCube
+- LightMapTexture2D
+- ShadowMapTexture2D
+
+> Texture arrays, Volume textures, and virtual textures will be read as non-texture objects.
+
 ## Download
 
 Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)

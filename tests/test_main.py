@@ -1,3 +1,4 @@
+"""Tests for main.py"""
 import os
 import shutil
 
