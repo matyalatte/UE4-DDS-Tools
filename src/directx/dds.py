@@ -9,6 +9,7 @@ Notes:
 
 import ctypes as c
 from enum import IntEnum
+from io import IOBase
 import os
 
 from .dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
@@ -91,15 +92,15 @@ TGA_SUPPORTED = [
 ]
 
 
-def is_hdr(name):
+def is_hdr(name: str):
     return 'BC6' in name or 'FLOAT' in name or 'INT' in name or 'SNORM' in name
 
 
-def convertible_to_tga(name):
+def convertible_to_tga(name: str):
     return name in TGA_SUPPORTED
 
 
-def convertible_to_hdr(name):
+def convertible_to_hdr(name: str):
     return name in HDR_SUPPORTED
 
 
@@ -135,7 +136,7 @@ class DDSHeader(c.LittleEndianStructure):
         self.byte_per_pixel = 0
 
     @staticmethod
-    def read(f):
+    def read(f: IOBase) -> "DDSHeader":
         """Read dds header."""
         head = DDSHeader()
         f.readinto(head)
@@ -155,23 +156,30 @@ class DDSHeader(c.LittleEndianStructure):
                 raise RuntimeError(f"Unsupported DXGI format detected. ({fmt})\n" + ERR_MSG)
 
             head.dxgi_format = DXGI_FORMAT(fmt)  # dxgiFormat
-            io_util.read_const_uint32(f, 3)      # resourceDimension == 3
+            resource_dimension = io_util.read_uint32(f)
             f.seek(4, 1)                         # miscFlag == 0 or 4 (0 for 2D textures, 4 for Cube maps)
-            io_util.read_const_uint32(f, 1)      # arraySize == 1
+            array_size = io_util.read_uint32(f)
             f.seek(4, 1)                         # miscFlag2
+
+            # Raise errors for unsupported files
+            if resource_dimension == 2:
+                raise RuntimeError("1D textures are unsupported.")
+            if resource_dimension == 4:
+                raise RuntimeError("3D textures are unsupported.")
+            io_util.check(array_size, 1, msg="Texture arrays are unsupported.")
         else:
             head.dxgi_format = head.get_dxgi_from_header()
         head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
         return head
 
     @staticmethod
-    def read_from_file(file_name):
+    def read_from_file(file_name: str) -> "DDSHeader":
         """Read dds header from a file."""
         with open(file_name, 'rb') as f:
             head = DDSHeader.read(f)
         return head
 
-    def write(self, f):
+    def write(self, f: IOBase):
         f.write(self)
         # DXT10 header
         if self.fourCC == b'DX10':
@@ -181,7 +189,7 @@ class DDSHeader(c.LittleEndianStructure):
             io_util.write_uint32(f, 1)
             io_util.write_uint32(f, 0)
 
-    def update(self, width, height, mipmap_num, dxgi_format, is_cube):
+    def update(self, width, height, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube):
         self.width = width
         self.height = height
         self.mipmap_num = mipmap_num
@@ -215,7 +223,7 @@ class DDSHeader(c.LittleEndianStructure):
                 return False
         return True
 
-    def get_dxgi_from_header(self):
+    def get_dxgi_from_header(self) -> DXGI_FORMAT:
         '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
         # Try to detect DXGI from fourCC.
         if self.pfflags & PF_FLAGS.DDS_FOURCC:
@@ -239,6 +247,13 @@ class DDSHeader(c.LittleEndianStructure):
         else:
             return detected_dxgi
 
+    def is_compressed(self):
+        dxgi = self.get_format_as_str()
+        return "BC" in dxgi or "ASTC" in dxgi
+
+    def get_block_size(self):
+        return 4 if self.is_compressed() else 1
+
     def is_cube(self):
         return self.caps2[1] == 254
 
@@ -249,11 +264,11 @@ class DDSHeader(c.LittleEndianStructure):
         return is_hdr(self.dxgi_format.name)
 
     def is_normals(self):
-        dxgi = self.dxgi_format.name[12:]
+        dxgi = self.get_format_as_str()
         return 'BC5' in dxgi or dxgi == 'R8G8_UNORM'
 
     def get_format_as_str(self):
-        return self.dxgi_format.name
+        return self.dxgi_format.name[12:]
 
     def is_srgb(self):
         return 'SRGB' in self.dxgi_format.name
@@ -265,11 +280,11 @@ class DDSHeader(c.LittleEndianStructure):
         return self.fourCC not in UNCANONICAL_FOURCC
 
     def convertible_to_tga(self):
-        name = self.dxgi_format.name[12:]
+        name = self.get_format_as_str()
         return convertible_to_tga(name)
 
     def convertible_to_hdr(self):
-        name = self.dxgi_format.name[12:]
+        name = self.get_format_as_str()
         return convertible_to_hdr(name)
 
     def get_bpp(self):
@@ -281,19 +296,19 @@ class DDSHeader(c.LittleEndianStructure):
     def print(self):
         print(f'  width: {self.width}')
         print(f'  height: {self.height}')
-        print(f'  format: {self.dxgi_format.name[12:]}')
+        print(f'  format: {self.get_format_as_str()}')
         print(f'  mipmaps: {self.mipmap_num}')
         print(f'  cubemap: {self.is_cube()}')
 
 
 class DDS:
-    def __init__(self, header, mipmap_data, mipmap_size):
+    def __init__(self, header: DDSHeader, mipmap_data: list[bytes], mipmap_size: list[list[int]]):
         self.header = header
         self.mipmap_data = mipmap_data
         self.mipmap_size = mipmap_size
 
     @staticmethod
-    def load(file, verbose=False):
+    def load(file: str, verbose=False):
         if file[-3:] not in ['dds', 'DDS']:
             raise RuntimeError(f'Not DDS. ({file})')
         print('load: ' + file)
@@ -307,18 +322,24 @@ class DDS:
             # calculate mipmap sizes
             mipmap_size = []
             height, width = header.height, header.width
+            block_size = header.get_block_size()
+
+            def cail(val, unit):
+                remain = val % unit
+                val += (unit - remain) * (remain != 0)
+                return val
+
             for i in range(mipmap_num):
                 _width, _height = width, height
-                if byte_per_pixel < 4:
+                if header.is_compressed():
                     # mipmap sizes should be multiples of 4
-                    _width += (4 - width % 4) * (width % 4 != 0)
-                    _height += (4 - height % 4) * (height % 4 != 0)
+                    _width = cail(width, block_size)
+                    _height = cail(height, block_size)
 
                 mipmap_size.append([_width, _height])
 
                 width, height = width // 2, height // 2
-                if byte_per_pixel < 4:
-                    width, height = max(4, width), max(4, height)
+                width, height = max(block_size, width), max(block_size, height)
 
             # read mipmaps
             mipmap_data = [b''] * mipmap_num
@@ -330,7 +351,7 @@ class DDS:
                         raise RuntimeError(
                             'The size of mipmap data is not int. This is unexpected.'
                         )
-                    data = f.read(int(size))
+                    data = io_util.read_buffer(f, int(size))
 
                     # store mipmap data
                     mipmap_data[i] = b''.join([mipmap_data[i], data])
@@ -347,28 +368,8 @@ class DDS:
 
         return DDS(header, mipmap_data, mipmap_size)
 
-    @staticmethod
-    def utexture_to_DDS(utexture):
-        # make dds header
-        header = DDSHeader()
-        header.update(0, 0, 0, utexture.dxgi_format, utexture.is_cube)
-
-        mipmap_data = []
-        mipmap_size = []
-
-        # get mipmaps
-        for mip in utexture.mipmaps:
-            mipmap_data.append(mip.data)
-            mipmap_size.append([mip.width, mip.height])
-
-        # update header
-        header.width, header.height = utexture.get_max_size()
-        header.mipmap_num = len(mipmap_data)
-
-        return DDS(header, mipmap_data, mipmap_size)
-
     # save as dds
-    def save(self, file):
+    def save(self, file: str):
         print('save: {}'.format(file))
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):

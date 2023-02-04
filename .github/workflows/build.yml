@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.2.1
+  GUI_VERSION: v0.2.2
   PYTHON_VERSION: 3.9.12
 
 jobs:
@@ -27,8 +27,7 @@ jobs:
         shell: bash
         
       - uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      - run: git submodule update --init --recursive external/Texconv-Custom-DLL
       
       - name: Download embeddable python
         run: |

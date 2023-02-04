@@ -1,8 +1,9 @@
 [![discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/Qx2Ff3MByF)
-![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/main.yml/badge.svg)
+![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/build.yml/badge.svg)
+![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.4.3
+# UE4-DDS-Tools ver0.4.5
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -17,7 +18,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 ## Supported UE versions
 
 - UE5.0 ~ 5.1
-- UE4.10 ~ 4.27
+- UE4.0 ~ 4.27
 - FF7R
 - Borderlands3
 
@@ -67,6 +68,15 @@ This tool can convert textures between the following file formats.
 
 > Note that Unreal Engine supports more [pixel formats](https://docs.unrealengine.com/5.0/en-US/API/Runtime/Core/EPixelFormat/).  
 > You will get `Unsupported pixel format.` errors for them.  
+
+## Supported Texture Classes
+
+- Texture2D
+- TextureCube
+- LightMapTexture2D
+- ShadowMapTexture2D
+
+> Texture arrays, Volume textures, and virtual textures will be read as non-texture objects.
 
 ## Download
 

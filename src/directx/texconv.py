@@ -60,7 +60,8 @@ class Texconv:
         self.dll = ctypes.cdll.LoadLibrary(dll_path)
         self.com_initialized = com_initialized
 
-    def convert_dds_to(self, file, out=None, fmt="tga", cubemap_layout="h-cross", invert_normals=False, verbose=True):
+    def convert_dds_to(self, file: str, out=None, fmt="tga",
+                       cubemap_layout="h-cross", invert_normals=False, verbose=True):
         """Convert dds to non-dds."""
         dds_header = DDSHeader.read_from_file(file)
 
@@ -69,12 +70,12 @@ class Texconv:
 
         if dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical():
             raise RuntimeError(
-                f"DDS converter does NOT support {dds_header.dxgi_format.name[12:]}.\n"
+                f"DDS converter does NOT support {dds_header.get_format_as_str()}.\n"
                 "You should choose '.dds' as an export format."
             )
 
         if verbose:
-            print(f'DXGI_FORMAT: {dds_header.get_format_as_str()[12:]}')
+            print(f'DXGI_FORMAT: {dds_header.get_format_as_str()}')
 
         args = []
 
@@ -115,8 +116,9 @@ class Texconv:
             name = '.'.join(name.split('.')[:-1] + [fmt])
         return name
 
-    def convert_to_dds(self, file, dxgi_format, out=None,
+    def convert_to_dds(self, file: str, dxgi_format: DXGI_FORMAT, out=None,
                        invert_normals=False, no_mip=False,
+                       image_filter="LINEAR",
                        export_as_cubemap=False,
                        cubemap_layout="h-cross",
                        verbose=True, allow_slow_codec=False):
@@ -144,6 +146,8 @@ class Texconv:
         args = ['-f', dds_fmt]
         if no_mip:
             args += ['-m', '1']
+        if image_filter.upper() != "LINEAR":
+            args += ["-if", image_filter.upper()]
 
         if ("BC5" in dds_fmt or dds_fmt == "R8G8_UNORM") and invert_normals:
             args += ['-inverty']
@@ -162,14 +166,15 @@ class Texconv:
         name = os.path.join(out, base_name)
         return name
 
-    def convert_nondds(self, file, out=None, fmt="tga", verbose=True):
+    def convert_nondds(self, file: str, out=None, fmt="tga", verbose=True):
         """Convert non-dds to non-dds."""
         out = self.__texconv(file, ['-ft', fmt], out=out, verbose=verbose)
         name = os.path.join(out, os.path.basename(file))
         name = '.'.join(name.split('.')[:-1] + [fmt])
         return name
 
-    def __texconv(self, file, args, out=None, verbose=True, allow_slow_codec=False):
+    def __texconv(self, file: str, args: list[str],
+                  out=None, verbose=True, allow_slow_codec=False):
         """Run texconv."""
         if out is not None and isinstance(out, str):
             args += ['-o', out]
@@ -193,20 +198,22 @@ class Texconv:
 
         return out
 
-    def __cube_to_image(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
+    def __cube_to_image(self, file: str, new_file: str, args: list[str],
+                        cubemap_layout="h-cross", verbose=True):
         """Genarate an image from a cubemap with texassemble."""
         if cubemap_layout.endswith("-fnz"):
             cubemap_layout = cubemap_layout[:-4]
         args = [cubemap_layout] + args
         self.__texassemble(file, new_file, args, verbose=verbose)
 
-    def __image_to_cube(self, file, new_file, args, cubemap_layout="h-cross", verbose=True):
+    def __image_to_cube(self, file: str, new_file: str, args: list[str],
+                        cubemap_layout="h-cross", verbose=True):
         """Generate a cubemap from an image with texassemble."""
         cmd = "cube-from-" + cubemap_layout[0] + cubemap_layout[2]
         args = [cmd] + args
         self.__texassemble(file, new_file, args, verbose=verbose)
 
-    def __texassemble(self, file, new_file, args, verbose=True):
+    def __texassemble(self, file: str, new_file: str, args: list[str], verbose=True):
         """Run texassemble."""
         out = os.path.dirname(new_file)
         if out not in ['.', ''] and not os.path.exists(out):

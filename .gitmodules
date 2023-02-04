@@ -1,3 +1,6 @@
 [submodule "external/Texconv-Custom-DLL"]
 	path = external/Texconv-Custom-DLL
 	url = https://github.com/matyalatte/Texconv-Custom-DLL.git
+[submodule "external/Matya-Uasset-Samples"]
+	path = external/Matya-Uasset-Samples
+	url = https://github.com/matyalatte/Matya-Uasset-Samples.git

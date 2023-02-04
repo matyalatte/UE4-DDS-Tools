@@ -3,7 +3,7 @@
         {
             "label": "Inject",
             "window_name": "UE4-DDS-Tools (Inject mode)",
-            "command": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out% --version=%version%%options%",
+            "command": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out_inject% --version=%version%%options_inject%",
             "button": "Inject",
             "components": [
                 {
@@ -23,6 +23,7 @@
                 {
                     "type": "folder",
                     "label": "Output folder",
+                    "id": "out_inject",
                     "add_quotes": true,
                     "empty_message": "Drop a folder here!",
                     "default": "injected"
@@ -33,27 +34,30 @@
                     "items": [
                         "5.1", "5.0",
                         "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
-                        "4.16 ~ 4.19", "4.15", "4.14", "4.13 ~ 4.12", "4.11", "4.10",
+                        "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
+                        "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
                         "ff7r", "borderlands3"
                     ],
                     "values": [
                         "5.1", "5.0",
-                        "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "4.11", "4.10",
+                        "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.12", "4.11", "4.10",
+                        "4.9", "4.8", "4.7", "4.4", "4.3", "4.0",
                         "ff7r", "borderlands3"
                     ]
                 },
                 {
                     "type": "check_array",
                     "label": "Options",
-                    "items": ["No mipmaps", "Force uncompressed"],
-                    "values": [" --no_mipmaps", " --force_uncompressed"]
+                    "id": "options_inject",
+                    "items": ["No mipmaps", "Force uncompressed", "Skip non-texture assets", "Use cubic filter for mip generation"],
+                    "values": [" --no_mipmaps", " --force_uncompressed", " --skip_non_texture", " --image_filter=cubic"]
                 }
             ]
         },
         {
             "label": "Export",
             "window_name": "UE4-DDS-Tools (Export mode)",
-            "command": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out% --version=%version% --export_as=%fmt% %option%",
+            "command": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out_export% --version=%version% --export_as=%fmt% %options_export%",
             "button": "Export",
             "components": [
                 {
@@ -66,6 +70,7 @@
                 {
                     "type": "folder",
                     "label": "Output folder",
+                    "id": "out_export",
                     "add_quotes": true,
                     "empty_message": "Drop a folder here!",
                     "default": "exported"
@@ -76,12 +81,14 @@
                     "items": [
                         "5.1", "5.0",
                         "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
-                        "4.16 ~ 4.19", "4.15", "4.14", "4.13 ~ 4.12", "4.11", "4.10",
+                        "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
+                        "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
                         "ff7r", "borderlands3"
                     ],
                     "values": [
                         "5.1", "5.0",
-                        "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.13", "4.11", "4.10",
+                        "4.26", "4.23", "4.20", "4.16", "4.15", "4.14", "4.12", "4.11", "4.10",
+                        "4.9", "4.8", "4.7", "4.4", "4.3", "4.0",
                         "ff7r", "borderlands3"
                     ]
                 },
@@ -93,9 +100,11 @@
                     "default": 0
                 },
                 {
-                    "type": "check",
-                    "label": "No mipmaps",
-                    "value": "--no_mipmaps"
+                    "type": "check_array",
+                    "label": "Options",
+                    "id": "options_export",
+                    "items": ["No mipmaps", "Skip non-texture assets"],
+                    "values": [" --no_mipmaps", " --skip_non_texture"]
                 }
             ]
         },
@@ -118,7 +127,7 @@
         {
             "label": "Convert",
             "window_name": "UE4-DDS-Tools (Convert mode)",
-            "command": "python\\python.exe src\\main.py %file% --mode=convert --save_folder=%out% --convert_to=%fmt% %option%",
+            "command": "python\\python.exe src\\main.py %file% --mode=convert --save_folder=%out_convert% --convert_to=%fmt% %option%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
@@ -136,6 +145,7 @@
                 {
                     "type": "folder",
                     "label": "Output folder",
+                    "id": "out_convert",
                     "add_quotes": true,
                     "empty_message": "Drop a folder here!",
                     "default": "converted"

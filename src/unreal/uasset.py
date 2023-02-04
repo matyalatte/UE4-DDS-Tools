@@ -1,8 +1,10 @@
 '''Classes for .uasset'''
-import io
-import os
-import ctypes as c
+import ctypes
 from enum import IntEnum
+import io
+from io import IOBase
+import os
+
 import io_util
 from .crc import generate_hash, strcrc_deprecated
 from .utexture import Utexture
@@ -12,7 +14,7 @@ from .version import VersionInfo
 EXT = ['.uasset', '.uexp', '.ubulk']
 
 
-def get_all_file_path(file):
+def get_all_file_path(file: str) -> list[str]:
     '''Get all file paths for texture asset from a file path.'''
     base_name, ext = os.path.splitext(file)
     if ext not in EXT:
@@ -26,8 +28,11 @@ class PackageFlags(IntEnum):
 
 
 class ObjectFlags(IntEnum):
+    RF_Public = 1
     RF_Standalone = 2  # Main object in the asset
     RF_Transactional = 8
+    RF_ClassDefaultObject = 0x10  # Default object
+    RF_ArchetypeObject = 0x20  # Template for another object
 
 
 class UassetFileSummary:
@@ -39,10 +44,9 @@ class UassetFileSummary:
     TAG = b'\xC1\x83\x2A\x9E'  # Magic for uasset files
     TAG_SWAPPED = b'\x9E\x2A\x83\xC1'  # for big endian files
 
-    def __init__(self, f, version):
+    def __init__(self, f: IOBase, version: VersionInfo):
         self.file_name = f.name
 
-        # Tag
         tag = f.read(4)
         if tag == UassetFileSummary.TAG_SWAPPED:
             raise RuntimeError("Big endian files are unsupported.")
@@ -50,25 +54,33 @@ class UassetFileSummary:
 
         """
         File version
-        5: ~ 4.13
-        6: 4.14 ~ 4.27
-        7: 5.0 ~
+        positive: 3.x
+        -3: 4.0 ~ 4.6
+        -5: 4.7 ~ 4.9
+        -6: 4.10 ~ 4.13
+        -7: 4.14 ~ 4.27
+        -8: 5.0 ~
         """
-        self.file_version = -io_util.read_int32(f) - 1
-        if self.file_version < 5:
+        self.file_version = io_util.read_int32(f)
+        if self.file_version > -3:
             raise RuntimeError(f"An old file version detected. This is unsupported. ({self.file_version})")
-        if self.file_version > 7:
+        if self.file_version < -8:
             raise RuntimeError(f"Unsupported file version detected. ({self.file_version})")
-        io_util.check(self.file_version, 6 - (version <= '4.13') + (version >= '5.0'))
+        expected_version = -8 + (version <= '4.6') * 2 + (version <= '4.9') + (version <= '4.13') + (version <= '4.27')
+        io_util.check(self.file_version, expected_version)
 
-        """ version_info (16 or 20 bytes)
-        - LegacyUE3Version
-        - FileVersionUE.FileVersionUE4
-        - FileVersionUE.FileVersionUE5 (for UE5.0 ~)
+        # Version info. But most assets have zeros for these variables. (unversioning)
+        # So, we can't detect UE version from them.
+        self.ue3_ver = io_util.read_uint32(f)  # LegacyUE3Version
+        self.ue4_ver = io_util.read_uint32(f)  # FileVersionUE.FileVersionUE4
+        if version >= '5.0':
+            self.ue5_ver = io_util.read_uint32(f)  # FileVersionUE.FileVersionUE5
+
+        """ other version info
         - FileVersionLicenseeUE
         - CustomVersionContainer
         """
-        self.version_info = f.read(16 + 4 * (self.file_version >= 7))
+        self.version_info = f.read(8)
 
         self.uasset_size = io_util.read_uint32(f)  # TotalHeaderSize
         self.package_name = io_util.read_str(f)  # "None" for most of assets
@@ -82,14 +94,15 @@ class UassetFileSummary:
         self.name_count = io_util.read_uint32(f)
         self.name_offset = io_util.read_uint32(f)
 
-        if (version >= '5.1'):
+        if version >= '5.1':
             # SoftObjectPaths
-            io_util.read_null(f, msg="Soft object paths are unsupported.")  # Count
+            io_util.read_zero(f, msg="Soft object paths are unsupported.")  # Count
             f.seek(4, 1)  # Offset (same as import_offset)
 
-        # GatherableTextData
-        io_util.read_null(f, msg="Gatherable text data is unsupported.")  # Count
-        io_util.read_null(f)  # Offset
+        if version >= '4.9':
+            # GatherableTextData
+            io_util.read_zero(f, msg="Gatherable text data is unsupported.")  # Count
+            io_util.read_zero(f)  # Offset
 
         # Exports
         self.export_count = io_util.read_uint32(f)
@@ -102,20 +115,20 @@ class UassetFileSummary:
         # DependsOffset
         self.depends_offset = io_util.read_uint32(f)
 
-        if version <= '4.14':
+        if version >= '4.4' and version <= '4.14':
             # StringAssetReferencesCount
-            io_util.read_null(f, msg="String asset references are unsupported.")
+            io_util.read_zero(f, msg="String asset references are unsupported.")
             f.seek(4, 1)  # StringAssetReferencesOffset
-        else:
+        elif version >= '4.15':
             # SoftPackageReferencesCount
-            io_util.read_null(f, msg="Soft package references are unsupported.")
-            io_util.read_null(f)  # SoftPackageReferencesOffset
+            io_util.read_zero(f, msg="Soft package references are unsupported.")
+            io_util.read_zero(f)  # SoftPackageReferencesOffset
 
             # SearchableNamesOffset
-            io_util.read_null(f, msg="Searchable names are unsupported.")
+            io_util.read_zero(f, msg="Searchable names are unsupported.")
 
         # ThumbnailTableOffset
-        io_util.read_null(f, msg="Thumbnail table is unsupported.")
+        io_util.read_zero(f, msg="Thumbnail table is unsupported.")
 
         self.guid = f.read(16)  # GUID
 
@@ -127,11 +140,12 @@ class UassetFileSummary:
 
         """
         - SavedByEngineVersion (14 bytes)
-        - CompatibleWithEngineVersion (14 bytes)
-        - CompressionFlags
-        - CompressedChunks
+        - CompatibleWithEngineVersion (14 bytes) (4.8 ~ )
         """
-        io_util.read_null_array(f, 9)
+        self.empty_engine_version = f.read(14 * (1 + (version >= '4.8')))
+
+        # CompressionFlags, CompressedChunks
+        self.compression_info = f.read(8)
 
         """
         PackageSource:
@@ -140,27 +154,28 @@ class UassetFileSummary:
         """
         self.package_source = io_util.read_uint32(f)
 
-        io_util.read_null(f)  # AdditionalPackagesToCook (zero length array)
-        if self.file_version <= 5:
-            io_util.read_null(f)  # NumTextureAllocations
+        # AdditionalPackagesToCook (zero length array)
+        io_util.read_zero(f, msg="AdditionalPackagesToCook is unsupported.")
+
+        if version <= '4.13':
+            io_util.read_zero(f)  # NumTextureAllocations
         self.asset_registry_data_offset = io_util.read_uint32(f)
         self.bulk_offset = io_util.read_uint32(f)  # .uasset + .uexp - 4 (BulkDataStartOffset)
 
-        """
-        - WorldTileInfoDataOffset
-        - ChunkIDs (zero length array)
-        - ChunkID
-        """
-        io_util.read_null_array(f, 3)
+        # WorldTileInfoDataOffset
+        io_util.read_zero(f, msg="WorldTileInfoDataOffset is unsupported.")
 
-        if self.file_version <= 5:
+        # ChunkIDs (zero length array), ChunkID
+        io_util.read_zero_array(f, 2, msg="ChunkIDs are unsupported.")
+
+        if version <= '4.13':
             return
 
         # PreloadDependency
         self.preload_dependency_count = io_util.read_int32(f)
         self.preload_dependency_offset = io_util.read_uint32(f)
 
-        if self.file_version <= 6:
+        if version <= '4.27':
             return
 
         # Number of names that are referenced from serialized export data
@@ -169,48 +184,54 @@ class UassetFileSummary:
         # Location into the file on disk for the payload table of contents data
         self.payload_toc_offset = io_util.read_int64(f)
 
-    def write(self, f, version):
+    def write(self, f: IOBase, version: VersionInfo):
         f.write(UassetFileSummary.TAG)
-        io_util.write_int32(f, -self.file_version - 1)
+        io_util.write_int32(f, self.file_version)
+        io_util.write_uint32(f, self.ue3_ver)
+        io_util.write_uint32(f, self.ue4_ver)
+        if version >= '5.0':
+            io_util.write_uint32(f, self.ue5_ver)
         f.write(self.version_info)
         io_util.write_uint32(f, self.uasset_size)
         io_util.write_str(f, self.package_name)
         io_util.write_uint32(f, self.pkg_flags)
         io_util.write_uint32(f, self.name_count)
         io_util.write_uint32(f, self.name_offset)
-        if (version >= '5.1'):
-            io_util.write_null(f)
+        if version >= '5.1':
+            io_util.write_zero(f)
             io_util.write_uint32(f, self.import_offset)
-        io_util.write_null_array(f, 2)
+        if version >= '4.9':
+            io_util.write_zero_array(f, 2)
         io_util.write_uint32(f, self.export_count)
         io_util.write_uint32(f, self.export_offset)
         io_util.write_uint32(f, self.import_count)
         io_util.write_uint32(f, self.import_offset)
         io_util.write_uint32(f, self.depends_offset)
-        if version <= '4.14':
-            io_util.write_null(f)
+        if version >= '4.4' and version <= '4.14':
+            io_util.write_zero(f)
             io_util.write_uint32(f, self.asset_registry_data_offset)
-        else:
-            io_util.write_null_array(f, 3)
-        io_util.write_null(f)
+        elif version >= '4.15':
+            io_util.write_zero_array(f, 3)
+        io_util.write_zero(f)
         f.write(self.guid)
         io_util.write_uint32(f, self.generation_count)
         io_util.write_uint32_array(f, self.generation_data)
-        io_util.write_null_array(f, 9)
+        f.write(self.empty_engine_version)
+        f.write(self.compression_info)
         io_util.write_uint32(f, self.package_source)
-        io_util.write_null(f)
-        if self.file_version <= 5:
-            io_util.write_null(f)
+        io_util.write_zero(f)
+        if version <= '4.13':
+            io_util.write_zero(f)
         io_util.write_uint32(f, self.asset_registry_data_offset)
         io_util.write_uint32(f, self.bulk_offset)
-        io_util.write_null_array(f, 3)
+        io_util.write_zero_array(f, 3)
 
-        if self.file_version <= 5:
+        if version <= '4.13':
             return
         io_util.write_int32(f, self.preload_dependency_count)
         io_util.write_uint32(f, self.preload_dependency_offset)
 
-        if self.file_version <= 6:
+        if version <= '4.27':
             return
         io_util.write_uint32(f, self.referenced_names_count)
         io_util.write_int64(f, self.payload_toc_offset)
@@ -224,7 +245,7 @@ class UassetFileSummary:
         print(f'  export directory offset: {self.export_offset}')
         print(f'  number of imports: {self.import_count}')
         print(f'  import directory offset: {self.import_offset}')
-        print(f'  end offset of export: {self.depends_offset}')
+        print(f'  depends offset: {self.depends_offset}')
         print(f'  file length (uasset+uexp-4): {self.bulk_offset}')
         print(f'  official asset: {self.is_official()}')
 
@@ -245,7 +266,7 @@ class UassetFileSummary:
         self.package_source = crc
 
 
-class UassetImport(c.LittleEndianStructure):
+class UassetImport(ctypes.LittleEndianStructure):
     """Meta data for an object that is contained within another file. (FObjectImport)
 
     Notes:
@@ -254,39 +275,38 @@ class UassetImport(c.LittleEndianStructure):
 
     _pack_ = 1
     _fields_ = [  # 28 bytes
-        ("class_package_name_id", c.c_uint32),  # name id for the file path of the class
-        ("class_package_name_number", c.c_uint32),  # null
-        ("class_name_id", c.c_uint32),  # name id for the class
-        ("class_name_number", c.c_uint32),  # null
-        ("class_package_import_id", c.c_int32),  # import id for the class
-        ("name_id", c.c_uint32),  # name id for the object name
-        ("package_name_id", c.c_uint32),  # name id for the package
+        ("class_package_name_id", ctypes.c_uint32),  # name id for the file path of the class
+        ("class_package_name_number", ctypes.c_uint32),  # a value for FName
+        ("class_name_id", ctypes.c_uint32),  # name id for the class
+        ("class_name_number", ctypes.c_uint32),  # a value for FName
+        ("class_package_import_id", ctypes.c_int32),  # import id for the class
+        ("name_id", ctypes.c_uint32),  # name id for the object name
+        ("name_number", ctypes.c_uint32),  # a value for FName
     ]
 
     @staticmethod
-    def read(f, version):
+    def read(f: IOBase, version: VersionInfo) -> "UassetImport":
         imp = UassetImport()
+        imp.version = version
         f.readinto(imp)
         if version >= '5.0':
             imp.optional = io_util.read_uint32(f)  # bImportOptional
         return imp
 
-    def write(self, f, version):
+    def write(self, f: IOBase, version: VersionInfo):
         f.write(self)
         if version >= '5.0':
             io_util.write_uint32(f, self.optional)
 
-    def name_import(self, name_list):
+    def name_import(self, name_list: list[str]) -> str:
         self.name = name_list[self.name_id]
         self.class_name = name_list[self.class_name_id]
         self.class_package_name = name_list[self.class_package_name_id]
-        self.package_name = name_list[self.package_name_id]
         return self.name
 
     def print(self, padding=2):
         pad = ' ' * padding
         print(pad + self.name)
-        print(pad + '  file: ' + self.package_name)
         print(pad + '  class: ' + self.class_name)
         print(pad + '  class_file: ' + self.class_package_name)
 
@@ -315,13 +335,14 @@ class UassetExport:
     Notes:
         UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/ObjectResource.cpp
     """
-    TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D"]
+    TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D", "ShadowMapTexture2D"]
 
-    def __init__(self, f, version):
+    def __init__(self, f: IOBase, version: VersionInfo):
         self.object = None  # The actual data will be stored here
+
         self.class_import_id = io_util.read_int32(f)
         if version >= '4.14':
-            io_util.read_null(f)  # TemplateIndex
+            self.template_index = io_util.read_int32(f)  # TemplateIndex
         self.super_import_id = io_util.read_int32(f)
         self.outer_index = io_util.read_uint32(f)  # 0: main object, 1: not main
         self.name_id = io_util.read_uint32(f)
@@ -334,13 +355,28 @@ class UassetExport:
         self.offset = io_util.read_uint32(f)
 
         # packageguid and other flags.
-        self.remainings = f.read(64 - 4 * (version <= '4.10') - 4 * (version <= '4.15') - 20 * (version <= '4.13') +
-                                 4 * (version == '5.0') - 8 * (version >= '5.1'))
+        self.remainings = f.read(self.get_remainings_size(version))
 
-    def write(self, f, version):
+    @staticmethod
+    def get_remainings_size(version: VersionInfo) -> int:
+        sizes = [
+            ['4.2', 32],
+            ['4.10', 36],
+            ['4.13', 40],
+            ['4.15', 60],
+            ['4.27', 64],
+            ['5.0', 68]
+        ]
+        for ver, size in sizes:
+            if version <= ver:
+                return size
+        # 5.1 ~
+        return 56
+
+    def write(self, f: IOBase, version: VersionInfo):
         io_util.write_int32(f, self.class_import_id)
-        if version > '4.13':
-            io_util.write_null(f)
+        if version >= '4.14':
+            io_util.write_int32(f, self.template_index)
         io_util.write_int32(f, self.super_import_id)
         io_util.write_uint32(f, self.outer_index)
         io_util.write_uint32(f, self.name_id)
@@ -357,13 +393,20 @@ class UassetExport:
         self.size = size
         self.offset = offset
 
-    def name_export(self, imports, name_list):
+    def name_export(self, imports: list[UassetImport], name_list: list[str]):
         self.name = name_list[self.name_id]
         self.class_name = imports[-self.class_import_id-1].name
         self.super_name = imports[-self.super_import_id-1].name
 
-    def is_main(self):
+    def is_base(self):
+        return (self.object_flags & ObjectFlags.RF_ArchetypeObject > 0
+                or self.object_flags & ObjectFlags.RF_ClassDefaultObject > 0)
+
+    def is_standalone(self):
         return self.object_flags & ObjectFlags.RF_Standalone > 0
+
+    def is_public(self):
+        return self.object_flags & ObjectFlags.RF_Public > 0
 
     def is_texture(self):
         return self.class_name in UassetExport.TEXTURE_CLASSES
@@ -378,11 +421,14 @@ class UassetExport:
         print(pad + f'  super: {self.super_name}')
         print(pad + f'  size: {self.size}')
         print(pad + f'  offset: {self.offset}')
-        print(pad + f'  main object: {self.is_main()}')
+        print(pad + f'  is public: {self.is_public()}')
+        print(pad + f'  is standalone: {self.is_standalone()}')
+        print(pad + f'  is base: {self.is_base()}')
+        print(pad + f'  object flags: {self.object_flags}')
 
 
 class Uasset:
-    def __init__(self, file_path, version="ff7r", verbose=False):
+    def __init__(self, file_path: str, version: str = "ff7r", verbose=False):
         if not os.path.isfile(file_path):
             raise RuntimeError(f'Not File. ({file_path})')
 
@@ -434,12 +480,16 @@ class Uasset:
             if verbose:
                 print('Exports')
                 list(map(lambda x: x.print(), self.exports))
+                print(f'Main Export Class: {self.get_main_class_name()}')
 
-            io_util.read_null_array(f, self.header.export_count)
+            # read depends map
+            if self.version not in ['4.15', '4.14']:
+                io_util.check(f.tell(), self.header.depends_offset, msg="Invalid depends offset value.")
+            self.depends_map = io_util.read_int32_array(f, len=self.header.export_count)
 
             # read asset registry data
             io_util.check(self.header.asset_registry_data_offset, f.tell())
-            io_util.read_null(f)  # zero length array?
+            io_util.read_zero(f)  # zero length array?
 
             if self.has_uexp():
                 # Preload dependencies (import and export ids that must be serialized before other exports)
@@ -478,10 +528,14 @@ class Uasset:
             exp.object.write(valid=valid)
             offset = uexp_io.tell()
             exp.update(exp.object.uexp_size, offset)
+        self.uexp_size = uexp_io.tell()
+        for exp in self.exports:
+            if exp.is_texture():
+                exp.object.rewrite_offset_data()
         self.close_uexp_io(rb=False)
         self.close_ubulk_io(rb=False)
 
-    def save(self, file, valid=False):
+    def save(self, file: str, valid=False):
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
             io_util.mkdir(folder)
@@ -512,14 +566,15 @@ class Uasset:
             # skip exports part
             self.header.export_offset = f.tell()
             list(map(lambda x: x.write(f, self.version), self.exports))
-            if self.version != ['4.15', '4.14']:
+            if self.version not in ['4.15', '4.14']:
                 self.header.depends_offset = f.tell()
 
-            io_util.write_null_array(f, self.header.export_count)
+            # write depends map
+            io_util.write_int32_array(f, self.depends_map)
 
             # write asset registry data
             self.header.asset_registry_data_offset = f.tell()
-            io_util.write_null(f)
+            io_util.write_zero(f)
 
             # write preload dependencies
             self.header.preload_dependency_offset = f.tell()
@@ -548,7 +603,7 @@ class Uasset:
                 f.write(self.ubulk_bin)
                 f.write(UassetFileSummary.TAG)
 
-    def update_name_list(self, i, new_name):
+    def update_name_list(self, i: int, new_name: str):
         old_name = self.name_list[i]
         self.name_list[i] = new_name
         if self.version >= "4.12":
@@ -561,14 +616,21 @@ class Uasset:
         # Update file size
         self.header.uasset_size += get_size(new_name) - get_size(old_name)
 
-    def get_main_export(self):
-        main_list = [exp for exp in self.exports if exp.is_main()]
-        if len(main_list) != 1:
-            raise RuntimeError("Failed to detect the main export object.")
-        return main_list[0]
+    def get_main_export(self) -> UassetExport:
+        main_list = [exp for exp in self.exports if (exp.is_public() and not exp.is_base())]
+        standalone_list = [exp for exp in main_list if exp.is_standalone()]
+        if len(standalone_list) > 0:
+            return standalone_list[0]
+        if len(main_list) > 0:
+            return main_list[0]
+        return None
 
     def get_main_class_name(self):
-        return self.get_main_export().class_name
+        main_obj = self.get_main_export()
+        if main_obj is None:
+            return "None"
+        else:
+            return main_obj.class_name
 
     def has_uexp(self):
         return self.version >= '4.16'
@@ -585,14 +647,14 @@ class Uasset:
                 return True
         return False
 
-    def get_texture_list(self):
+    def get_texture_list(self) -> list[Utexture]:
         textures = []
         for exp in self.exports:
             if exp.is_texture():
                 textures.append(exp.object)
         return textures
 
-    def __get_io(self, file, bin, rb):
+    def __get_io(self, file: str, bin: bytes, rb: bool) -> IOBase:
         if self.has_uexp():
             if rb:
                 return open(file, 'rb')
@@ -604,12 +666,12 @@ class Uasset:
             else:
                 return io.BytesIO(b'')
 
-    def get_uexp_io(self, rb=True):
+    def get_uexp_io(self, rb=True) -> IOBase:
         if self.uexp_io is None:
             self.uexp_io = self.__get_io(self.uexp_file, self.uexp_bin, rb)
         return self.uexp_io
 
-    def get_ubulk_io(self, rb=True):
+    def get_ubulk_io(self, rb=True) -> IOBase:
         if self.ubulk_io is None:
             self.ubulk_io = self.__get_io(self.ubulk_file, self.ubulk_bin, rb)
         return self.ubulk_io
@@ -637,7 +699,7 @@ class Uasset:
         f = self.ubulk_io
         if rb:
             size = io_util.get_size(f)
-            io_util.check(size, f.tell())
+            io_util.check(f.tell(), size)
         else:
             if not self.has_uexp():
                 f.seek(0)
@@ -656,6 +718,9 @@ class Uasset:
 
     def get_size(self):
         return self.header.uasset_size
+
+    def get_uexp_size(self):
+        return self.uexp_size
 
     def update_package_source(self, file_name=None, is_official=True):
         self.header.update_package_source(file_name=file_name, is_official=is_official)

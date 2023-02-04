@@ -1,0 +1,40 @@
+name: test
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+  
+env:
+  PYTHON_VERSION: 3.9.12
+
+jobs:
+  test:
+    runs-on: windows-2022
+    steps:
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: build dll
+        run: |
+          external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
+          cp external/Texconv-Custom-DLL/texconv.dll src/directx
+
+      - name: Set up Python v${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pytest
+        run: pip install flake8 pytest pytest-cov
+
+      - name: Linting
+        run: flake8 --max-line-length 119
+
+      - name: Test
+        env:
+          PYTHONPATH: ${{ github.workspace }}\src
+        run: pytest tests -svv --cov=src
