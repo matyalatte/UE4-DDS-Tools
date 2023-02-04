@@ -1,3 +1,6 @@
+ver 0.5.0
+- Supported Texture2DArray, TextureCubeArray, and VolumeTexture
+
 ver 0.4.5
 - Supported ShadowMapTexture2D
 - Added filter options (Possible to use bicubic interpolation for mip generation)

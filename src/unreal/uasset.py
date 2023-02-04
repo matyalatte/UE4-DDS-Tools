@@ -335,7 +335,10 @@ class UassetExport:
     Notes:
         UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/ObjectResource.cpp
     """
-    TEXTURE_CLASSES = ["Texture2D", "TextureCube", "LightMapTexture2D", "ShadowMapTexture2D"]
+    TEXTURE_CLASSES = [
+        "Texture2D", "TextureCube", "LightMapTexture2D", "ShadowMapTexture2D",
+        "Texture2DArray", "TextureCubeArray", "VolumeTexture"
+    ]
 
     def __init__(self, f: IOBase, version: VersionInfo):
         self.object = None  # The actual data will be stored here
@@ -515,7 +518,7 @@ class Uasset:
             if verbose:
                 print(f"{exp.name}: (offset: {uexp_io.tell()})")
             if exp.is_texture():
-                exp.object = Utexture(self, verbose=verbose, is_light_map="LightMap" in exp.class_name)
+                exp.object = Utexture(self, class_name=exp.class_name, verbose=verbose)
             else:
                 exp.skip_uexp(self)
             io_util.check(exp.object.uexp_size, exp.size)

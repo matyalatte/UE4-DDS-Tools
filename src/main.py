@@ -14,7 +14,7 @@ from directx.dxgi_format import DXGI_FORMAT
 from file_list import get_file_list_from_folder, get_file_list_from_txt, get_base_folder
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = '0.4.5'
+TOOL_VERSION = '0.5.0'
 
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']

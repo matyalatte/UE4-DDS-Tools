@@ -65,13 +65,16 @@ class Texconv:
         """Convert dds to non-dds."""
         dds_header = DDSHeader.read_from_file(file)
 
-        if dds_header.is_3d():
-            raise RuntimeError('Can not convert 3D textures with texconv.')
+        if dds_header.is_3d() or dds_header.is_array():
+            raise RuntimeError(
+                f"DDS converter does NOT support {dds_header.get_texture_type()} textures.\n"
+                "Use '.dds' as an export format."
+            )
 
         if dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical():
             raise RuntimeError(
                 f"DDS converter does NOT support {dds_header.get_format_as_str()}.\n"
-                "You should choose '.dds' as an export format."
+                "Use '.dds' as an export format."
             )
 
         if verbose:

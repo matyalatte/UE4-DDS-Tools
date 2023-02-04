@@ -3,7 +3,7 @@
 ![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.4.5
+# UE4-DDS-Tools ver0.5.0
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -75,8 +75,11 @@ This tool can convert textures between the following file formats.
 - TextureCube
 - LightMapTexture2D
 - ShadowMapTexture2D
+- Texture2DArray
+- TextureCubeArray
+- VolumeTexture
 
-> Texture arrays, Volume textures, and virtual textures will be read as non-texture objects.
+> Note that you can not use non-dds files for texture arrays and volume textures.
 
 ## Download
 

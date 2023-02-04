@@ -110,10 +110,10 @@ class DDSHeader(c.LittleEndianStructure):
     _fields_ = [
         ("magic", c.c_char * 4),             # Magic == 'DDS '
         ("head_size", c.c_uint32),           # Size == 124
-        ("flags", c.c_uint8 * 4),            # [7, 16, 8 + 2 * hasMips, 0]
+        ("flags", c.c_uint8 * 4),            # [7 + 8 * isUncompressed, 16, 8 * isCompressed + 2 + 128 * is3D, 0]
         ("height", c.c_uint32),
         ("width", c.c_uint32),
-        ("pitch_size", c.c_uint32),          # Data size of the largest mipmap
+        ("pitch_size", c.c_uint32),          # w * h * bpp for compressed, w * bpp for uncompressed
         ("depth", c.c_uint32),
         ("mipmap_num", c.c_uint32),
         ("reserved", c.c_uint32 * 9),        # Reserved1
@@ -156,19 +156,21 @@ class DDSHeader(c.LittleEndianStructure):
                 raise RuntimeError(f"Unsupported DXGI format detected. ({fmt})\n" + ERR_MSG)
 
             head.dxgi_format = DXGI_FORMAT(fmt)  # dxgiFormat
-            resource_dimension = io_util.read_uint32(f)
+            head.resource_dimension = io_util.read_uint32(f)
             f.seek(4, 1)                         # miscFlag == 0 or 4 (0 for 2D textures, 4 for Cube maps)
-            array_size = io_util.read_uint32(f)
+            head.array_size = io_util.read_uint32(f)
             f.seek(4, 1)                         # miscFlag2
-
-            # Raise errors for unsupported files
-            if resource_dimension == 2:
-                raise RuntimeError("1D textures are unsupported.")
-            if resource_dimension == 4:
-                raise RuntimeError("3D textures are unsupported.")
-            io_util.check(array_size, 1, msg="Texture arrays are unsupported.")
         else:
             head.dxgi_format = head.get_dxgi_from_header()
+            head.array_size = 1
+            head.resource_dimension = 3 + (head.depth > 1)
+
+        # Raise errors for unsupported files
+        if head.resource_dimension == 2:
+            raise RuntimeError("1D textures are unsupported.")
+        if (head.is_array() or head.is_3D()) and head.mipmap_num > 1:
+            raise RuntimeError(f"Loaded {head.get_texture_type()} texture has mipmaps. This is unexpected.")
+
         head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
         return head
 
@@ -184,12 +186,12 @@ class DDSHeader(c.LittleEndianStructure):
         # DXT10 header
         if self.fourCC == b'DX10':
             io_util.write_uint32(f, self.dxgi_format)
-            io_util.write_uint32(f, 3)
+            io_util.write_uint32(f, self.resource_dimension)
             io_util.write_uint32(f, 4 * self.is_cube())
-            io_util.write_uint32(f, 1)
+            io_util.write_uint32(f, self.array_size)
             io_util.write_uint32(f, 0)
 
-    def update(self, width, height, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube):
+    def update(self, width, height, depth, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube, array_size):
         self.width = width
         self.height = height
         self.mipmap_num = mipmap_num
@@ -202,9 +204,14 @@ class DDSHeader(c.LittleEndianStructure):
 
         self.magic = DDSHeader.MAGIC
         self.head_size = 124
-        self.flags = (c.c_uint8*4)(7, 16, 8 + 2 * has_mips, 0)
-        self.pitch_size = int(self.width * self.height * self.get_bpp() * (1 + (is_cube) * 5))
-        self.depth = 1
+        is_3D = depth > 1
+        if self.is_compressed():
+            self.flags = (c.c_uint8*4)(7, 16, 8 + 2 + 128 * is_3D, 0)
+            self.pitch_size = int(self.width * self.height * self.get_bpp())
+        else:
+            self.flags = (c.c_uint8*4)(7 + 8, 16, 2 + 128 * is_3D, 0)
+            self.pitch_size = int(self.width * self.get_bpp())
+        self.depth = depth
         self.reserved = (c.c_uint32 * 9)((0) * 9)
         self.tool_name = 'MATY'.encode()
         self.null = 0
@@ -213,9 +220,11 @@ class DDSHeader(c.LittleEndianStructure):
         self.bit_count = (c.c_uint32)(0)
         self.bit_mask = (c.c_uint32 * 4)((0) * 4)
         self.caps = (c.c_uint8 * 4)(8 * has_mips, 16, 64 * has_mips, 0)
-        self.caps2 = (c.c_uint8 * 4)(0, 254 * is_cube, 0, 0)
+        self.caps2 = (c.c_uint8 * 4)(0, 254 * is_cube, 32 * is_3D, 0)
         self.reserved2 = (c.c_uint32*3)(0, 0, 0)
         self.fourCC = b'DX10'
+        self.array_size = array_size
+        self.resource_dimension = 3 + is_3D
 
     def is_bit_mask(self, bit_mask):
         for b1, b2 in zip(self.bit_mask, bit_mask):
@@ -257,6 +266,12 @@ class DDSHeader(c.LittleEndianStructure):
     def is_cube(self):
         return self.caps2[1] == 254
 
+    def is_3D(self):
+        return self.caps2[2] == 32
+
+    def is_array(self):
+        return self.array_size > 1
+
     def is_3d(self):
         return self.depth > 1
 
@@ -291,14 +306,27 @@ class DDSHeader(c.LittleEndianStructure):
         return DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
     def get_texture_type(self):
-        return ['2D', 'Cube'][self.is_cube()]
+        if self.is_3D():
+            return "3D"
+        if self.is_cube():
+            t = "Cube"
+        else:
+            t = "2D"
+        if self.is_array():
+            t += "Array"
+        return t
 
     def print(self):
+        print(f'  type: {self.get_texture_type()}')
+        print(f'  format: {self.get_format_as_str()}')
         print(f'  width: {self.width}')
         print(f'  height: {self.height}')
-        print(f'  format: {self.get_format_as_str()}')
-        print(f'  mipmaps: {self.mipmap_num}')
-        print(f'  cubemap: {self.is_cube()}')
+        if self.is_3D():
+            print(f'  depth: {self.depth}')
+        elif self.is_array():
+            print(f'  array_size: {self.array_size}')
+        else:
+            print(f'  mipmaps: {self.mipmap_num}')
 
 
 class DDS:
@@ -346,7 +374,7 @@ class DDS:
             for j in range(1 + (header.is_cube()) * 5):
                 for (width, height), i in zip(mipmap_size, range(mipmap_num)):
                     # read mipmap data
-                    size = width * height * byte_per_pixel
+                    size = width * height * byte_per_pixel * header.array_size * header.depth
                     if size != int(size):
                         raise RuntimeError(
                             'The size of mipmap data is not int. This is unexpected.'
@@ -390,3 +418,6 @@ class DDS:
 
     def is_cube(self):
         return self.header.is_cube()
+
+    def get_array_size(self):
+        return self.header.array_size

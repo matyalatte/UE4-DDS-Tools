@@ -44,11 +44,12 @@ class Umipmap(ctypes.LittleEndianStructure):
 
     def __init__(self, version: VersionInfo):
         self.version = version
+        self.depth = 1
         self.is_uexp = False
         self.is_meta = False
         self.is_upntl = False
 
-    def update(self, data: bytes, size: int, is_uexp: bool):
+    def update(self, data: bytes, size: int, depth: int, is_uexp: bool):
         self.is_uexp = is_uexp
         self.is_meta = False
         self.data_size = len(data)
@@ -57,7 +58,8 @@ class Umipmap(ctypes.LittleEndianStructure):
         self.offset = 0
         self.width = size[0]
         self.height = size[1]
-        self.pixel_num = self.width * self.height
+        self.depth = depth
+        self.pixel_num = self.width * self.height * self.depth
 
         # update bulk flags
         if self.is_uexp:
@@ -99,11 +101,10 @@ class Umipmap(ctypes.LittleEndianStructure):
         mip.width = read_int(f)
         mip.height = read_int(f)
         if version >= '4.20':
-            depth = read_int(f)
-            io_util.check(depth, 1, msg='3d texture is unsupported.')
+            mip.depth = read_int(f)
 
         io_util.check(mip.data_size, mip.data_size2)
-        mip.pixel_num = mip.width * mip.height
+        mip.pixel_num = mip.width * mip.height * mip.depth
         return mip
 
     def read_ubulk(self, f: IOBase):
@@ -118,6 +119,8 @@ class Umipmap(ctypes.LittleEndianStructure):
         print(pad + f'offset: {self.offset}')
         print(pad + f'width: {self.width}')
         print(pad + f'height: {self.height}')
+        if self.version >= '4.20' and self.depth > 1:
+            print(pad + f'depth: {self.depth}')
 
     def write(self, f: IOBase, uasset_size: int):
         if self.version <= '4.27':
@@ -143,7 +146,7 @@ class Umipmap(ctypes.LittleEndianStructure):
         write_int(f, self.width)
         write_int(f, self.height)
         if self.version >= '4.20':
-            write_int(f, 1)
+            write_int(f, self.depth)
 
     def rewrite_offset(self, f: IOBase, new_offset: int):
         self.offset = new_offset
