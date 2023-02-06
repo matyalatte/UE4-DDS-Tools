@@ -1,4 +1,5 @@
 @echo off
+REM Parse asset files.
 
 @if "%~1"=="" goto skip
 

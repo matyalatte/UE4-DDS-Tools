@@ -43,14 +43,6 @@ jobs:
           cp LICENSE.txt ../../release/python
         shell: bash
 
-      - name: Download Simple Command Runner
-        run: |
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
-          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release/GUI.exe
-          cp gui_definition.json ../release
-        shell: bash
-
       - name: build dll
         run: |
           external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
@@ -60,10 +52,19 @@ jobs:
       - name: Copy files
         run: |
           cp -r src ../release
-          cp bat/_check* ../release
           cp changelog.txt ../release
           cp README.md ../release
           cp LICENSE ../release
+          cp -r ../release ../release_gui
+          cp bat/* ../release
+        shell: bash
+
+      - name: Download Simple Command Runner
+        run: |
+          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
+          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
+          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release_gui/GUI.exe
+          cp gui_definition.json ../release_gui
         shell: bash
 
       - name: Archive Release
@@ -73,7 +74,15 @@ jobs:
           type: 'zip'
           filename: '${{ env.ZIP_NAME }}.zip'
           exclusions: '*.git* .gitignore'
-          
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          directory: '../release_gui'
+          type: 'zip'
+          filename: '${{ env.ZIP_NAME }}.zip'
+          exclusions: '*.git* .gitignore'
+
       - name: Create Release Draft
         id: create_release
         uses: actions/create-release@v1
@@ -90,12 +99,21 @@ jobs:
           prerelease: false
 
       - name: Upload Release Asset
-        id: upload-release-asset-python
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ../release/${{ env.ZIP_NAME }}.zip
-          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}.zip
+          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}-Batch.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ../release_gui/${{ env.ZIP_NAME }}.zip
+          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}-GUI.zip
           asset_content_type: application/zip

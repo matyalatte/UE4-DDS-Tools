@@ -1,4 +1,5 @@
 @echo off
+REM Copy texture assets to ./copied (ignore non-texture assets)
 
 @if "%~1"=="" goto skip
 

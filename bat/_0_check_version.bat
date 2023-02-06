@@ -1,4 +1,5 @@
 @echo off
+REM Check UE version of assets. And save the version for other batch files.
 
 @if "%~1"=="" goto skip
 

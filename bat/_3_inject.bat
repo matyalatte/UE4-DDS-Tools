@@ -1,4 +1,6 @@
 @echo off
+REM Inject texture files to assets.
+REM You can specify the asset path with _export_as_tga.bat or _set_asset_path.bat
 
 @if "%~1"=="" goto skip
 
