@@ -1,5 +1,9 @@
 ver 0.5.0
 - Supported Texture2DArray, TextureCubeArray, and VolumeTexture
+- Restored the batch file method for injection
+- Added "save detected version" option for check mode
+- Added "copy" mode
+- Fixed a bug that num slices won't be saved correctly for some old UE versions.
 
 ver 0.4.5
 - Supported ShadowMapTexture2D
