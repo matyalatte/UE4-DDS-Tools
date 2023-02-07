@@ -218,12 +218,19 @@ def export(folder, file, args, texconv=None):
         if args.export_as == 'dds':
             dds.save(file_name)
         else:
-            # Convert if the export format is not DDS
-            with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
-                temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
-                dds.save(temp_dds)
-                converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
-                print(f"convert to: {converted_file}")
+            if tex.is_3D or tex.is_array:
+                print(
+                    f"Warning: {args.export_as} is unsupported for {tex.get_texture_type()} textures."
+                    " It'll be exported as dds."
+                )
+                dds.save(file_name)
+            else:
+                # Convert if the export format is not DDS
+                with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
+                    temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
+                    dds.save(temp_dds)
+                    converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
+                    print(f"convert to: {converted_file}")
         flush_stdout()  # Need to flush to see the result for each asset
 
 
@@ -348,12 +355,12 @@ def main(args, config={}, texconv=None):
     else:
         if isinstance(args.version, list):
             args.version = args.version[0]
+        print(f'UE version: {args.version}')
 
     file = args.file
     texture_file = args.texture
     mode = args.mode
 
-    print(f'UE version: {args.version}')
     print(f'Mode: {mode}')
 
     mode_functions = {

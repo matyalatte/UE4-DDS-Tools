@@ -52,8 +52,8 @@ jobs:
       - name: Copy files
         run: |
           cp -r src ../release
-          cp changelog.txt ../release
-          cp README.md ../release
+          cp docs/changelog.txt ../release
+          cp docs/README.url ../release
           cp LICENSE ../release
           cp -r ../release ../release_gui
           cp bat/* ../release
