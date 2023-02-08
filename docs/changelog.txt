@@ -4,6 +4,7 @@ ver 0.5.0
 - Added "save detected version" option for check mode
 - Added "copy" mode
 - Fixed a bug that num slices won't be saved correctly for some old UE versions.
+- Refactored serialize functions
 
 ver 0.4.5
 - Supported ShadowMapTexture2D

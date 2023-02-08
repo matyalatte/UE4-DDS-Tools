@@ -104,6 +104,26 @@ def convertible_to_hdr(name: str):
     return name in HDR_SUPPORTED
 
 
+def read_uint32(f: IOBase) -> int:
+    binary = f.read(4)
+    return int.from_bytes(binary, "little")
+
+
+def write_uint32(f: IOBase, n: int):
+    binary = n.to_bytes(4, byteorder="little")
+    f.write(binary)
+
+
+def read_buffer(f: IOBase, size: int):
+    end_offset = io_util.get_size(f)
+    if f.tell() + size > end_offset:
+        raise RuntimeError(
+            "There is no buffer that has specified size."
+            f" (Offset: {f.tell()}, Size: {size})"
+        )
+    return f.read(size)
+
+
 class DDSHeader(c.LittleEndianStructure):
     MAGIC = b'DDS '
     _pack_ = 1
@@ -151,14 +171,14 @@ class DDSHeader(c.LittleEndianStructure):
 
         # DXT10 header
         if head.fourCC == b'DX10':
-            fmt = io_util.read_uint32(f)
+            fmt = read_uint32(f)
             if fmt > DXGI_FORMAT.get_max():
                 raise RuntimeError(f"Unsupported DXGI format detected. ({fmt})\n" + ERR_MSG)
 
             head.dxgi_format = DXGI_FORMAT(fmt)  # dxgiFormat
-            head.resource_dimension = io_util.read_uint32(f)
+            head.resource_dimension = read_uint32(f)
             f.seek(4, 1)                         # miscFlag == 0 or 4 (0 for 2D textures, 4 for Cube maps)
-            head.array_size = io_util.read_uint32(f)
+            head.array_size = read_uint32(f)
             f.seek(4, 1)                         # miscFlag2
         else:
             head.dxgi_format = head.get_dxgi_from_header()
@@ -185,11 +205,11 @@ class DDSHeader(c.LittleEndianStructure):
         f.write(self)
         # DXT10 header
         if self.fourCC == b'DX10':
-            io_util.write_uint32(f, self.dxgi_format)
-            io_util.write_uint32(f, self.resource_dimension)
-            io_util.write_uint32(f, 4 * self.is_cube())
-            io_util.write_uint32(f, self.array_size)
-            io_util.write_uint32(f, 0)
+            write_uint32(f, self.dxgi_format)
+            write_uint32(f, self.resource_dimension)
+            write_uint32(f, 4 * self.is_cube())
+            write_uint32(f, self.array_size)
+            write_uint32(f, 0)
 
     def update(self, width, height, depth, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube, array_size):
         self.width = width
@@ -379,7 +399,7 @@ class DDS:
                         raise RuntimeError(
                             'The size of mipmap data is not int. This is unexpected.'
                         )
-                    data = io_util.read_buffer(f, int(size))
+                    data = read_buffer(f, int(size))
 
                     # store mipmap data
                     mipmap_data[i] = b''.join([mipmap_data[i], data])
