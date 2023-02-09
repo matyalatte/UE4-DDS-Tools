@@ -1,5 +1,4 @@
 '''Classes for texture assets (.uexp and .ubulk)'''
-import io_util
 from .umipmap import Umipmap
 from .version import VersionInfo
 from directx.dds import DDSHeader, DDS
@@ -8,29 +7,29 @@ from .archive import (ArchiveBase, Bytes, Uint64, Uint32, String, StructArray)
 
 # Defined in UnrealEngine/Engine/Source/Runtime/D3D12RHI/Private/D3D12RHI.cpp
 PF_TO_DXGI = {
-    'PF_DXT1': DXGI_FORMAT.DXGI_FORMAT_BC1_UNORM,
-    'PF_DXT3': DXGI_FORMAT.DXGI_FORMAT_BC2_UNORM,
-    'PF_DXT5': DXGI_FORMAT.DXGI_FORMAT_BC3_UNORM,
-    'PF_BC4': DXGI_FORMAT.DXGI_FORMAT_BC4_UNORM,
-    'PF_BC5': DXGI_FORMAT.DXGI_FORMAT_BC5_UNORM,
-    'PF_BC6H': DXGI_FORMAT.DXGI_FORMAT_BC6H_UF16,
-    'PF_BC7': DXGI_FORMAT.DXGI_FORMAT_BC7_UNORM,
-    'PF_A1': DXGI_FORMAT.DXGI_FORMAT_R1_UNORM,
-    'PF_A8': DXGI_FORMAT.DXGI_FORMAT_A8_UNORM,
-    'PF_G8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
-    'PF_R8': DXGI_FORMAT.DXGI_FORMAT_R8_UNORM,
-    'PF_R8G8': DXGI_FORMAT.DXGI_FORMAT_R8G8_UNORM,
-    'PF_G16': DXGI_FORMAT.DXGI_FORMAT_R16_UNORM,
-    'PF_G16R16': DXGI_FORMAT.DXGI_FORMAT_R16G16_UNORM,
-    'PF_B8G8R8A8': DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
-    'PF_A2B10G10R10': DXGI_FORMAT.DXGI_FORMAT_R10G10B10A2_UNORM,
-    'PF_A16B16G16R16': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_UNORM,
-    'PF_FloatRGB': DXGI_FORMAT.DXGI_FORMAT_R11G11B10_FLOAT,
-    'PF_FloatR11G11B10': DXGI_FORMAT.DXGI_FORMAT_R11G11B10_FLOAT,
-    'PF_FloatRGBA': DXGI_FORMAT.DXGI_FORMAT_R16G16B16A16_FLOAT,
-    'PF_A32B32G32R32F': DXGI_FORMAT.DXGI_FORMAT_R32G32B32A32_FLOAT,
-    'PF_B5G5R5A1_UNORM': DXGI_FORMAT.DXGI_FORMAT_B5G5R5A1_UNORM,
-    'PF_ASTC_4x4': DXGI_FORMAT.DXGI_FORMAT_ASTC_4X4_UNORM
+    'PF_DXT1': DXGI_FORMAT.BC1_UNORM,
+    'PF_DXT3': DXGI_FORMAT.BC2_UNORM,
+    'PF_DXT5': DXGI_FORMAT.BC3_UNORM,
+    'PF_BC4': DXGI_FORMAT.BC4_UNORM,
+    'PF_BC5': DXGI_FORMAT.BC5_UNORM,
+    'PF_BC6H': DXGI_FORMAT.BC6H_UF16,
+    'PF_BC7': DXGI_FORMAT.BC7_UNORM,
+    'PF_A1': DXGI_FORMAT.R1_UNORM,
+    'PF_A8': DXGI_FORMAT.A8_UNORM,
+    'PF_G8': DXGI_FORMAT.R8_UNORM,
+    'PF_R8': DXGI_FORMAT.R8_UNORM,
+    'PF_R8G8': DXGI_FORMAT.R8G8_UNORM,
+    'PF_G16': DXGI_FORMAT.R16_UNORM,
+    'PF_G16R16': DXGI_FORMAT.R16G16_UNORM,
+    'PF_B8G8R8A8': DXGI_FORMAT.B8G8R8A8_UNORM,
+    'PF_A2B10G10R10': DXGI_FORMAT.R10G10B10A2_UNORM,
+    'PF_A16B16G16R16': DXGI_FORMAT.R16G16B16A16_UNORM,
+    'PF_FloatRGB': DXGI_FORMAT.R11G11B10_FLOAT,
+    'PF_FloatR11G11B10': DXGI_FORMAT.R11G11B10_FLOAT,
+    'PF_FloatRGBA': DXGI_FORMAT.R16G16B16A16_FLOAT,
+    'PF_A32B32G32R32F': DXGI_FORMAT.R32G32B32A32_FLOAT,
+    'PF_B5G5R5A1_UNORM': DXGI_FORMAT.B5G5R5A1_UNORM,
+    'PF_ASTC_4x4': DXGI_FORMAT.ASTC_4X4_UNORM
 }
 
 PF_TO_UNCOMPRESSED = {
@@ -222,13 +221,14 @@ class Utexture:
         if ar.is_reading:
             if self.version == 'ff7r' and self.has_supported_format():
                 # split mipmap data
-                i = 0
+                offset = 0
                 for mip in self.mipmaps:
                     if mip.is_uexp:
                         size = int(mip.pixel_num * self.byte_per_pixel * self.num_slices)
-                        mip.data = self.uexp_optional_mip.data[i: i + size]
-                        i += size
-                io_util.check(i, len(self.uexp_optional_mip.data))
+                        mip.data = self.uexp_optional_mip.data[offset: offset + size]
+                        offset += size
+                if offset != len(self.uexp_optional_mip.data):
+                    raise RuntimeError("Failed to split optional mips.")
         else:
             current = ar.tell()
             ar.seek(self.skip_offset_location)
@@ -307,7 +307,7 @@ class Utexture:
         if dds.header.dxgi_format != self.dxgi_format:
             raise RuntimeError(
                 "The format does not match. "
-                f"(Uasset: {self.dxgi_format.name[12:]}, DDS: {dds.header.dxgi_format.name[12:]})"
+                f"(Uasset: {self.dxgi_format.name}, DDS: {dds.header.dxgi_format.name})"
             )
 
         if dds.get_texture_type() != self.get_texture_type():
@@ -375,7 +375,7 @@ class Utexture:
         max_width, max_height = self.get_max_size()
         depth = self.get_depth()
         print(f'  type: {self.get_texture_type()}')
-        print(f'  format: {self.pixel_format} ({self.dxgi_format.name[12:]})')
+        print(f'  format: {self.pixel_format} ({self.dxgi_format.name})')
         print(f'  width: {max_width}')
         print(f'  height: {max_height}')
         if self.is_3D:
@@ -403,7 +403,7 @@ class Utexture:
     def __update_format(self):
         if not self.has_supported_format():
             print(f'Warning: Unsupported pixel format. ({self.pixel_format})')
-            self.dxgi_format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN
+            self.dxgi_format = DXGI_FORMAT.UNKNOWN
             self.byte_per_pixel = None
             return
         self.dxgi_format = PF_TO_DXGI[self.pixel_format]

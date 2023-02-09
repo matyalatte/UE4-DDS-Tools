@@ -309,7 +309,7 @@ def convert(folder, file, args, texconv=None):
         # not DDS
         ext = args.convert_to.lower()
     else:
-        if not DXGI_FORMAT.is_valid_format("DXGI_FORMAT_" + args.convert_to):
+        if not DXGI_FORMAT.is_valid_format(args.convert_to):
             raise RuntimeError(f"The specified format is undefined. ({args.convert_to})")
         # a DXGI format
         ext = "dds"
@@ -320,7 +320,7 @@ def convert(folder, file, args, texconv=None):
 
     if ext == "dds":
         # image to dds
-        texconv.convert_to_dds(src_file, DXGI_FORMAT["DXGI_FORMAT_" + args.convert_to],
+        texconv.convert_to_dds(src_file, DXGI_FORMAT[args.convert_to],
                                out=os.path.dirname(new_file), export_as_cubemap=False,
                                no_mip=args.no_mipmaps,
                                image_filter=args.image_filter,

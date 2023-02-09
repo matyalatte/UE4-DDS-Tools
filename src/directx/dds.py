@@ -14,17 +14,17 @@ import os
 
 from .dxgi_format import (DXGI_FORMAT, DXGI_BYTE_PER_PIXEL,
                           FOURCC_TO_DXGI, BITMASK_TO_DXGI)
-import io_util
+from io_util import get_size, mkdir
 
 
 class PF_FLAGS(IntEnum):
     '''dwFlags for DDS_PIXELFORMAT'''
-    # DDS_ALPHAPIXELS = 0x00000001
-    # DDS_ALPHA = 0x00000002
-    DDS_FOURCC = 0x00000004
-    # DDS_RGB = 0x00000040
-    # DDS_LUMINANCE = 0x00020000
-    DDS_BUMPDUDV = 0x00080000
+    # ALPHAPIXELS = 0x00000001
+    # ALPHA = 0x00000002
+    FOURCC = 0x00000004
+    # RGB = 0x00000040
+    # LUMINANCE = 0x00020000
+    BUMPDUDV = 0x00080000
 
 
 UNCANONICAL_FOURCC = [
@@ -46,6 +46,136 @@ UNCANONICAL_FOURCC = [
     b"AS86",
     b"AS:5"
 ]
+
+
+class DDSPixelFormat(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("size", c.c_uint32),              # PfSize == 32
+        ("flags", c.c_uint32),             # PfFlags (if 4 then FourCC is used)
+        ("fourCC", c.c_char * 4),            # FourCC
+        ("bit_count", c.c_uint32),           # Bitcount
+        ("bit_mask", c.c_uint32 * 4),        # Bitmask
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self.size = 32
+        self.flags = (c.c_uint32)(PF_FLAGS.FOURCC)
+        self.fourCC = b"DX10"
+        self.bit_count = (c.c_uint32)(0)
+        self.bit_mask = (c.c_uint32 * 4)((0) * 4)
+
+    def get_dxgi(self) -> DXGI_FORMAT:
+        '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
+
+        if not self.is_canonical():
+            raise RuntimeError(f"Non-standard fourCC detected. ({self.fourCC.decode()})")
+
+        # Try to detect DXGI from fourCC.
+        if self.flags & PF_FLAGS.FOURCC:
+            for cc_list, dxgi in FOURCC_TO_DXGI:
+                if self.fourCC in cc_list:
+                    return dxgi
+
+        # Try to detect DXGI from bit mask.
+        detected_dxgi = None
+        for bit_mask, dxgi in BITMASK_TO_DXGI:
+            if self.is_bit_mask(bit_mask):
+                detected_dxgi = dxgi
+
+        if detected_dxgi is None:
+            print("Failed to detect dxgi format. It'll be loaded as B8G8R8A8.")
+            return DXGI_FORMAT.B8G8R8A8_UNORM
+
+        if self.flags & PF_FLAGS.BUMPDUDV:
+            # DXGI format should be signed.
+            return DXGI_FORMAT.get_signed(detected_dxgi)
+        else:
+            return detected_dxgi
+
+    def is_bit_mask(self, bit_mask):
+        for b1, b2 in zip(self.bit_mask, bit_mask):
+            if b1 != b2:
+                return False
+        return True
+
+    def is_canonical(self):
+        return self.fourCC not in UNCANONICAL_FOURCC
+
+    def is_dx10(self):
+        return self.fourCC == b"DX10"
+
+
+class DDS_FLAGS(IntEnum):
+    CAPS = 0x1
+    HEIGHT = 0x2
+    WIDTH = 0x4
+    PITCH = 0x8  # Use "w * h * bpp" for pitch_or_linear_size
+    PIXELFORMAT = 0x1000
+    MIPMAPCOUNT = 0x20000
+    LINEARSIZE = 0x80000  # Use "w * bpp" for pitch_or_linear_size
+    DEPTH = 0x800000  # For volume textures
+    DEFAULT = CAPS | HEIGHT | WIDTH | PIXELFORMAT | MIPMAPCOUNT
+
+    @staticmethod
+    def get_flags(is_compressed, is_3d):
+        flags = DDS_FLAGS.DEFAULT
+        if is_compressed:
+            flags |= DDS_FLAGS.PITCH
+        else:
+            flags |= DDS_FLAGS.LINEARSIZE
+        if is_3d:
+            flags |= DDS_FLAGS.DEPTH
+        return flags
+
+
+class DDS_CAPS(IntEnum):
+    CUBEMAP = 0x8      # DDSCAPS_COMPLEX
+    MIPMAP = 0x400008  # DDSCAPS_COMPLEX | DDSCAPS_MIPMAP
+    REQUIERD = 0x1000  # DDSCAPS_TEXTURE
+
+    @staticmethod
+    def get_caps(has_mips, is_cube):
+        caps = DDS_CAPS.REQUIERD
+        if has_mips:
+            caps |= DDS_CAPS.MIPMAP
+        if is_cube:
+            caps |= DDS_CAPS.CUBEMAP
+        return caps
+
+
+class DDS_CAPS2(IntEnum):
+    CUBEMAP = 0x200
+    CUBEMAP_POSITIVEX = 0x400
+    CUBEMAP_NEGATIVEX = 0x800
+    CUBEMAP_POSITIVEY = 0x1000
+    CUBEMAP_NEGATIVEY = 0x2000
+    CUBEMAP_POSITIVEZ = 0x4000
+    CUBEMAP_NEGATIVEZ = 0x8000
+    CUBEMAP_FULL = 0xFE00  # for cubemap that have all faces
+    VOLUME = 0x200000
+
+    @staticmethod
+    def get_caps2(is_cube, is_3d):
+        caps2 = 0
+        if is_cube:
+            caps2 |= DDS_CAPS2.CUBEMAP_FULL
+        if is_3d:
+            caps2 |= DDS_CAPS2.VOLUME
+        return caps2
+
+    @staticmethod
+    def is_cube(caps2):
+        return (caps2 & DDS_CAPS2.CUBEMAP) > 0
+
+    @staticmethod
+    def is_3d(caps2):
+        return (caps2 & DDS_CAPS2.VOLUME) > 0
+
+    @staticmethod
+    def is_partial_cube(caps2):
+        return DDS_CAPS2.is_cube(caps2) and (caps2 != DDS_CAPS2.CUBEMAP_FULL)
 
 
 HDR_SUPPORTED = [
@@ -92,6 +222,32 @@ TGA_SUPPORTED = [
 ]
 
 
+class DX10Header(c.LittleEndianStructure):
+    _pack_ = 1
+    _fields_ = [
+        ("dxgi_format", c.c_uint32),
+        ("resource_dimension", c.c_uint32),
+        ("misc_flags", c.c_uint32),
+        ("array_size", c.c_uint32),
+        ("misc_flags2", c.c_uint32)
+    ]
+
+    def get_dxgi(self):
+        if self.dxgi_format > DXGI_FORMAT.get_max():
+            raise RuntimeError(f"Unsupported DXGI format detected. ({self.dxgi_format})")
+        return DXGI_FORMAT(self.dxgi_format)
+
+    def update(self, dxgi_format, is_cube, is_3d, array_size):
+        self.dxgi_format = int(dxgi_format)
+        self.resource_dimension = 3 + is_3d
+        self.misc_flags = 4 * is_cube
+        self.array_size = array_size
+        self.misc_flags2 = 0
+
+    def is_array(self):
+        return self.array_size > 1
+
+
 def is_hdr(name: str):
     return 'BC6' in name or 'FLOAT' in name or 'INT' in name or 'SNORM' in name
 
@@ -104,18 +260,7 @@ def convertible_to_hdr(name: str):
     return name in HDR_SUPPORTED
 
 
-def read_uint32(f: IOBase) -> int:
-    binary = f.read(4)
-    return int.from_bytes(binary, "little")
-
-
-def write_uint32(f: IOBase, n: int):
-    binary = n.to_bytes(4, byteorder="little")
-    f.write(binary)
-
-
-def read_buffer(f: IOBase, size: int):
-    end_offset = io_util.get_size(f)
+def read_buffer(f: IOBase, size: int, end_offset: int):
     if f.tell() + size > end_offset:
         raise RuntimeError(
             "There is no buffer that has specified size."
@@ -128,31 +273,36 @@ class DDSHeader(c.LittleEndianStructure):
     MAGIC = b'DDS '
     _pack_ = 1
     _fields_ = [
-        ("magic", c.c_char * 4),             # Magic == 'DDS '
-        ("head_size", c.c_uint32),           # Size == 124
-        ("flags", c.c_uint8 * 4),            # [7 + 8 * isUncompressed, 16, 8 * isCompressed + 2 + 128 * is3D, 0]
+        ("magic", c.c_char * 4),               # Magic == 'DDS '
+        ("head_size", c.c_uint32),             # Size == 124
+        ("flags", c.c_uint32),                 # DDS_FLAGS
         ("height", c.c_uint32),
         ("width", c.c_uint32),
-        ("pitch_size", c.c_uint32),          # w * h * bpp for compressed, w * bpp for uncompressed
+        ("pitch_or_linear_size", c.c_uint32),  # w * h * bpp for compressed, w * bpp for uncompressed
         ("depth", c.c_uint32),
         ("mipmap_num", c.c_uint32),
-        ("reserved", c.c_uint32 * 9),        # Reserved1
-        ("tool_name", c.c_char * 4),         # Reserved1
-        ("null", c.c_uint32),                # Reserved1
-        ("pfsize", c.c_uint32),              # PfSize == 32
-        ("pfflags", c.c_uint32),             # PfFlags (if 4 then FourCC is used)
-        ("fourCC", c.c_char * 4),            # FourCC
-        ("bit_count", c.c_uint32),           # Bitcount
-        ("bit_mask", c.c_uint32 * 4),        # Bitmask
-        ("caps", c.c_uint8 * 4),             # [8 * hasMips, 16, 64 * hasMips, 0]
-        ("caps2", c.c_uint8 * 4),            # [0, 254 * isCubeMap, 0, 0]
-        ("reserved2", c.c_uint32 * 3),       # ReservedCpas, Reserved2
+        ("reserved", c.c_uint32 * 9),          # Reserved1
+        ("tool_name", c.c_char * 4),           # Reserved1
+        ("null", c.c_uint32),                  # Reserved1
+        ("pixel_format", DDSPixelFormat),
+        ("caps", c.c_uint32),                  # DDS_CAPS
+        ("caps2", c.c_uint32),                 # DDS_CAPS2
+        ("reserved2", c.c_uint32 * 3),         # ReservedCpas, Reserved2
     ]
 
     def __init__(self):
         super().__init__()
-        self.mipmap_num = 0
-        self.dxgi_format = DXGI_FORMAT.DXGI_FORMAT_UNKNOWN
+        self.magic = DDSHeader.MAGIC
+        self.head_size = 124
+        self.mipmap_num = 1
+        self.pixel_format = DDSPixelFormat()
+        self.reserved = (c.c_uint32 * 9)((0) * 9)
+        self.tool_name = b"UEDT"
+        self.null = 0
+        self.reserved2 = (c.c_uint32*3)(0, 0, 0)
+        self.dx10_header = DX10Header()
+
+        self.dxgi_format = DXGI_FORMAT.UNKNOWN
         self.byte_per_pixel = 0
 
     @staticmethod
@@ -160,38 +310,25 @@ class DDSHeader(c.LittleEndianStructure):
         """Read dds header."""
         head = DDSHeader()
         f.readinto(head)
-        io_util.check(head.magic, DDSHeader.MAGIC, msg='Not DDS.')
-        io_util.check(head.head_size, 124, msg='Not DDS.')
         head.mipmap_num += head.mipmap_num == 0
 
-        ERR_MSG = "Customized formats (e.g. ETC, PVRTC, ATITC, and ASTC) are unsupported."
-
-        if not head.is_canonical():
-            raise RuntimeError(f"Non-standard fourCC detected. ({head.fourCC.decode()})\n" + ERR_MSG)
-
         # DXT10 header
-        if head.fourCC == b'DX10':
-            fmt = read_uint32(f)
-            if fmt > DXGI_FORMAT.get_max():
-                raise RuntimeError(f"Unsupported DXGI format detected. ({fmt})\n" + ERR_MSG)
-
-            head.dxgi_format = DXGI_FORMAT(fmt)  # dxgiFormat
-            head.resource_dimension = read_uint32(f)
-            f.seek(4, 1)                         # miscFlag == 0 or 4 (0 for 2D textures, 4 for Cube maps)
-            head.array_size = read_uint32(f)
-            f.seek(4, 1)                         # miscFlag2
+        if head.pixel_format.is_dx10():
+            f.readinto(head.dx10_header)
+            head.dxgi_format = head.dx10_header.get_dxgi()
         else:
-            head.dxgi_format = head.get_dxgi_from_header()
-            head.array_size = 1
-            head.resource_dimension = 3 + (head.depth > 1)
+            head.dxgi_format = head.pixel_format.get_dxgi()
+            head.dx10_header.update(head.dxgi_format, head.is_cube(), head.is_3d(), 1)
+        head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
 
         # Raise errors for unsupported files
-        if head.resource_dimension == 2:
+        if head.magic != DDSHeader.MAGIC or head.head_size != 124:
+            raise RuntimeError("Not DDS file.")
+        if head.dx10_header.resource_dimension == 2:
             raise RuntimeError("1D textures are unsupported.")
-        if (head.is_array() or head.is_3D()) and head.mipmap_num > 1:
+        if (head.is_array() or head.is_3d()) and head.has_mips():
             raise RuntimeError(f"Loaded {head.get_texture_type()} texture has mipmaps. This is unexpected.")
 
-        head.byte_per_pixel = DXGI_BYTE_PER_PIXEL[head.dxgi_format]
         return head
 
     @staticmethod
@@ -203,78 +340,31 @@ class DDSHeader(c.LittleEndianStructure):
 
     def write(self, f: IOBase):
         f.write(self)
-        # DXT10 header
-        if self.fourCC == b'DX10':
-            write_uint32(f, self.dxgi_format)
-            write_uint32(f, self.resource_dimension)
-            write_uint32(f, 4 * self.is_cube())
-            write_uint32(f, self.array_size)
-            write_uint32(f, 0)
+        if self.pixel_format.is_dx10():
+            f.write(self.dx10_header)
 
     def update(self, width, height, depth, mipmap_num, dxgi_format: DXGI_FORMAT, is_cube, array_size):
         self.width = width
         self.height = height
+        self.depth = depth
         self.mipmap_num = mipmap_num
         if isinstance(dxgi_format, str):
-            self.dxgi_format = DXGI_FORMAT["DXGI_FORMAT_" + dxgi_format]
+            self.dxgi_format = DXGI_FORMAT[dxgi_format]
         else:
             self.dxgi_format = dxgi_format
 
-        has_mips = self.mipmap_num > 1
+        has_mips = self.has_mips()
+        is_3d = self.is_3d()
+        bpp = self.get_bpp()
 
-        self.magic = DDSHeader.MAGIC
-        self.head_size = 124
-        is_3D = depth > 1
+        self.flags = DDS_FLAGS.get_flags(self.is_compressed(), is_3d)
         if self.is_compressed():
-            self.flags = (c.c_uint8*4)(7, 16, 8 + 2 + 128 * is_3D, 0)
-            self.pitch_size = int(self.width * self.height * self.get_bpp())
+            self.pitch_or_linear_size = int(width * height * bpp)
         else:
-            self.flags = (c.c_uint8*4)(7 + 8, 16, 2 + 128 * is_3D, 0)
-            self.pitch_size = int(self.width * self.get_bpp())
-        self.depth = depth
-        self.reserved = (c.c_uint32 * 9)((0) * 9)
-        self.tool_name = 'MATY'.encode()
-        self.null = 0
-        self.pfsize = 32
-        self.pfflags = PF_FLAGS.DDS_FOURCC
-        self.bit_count = (c.c_uint32)(0)
-        self.bit_mask = (c.c_uint32 * 4)((0) * 4)
-        self.caps = (c.c_uint8 * 4)(8 * has_mips, 16, 64 * has_mips, 0)
-        self.caps2 = (c.c_uint8 * 4)(0, 254 * is_cube, 32 * is_3D, 0)
-        self.reserved2 = (c.c_uint32*3)(0, 0, 0)
-        self.fourCC = b'DX10'
-        self.array_size = array_size
-        self.resource_dimension = 3 + is_3D
-
-    def is_bit_mask(self, bit_mask):
-        for b1, b2 in zip(self.bit_mask, bit_mask):
-            if b1 != b2:
-                return False
-        return True
-
-    def get_dxgi_from_header(self) -> DXGI_FORMAT:
-        '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
-        # Try to detect DXGI from fourCC.
-        if self.pfflags & PF_FLAGS.DDS_FOURCC:
-            for cc_list, dxgi in FOURCC_TO_DXGI:
-                if self.fourCC in cc_list:
-                    return dxgi
-
-        # Try to detect DXGI from bit mask.
-        detected_dxgi = None
-        for bit_mask, dxgi in BITMASK_TO_DXGI:
-            if self.is_bit_mask(bit_mask):
-                detected_dxgi = dxgi
-
-        if detected_dxgi is None:
-            print("Failed to detect dxgi format. It'll be loaded as B8G8R8A8.")
-            return DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM
-
-        if self.pfflags & PF_FLAGS.DDS_BUMPDUDV:
-            # DXGI format should be signed.
-            return DXGI_FORMAT.get_signed(detected_dxgi)
-        else:
-            return detected_dxgi
+            self.pitch_or_linear_size = int(width * bpp)
+        self.caps = DDS_CAPS.get_caps(has_mips, is_cube)
+        self.caps2 = DDS_CAPS2.get_caps2(is_cube, is_3d)
+        self.dx10_header.update(self.dxgi_format, is_cube, is_3d, array_size)
 
     def is_compressed(self):
         dxgi = self.get_format_as_str()
@@ -283,17 +373,17 @@ class DDSHeader(c.LittleEndianStructure):
     def get_block_size(self):
         return 4 if self.is_compressed() else 1
 
+    def has_mips(self):
+        return self.mipmap_num > 1
+
     def is_cube(self):
-        return self.caps2[1] == 254
-
-    def is_3D(self):
-        return self.caps2[2] == 32
-
-    def is_array(self):
-        return self.array_size > 1
+        return DDS_CAPS2.is_cube(self.caps2)
 
     def is_3d(self):
         return self.depth > 1
+
+    def is_array(self):
+        return self.dx10_header.is_array()
 
     def is_hdr(self):
         return is_hdr(self.dxgi_format.name)
@@ -303,7 +393,7 @@ class DDSHeader(c.LittleEndianStructure):
         return 'BC5' in dxgi or dxgi == 'R8G8_UNORM'
 
     def get_format_as_str(self):
-        return self.dxgi_format.name[12:]
+        return self.dxgi_format.name
 
     def is_srgb(self):
         return 'SRGB' in self.dxgi_format.name
@@ -312,7 +402,7 @@ class DDSHeader(c.LittleEndianStructure):
         return 'UINT' in self.dxgi_format.name or 'SINT' in self.dxgi_format.name
 
     def is_canonical(self):
-        return self.fourCC not in UNCANONICAL_FOURCC
+        return self.pixel_format.is_canonical()
 
     def convertible_to_tga(self):
         name = self.get_format_as_str()
@@ -325,8 +415,11 @@ class DDSHeader(c.LittleEndianStructure):
     def get_bpp(self):
         return DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
+    def get_array_size(self):
+        return self.dx10_header.array_size
+
     def get_texture_type(self):
-        if self.is_3D():
+        if self.is_3d():
             return "3D"
         if self.is_cube():
             t = "Cube"
@@ -341,10 +434,10 @@ class DDSHeader(c.LittleEndianStructure):
         print(f'  format: {self.get_format_as_str()}')
         print(f'  width: {self.width}')
         print(f'  height: {self.height}')
-        if self.is_3D():
+        if self.is_3d():
             print(f'  depth: {self.depth}')
         elif self.is_array():
-            print(f'  array_size: {self.array_size}')
+            print(f'  array_size: {self.get_array_size()}')
         else:
             print(f'  mipmaps: {self.mipmap_num}')
 
@@ -361,11 +454,14 @@ class DDS:
             raise RuntimeError(f'Not DDS. ({file})')
         print('load: ' + file)
         with open(file, 'rb') as f:
+            end_offset = get_size(f)
+
             # read header
             header = DDSHeader.read(f)
 
             mipmap_num = header.mipmap_num
             byte_per_pixel = header.get_bpp()
+            array_size = header.get_array_size()
 
             # calculate mipmap sizes
             mipmap_size = []
@@ -394,34 +490,30 @@ class DDS:
             for j in range(1 + (header.is_cube()) * 5):
                 for (width, height), i in zip(mipmap_size, range(mipmap_num)):
                     # read mipmap data
-                    size = width * height * byte_per_pixel * header.array_size * header.depth
+                    size = width * height * byte_per_pixel * array_size * header.depth
                     if size != int(size):
                         raise RuntimeError(
                             'The size of mipmap data is not int. This is unexpected.'
                         )
-                    data = read_buffer(f, int(size))
+                    data = read_buffer(f, int(size), end_offset)
 
                     # store mipmap data
                     mipmap_data[i] = b''.join([mipmap_data[i], data])
 
-            if verbose:
-                # print mipmap info
-                for i in range(mipmap_num):
-                    print(f'  Mipmap {i}')
-                    width, height = mipmap_size[i]
-                    print(f'    size (w, h): ({width}, {height})')
+            dds = DDS(header, mipmap_data, mipmap_size)
+            dds.print(verbose)
 
-            header.print()
-            io_util.check(f.tell(), io_util.get_size(f), msg='Parse Failed. This is unexpected.')
+            if f.tell() != end_offset:
+                raise RuntimeError("Parse failed. (Not the end of the file.)")
 
-        return DDS(header, mipmap_data, mipmap_size)
+        return dds
 
     # save as dds
     def save(self, file: str):
         print('save: {}'.format(file))
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
-            io_util.mkdir(folder)
+            mkdir(folder)
 
         with open(file, 'wb') as f:
             # write header
@@ -440,4 +532,13 @@ class DDS:
         return self.header.is_cube()
 
     def get_array_size(self):
-        return self.header.array_size
+        return self.header.get_array_size()
+
+    def print(self, verbose):
+        self.header.print()
+        if verbose:
+            # print mipmap info
+            for i in range(len(self.mipmap_size)):
+                print(f'  Mipmap {i}')
+                width, height = self.mipmap_size[i]
+                print(f'    size (w, h): ({width}, {height})')

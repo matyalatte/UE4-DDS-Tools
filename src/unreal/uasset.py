@@ -4,7 +4,7 @@ import io
 from io import IOBase
 import os
 
-import io_util
+from io_util import mkdir
 from .crc import generate_hash, strcrc_deprecated
 from .utexture import Utexture
 from .version import VersionInfo
@@ -89,8 +89,8 @@ class UassetFileSummary(SerializableBase):
         # PackageFlags
         ar << (Uint32, self, "pkg_flags")
         if ar.is_reading:
-            io_util.check(self.pkg_flags & PackageFlags.PKG_FilterEditorOnly > 0, True,
-                          msg="Unsupported file format detected. (PKG_FilterEditorOnlyitorOnly is false.)")
+            ar.check(self.pkg_flags & PackageFlags.PKG_FilterEditorOnly > 0, True,
+                     msg="Unsupported file format detected. (PKG_FilterEditorOnlyitorOnly is false.)")
 
         # Name table
         ar << (Int32, self, "name_count")
@@ -430,7 +430,7 @@ class Uasset:
 
         # read imports
         if ar.is_reading:
-            io_util.check(self.header.import_offset, ar.tell())
+            ar.check(self.header.import_offset, ar.tell())
         else:
             self.header.import_offset = ar.tell()
         ar << (StructArray, self, "imports", UassetImport, self.header.import_count)
@@ -442,7 +442,7 @@ class Uasset:
 
         if ar.is_reading:
             # read exports
-            io_util.check(self.header.export_offset, ar.tell())
+            ar.check(self.header.export_offset, ar.tell())
             ar << (StructArray, self, "exports", UassetExport, self.header.export_count)
             list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
             if ar.verbose:
@@ -461,7 +461,7 @@ class Uasset:
 
         # write asset registry data
         if ar.is_reading:
-            io_util.check(self.header.asset_registry_data_offset, ar.tell())
+            ar.check(self.header.asset_registry_data_offset, ar.tell())
         else:
             self.header.asset_registry_data_offset = ar.tell()
         ar == (Int32, 0, "asset_registry_data")
@@ -469,13 +469,13 @@ class Uasset:
         # Preload dependencies (import and export ids that must be serialized before other exports)
         if self.has_uexp():
             if ar.is_reading:
-                io_util.check(self.header.preload_dependency_offset, ar.tell())
+                ar.check(self.header.preload_dependency_offset, ar.tell())
             else:
                 self.header.preload_dependency_offset = ar.tell()
             ar << (Int32Array, self, "preload_dependencly_ids", self.header.preload_dependency_count)
 
         if ar.is_reading:
-            io_util.check(ar.tell(), self.get_size())
+            ar.check(ar.tell(), self.get_size())
             if self.has_uexp():
                 self.uexp_bin = None
                 self.ubulk_bin = None
@@ -516,7 +516,7 @@ class Uasset:
             else:
                 exp.object = Uunknown(self, exp.size)
             exp.object.serialize(uexp_io)
-            io_util.check(exp.object.uexp_size, exp.size)
+            uexp_io.check(exp.object.uexp_size, exp.size)
         self.close_uexp_io(rb=True)
         self.close_ubulk_io(rb=True)
 
@@ -536,7 +536,7 @@ class Uasset:
     def save(self, file: str, valid=False):
         folder = os.path.dirname(file)
         if folder not in ['.', ''] and not os.path.exists(folder):
-            io_util.mkdir(folder)
+            mkdir(folder)
 
         self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file)
 
@@ -628,31 +628,31 @@ class Uasset:
     def close_uexp_io(self, rb=True):
         if self.uexp_io is None:
             return
-        f = self.uexp_io
-        self.uexp_size = f.tell()
+        ar = self.uexp_io
+        self.uexp_size = ar.tell()
         if self.has_uexp():
             if rb:
-                io_util.check(f.read(4), UassetFileSummary.TAG, f)
+                ar.check(ar.read(4), UassetFileSummary.TAG)
             else:
-                f.write(UassetFileSummary.TAG)
+                ar.write(UassetFileSummary.TAG)
         else:
             if not rb:
-                f.seek(0)
-                self.uexp_bin = f.read()
-        f.close()
+                ar.seek(0)
+                self.uexp_bin = ar.read()
+        ar.close()
         self.uexp_io = None
 
     def close_ubulk_io(self, rb=True):
         if self.ubulk_io is None:
             return
-        f = self.ubulk_io
+        ar = self.ubulk_io
         if rb:
-            io_util.check(f.tell(), f.size)
+            ar.check(ar.tell(), ar.size)
         else:
             if not self.has_uexp():
-                f.seek(0)
-                self.ubulk_bin = f.read()
-        f.close()
+                ar.seek(0)
+                self.ubulk_bin = ar.read()
+        ar.close()
         self.ubulk_io = None
 
     def get_all_file_path(self):

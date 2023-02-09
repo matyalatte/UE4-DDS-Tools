@@ -34,15 +34,6 @@ def get_ext(file: str):
     return file.split('.')[-1].lower()
 
 
-def check(actual, expected, f=None, msg='Parse failed. Make sure you specified UE4 version correctly.'):
-    if actual != expected:
-        if f is not None:
-            print(f'offset: {f.tell()}')
-        print(f'actual: {actual}')
-        print(f'expected: {expected}')
-        raise RuntimeError(msg)
-
-
 def get_size(f: IOBase):
     pos = f.tell()
     f.seek(0, 2)

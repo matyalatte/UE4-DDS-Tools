@@ -12,7 +12,7 @@ import tempfile
 
 from .dds import DDSHeader, is_hdr
 from .dxgi_format import DXGI_FORMAT
-import io_util
+from io_util import mkdir
 
 
 def get_os_name():
@@ -127,7 +127,7 @@ class Texconv:
                        verbose=True, allow_slow_codec=False):
         """Convert texture to dds."""
 
-        dds_fmt = dxgi_format.name[12:]
+        dds_fmt = dxgi_format.name
 
         if ('BC6' in dds_fmt or 'BC7' in dds_fmt) and (not is_windows()) and (not allow_slow_codec):
             raise RuntimeError(f'Can NOT use CPU codec for {dds_fmt}. Or enable the "Allow Slow Codec" option.')
@@ -137,7 +137,7 @@ class Texconv:
                 "You should convert it to dds with another tool first."
             )
 
-        if not DXGI_FORMAT.is_valid_format("DXGI_FORMAT_" + dds_fmt):
+        if not DXGI_FORMAT.is_valid_format(dds_fmt):
             raise RuntimeError(f'Not DXGI format. ({dds_fmt})')
 
         if verbose:
@@ -185,7 +185,7 @@ class Texconv:
             out = '.'
 
         if out not in ['.', ''] and not os.path.exists(out):
-            io_util.mkdir(out)
+            mkdir(out)
 
         args += ["-y"]
         args += [os.path.normpath(file)]
@@ -220,7 +220,7 @@ class Texconv:
         """Run texassemble."""
         out = os.path.dirname(new_file)
         if out not in ['.', ''] and not os.path.exists(out):
-            io_util.mkdir(out)
+            mkdir(out)
         args += ["-y", "-o", new_file, file]
 
         args_p = [ctypes.c_wchar_p(arg) for arg in args]

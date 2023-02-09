@@ -36,14 +36,14 @@ class ArchiveBase:
             self.name = io.name
         self.args = None
 
-    def __lshift__(self, val: tuple):
+    def __lshift__(self, val: tuple):  # pragma: no cover
         """Read or write attributes.
         Notes:
             Ar << (type, obj, "attribute_name", optional_args)
         """
         pass
 
-    def __eq__(self, val: tuple):
+    def __eq__(self, val: tuple):  # pragma: no cover
         """Read or write a constant value, and raise an error if it have unexpected value.
         Notes:
             Ar == (type, const, "variable_name", optional_args)
@@ -62,11 +62,16 @@ class ArchiveBase:
     def write(self, obj):
         self.io.write(obj)
 
-    def get_size(self):
-        return self.size
-
     def close(self):
         self.io.close()
+
+    def check(self, actual, expected, msg='Parse failed. Make sure you specified UE4 version correctly.'):
+        if actual == expected:
+            return
+        print(f'offset: {self.tell()}')
+        print(f'actual: {actual}')
+        print(f'expected: {expected}')
+        raise RuntimeError(msg)
 
 
 class ArchiveRead(ArchiveBase):
@@ -230,8 +235,8 @@ class String:
 
 
 class SerializableBase:
-    def serialize(self, ar: ArchiveBase):
-        return None
+    def serialize(self, ar: ArchiveBase):  # pragma: no cover
+        pass
 
     @classmethod
     def read(cls, ar: ArchiveBase):
