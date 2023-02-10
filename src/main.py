@@ -7,11 +7,11 @@ import time
 from contextlib import redirect_stdout
 
 # my scripts
-from io_util import compare, get_ext, get_temp_dir, flush_stdout
+from io_util import (compare, get_ext, get_temp_dir, flush_stdout,
+                     get_file_list, get_base_folder, remove_quotes)
 from unreal.uasset import Uasset
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
-from file_list import get_file_list_from_folder, get_file_list_from_txt, get_base_folder
 from directx.texconv import Texconv, is_windows
 
 TOOL_VERSION = '0.5.0'
@@ -28,7 +28,7 @@ if is_windows():
 IMAGE_FILTERS = ["point", "linear", "cubic"]
 
 
-def get_args():
+def get_args():  # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument('file', help='uasset, texture file, or folder')
     parser.add_argument('texture', nargs='?', help='texture file for injection mode.')
@@ -341,13 +341,11 @@ def main(args, config={}, texconv=None):
     if args.version is None:
         args.version = '4.27'
 
-    if args.file.endswith("_file_path_.txt"):
+    if args.file.endswith(".txt"):
         # file path for batch file injection.
-        # you can set an asset path with "echo some_path > _file_path_.txt"
+        # you can set an asset path with "echo some_path > some.txt"
         with open(args.file, 'r') as f:
-            args.file = f.readline()
-            if args.file[-1] == "\n":
-                args.file = args.file[:-1]
+            args.file = remove_quotes(f.readline())
 
     if args.mode == "check":
         if isinstance(args.version, str):
@@ -374,7 +372,7 @@ def main(args, config={}, texconv=None):
         "copy": copy
     }
 
-    # cehck configs
+    # cehck args
     if os.path.isfile(args.save_folder):
         raise RuntimeError("Output path is not a folder.")
     if file == "":
@@ -398,28 +396,17 @@ def main(args, config={}, texconv=None):
     func = mode_functions[mode]
 
     if os.path.isfile(file):
-        if get_ext(file) == 'txt':
-            # txt method (file list)
-            folder, file_list = get_file_list_from_txt(file)
-            if mode == 'inject':
-                file_list = [file_list[i * 2: i * 2 + 2] for i in range(len(file_list) // 2)]
-                for uasset_file, texture_file in file_list:
-                    func(folder, uasset_file, args, texture_file=os.path.join(folder, texture_file), texconv=texconv)
-            else:
-                for file in file_list:
-                    func(folder, file, args, texconv=texconv)
-                    flush_stdout()
-        else:
-            folder = os.path.dirname(file)
-            file = os.path.basename(file)
-            func(folder, file, args, texconv=texconv)
+        folder = os.path.dirname(file)
+        file = os.path.basename(file)
+        func(folder, file, args, texconv=texconv)
     else:
         # folder method
         if mode == 'convert':
             ext_list = TEXTURES
         else:
             ext_list = ['uasset']
-        folder, file_list = get_file_list_from_folder(file, ext=ext_list, include_base=mode != "inject")
+
+        folder, file_list = get_file_list(file, ext=ext_list, include_base=(mode != "inject"))
 
         if mode == 'inject':
             texture_folder = texture_file
@@ -446,7 +433,7 @@ def main(args, config={}, texconv=None):
         save_config(config)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     start_time = time.time()
 
     print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')

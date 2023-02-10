@@ -70,18 +70,14 @@ class UassetFileSummary(SerializableBase):
 
         """
         Version info. But most assets have zeros for these variables. (unversioning)
-        So, we can't detect UE version from them.
-        """
-        ar << (Int32, self, "ue3_ver")  # LegacyUE3Version
-        ar << (Int32, self, "ue4_ver")  # FileVersionUE.FileVersionUE4
-        if ar.version >= '5.0':
-            ar << (Int32, self, "ue5_ver")  # FileVersionUE.FileVersionUE5
-
-        """ other version info (int32 * 2)
+        So, we can't get UE version from them.
+        - LegacyUE3Version
+        - FileVersionUE.FileVersionUE4
+        - FileVersionUE.FileVersionUE5 (Added at 5.0)
         - FileVersionLicenseeUE
         - CustomVersionContainer
         """
-        ar << (Bytes, self, "extra_vers", 8)
+        ar << (Bytes, self, "version_info", 16 + 4 * (ar.version >= '5.0'))
 
         ar << (Int32, self, "uasset_size")  # TotalHeaderSize
         ar << (String, self, "package_name")
@@ -202,6 +198,7 @@ class UassetFileSummary(SerializableBase):
         print(f'  depends offset: {self.depends_offset}')
         print(f'  file length (uasset+uexp-4): {self.bulk_offset}')
         print(f'  official asset: {self.is_official()}')
+        print(f"  unversioned: {self.is_unversioned()}")
 
     def is_unversioned(self):
         return (self.pkg_flags & PackageFlags.PKG_UnversionedProperties) > 0
@@ -288,9 +285,6 @@ class Uunknown(SerializableBase):
         uexp_io << (Buffer, self, "bin", self.uexp_size)
         if uexp_io.is_writing:
             self.uexp_size = len(self.bin)
-
-    def is_texture(self):
-        return False
 
 
 class UassetExport(SerializableBase):

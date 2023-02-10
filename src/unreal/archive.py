@@ -44,7 +44,7 @@ class ArchiveBase:
         pass
 
     def __eq__(self, val: tuple):  # pragma: no cover
-        """Read or write a constant value, and raise an error if it have unexpected value.
+        """Read or write a constant value, and raise an error if it has unexpected value.
         Notes:
             Ar == (type, const, "variable_name", optional_args)
         """
@@ -65,7 +65,7 @@ class ArchiveBase:
     def close(self):
         self.io.close()
 
-    def check(self, actual, expected, msg='Parse failed. Make sure you specified UE4 version correctly.'):
+    def check(self, actual, expected, msg='Parse failed. Make sure you specified UE version correctly.'):
         if actual == expected:
             return
         print(f'offset: {self.tell()}')
