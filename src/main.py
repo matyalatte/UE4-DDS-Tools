@@ -7,8 +7,8 @@ import time
 from contextlib import redirect_stdout
 
 # my scripts
-from io_util import (compare, get_ext, get_temp_dir, flush_stdout,
-                     get_file_list, get_base_folder, remove_quotes)
+from util import (compare, get_ext, get_temp_dir, flush_stdout,
+                  get_file_list, get_base_folder, remove_quotes)
 from unreal.uasset import Uasset
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT

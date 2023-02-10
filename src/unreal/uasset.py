@@ -4,7 +4,7 @@ import io
 from io import IOBase
 import os
 
-from io_util import mkdir
+from util import mkdir
 from .crc import generate_hash, strcrc_deprecated
 from .utexture import Utexture
 from .version import VersionInfo

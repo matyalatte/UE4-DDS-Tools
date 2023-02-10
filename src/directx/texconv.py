@@ -12,7 +12,7 @@ import tempfile
 
 from .dds import DDSHeader, is_hdr
 from .dxgi_format import DXGI_FORMAT
-from io_util import mkdir
+from util import mkdir
 
 
 def get_os_name():
