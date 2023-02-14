@@ -10,7 +10,7 @@ import platform
 import shutil
 import tempfile
 
-from .dds import DDSHeader, is_hdr
+from .dds import DDS, DDSHeader, is_hdr
 from .dxgi_format import DXGI_FORMAT
 from util import mkdir
 
@@ -65,17 +65,24 @@ class Texconv:
         """Convert dds to non-dds."""
         dds_header = DDSHeader.read_from_file(file)
 
-        if dds_header.is_3d() or dds_header.is_array():
-            raise RuntimeError(
-                f"DDS converter does NOT support {dds_header.get_texture_type()} textures.\n"
-                "Use '.dds' as an export format."
-            )
-
         if dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical():
             raise RuntimeError(
                 f"DDS converter does NOT support {dds_header.get_format_as_str()}.\n"
                 "Use '.dds' as an export format."
             )
+
+        if dds_header.is_3d() or dds_header.is_array():
+            dds = DDS.load(file)
+            dds_list = dds.get_disassembled_dds_list()
+            base_name = os.path.basename(file)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                for new_dds, i in zip(dds_list, range(len(dds_list))):
+                    new_name = ".".join(base_name.split(".")[:-1]) + f"-{i}.dds"
+                    new_path = os.path.join(temp_dir, new_name)
+                    new_dds.save(new_path)
+                    name = self.convert_dds_to(new_path, out=out, fmt=fmt, cubemap_layout=cubemap_layout,
+                                               invert_normals=invert_normals, verbose=verbose)
+            return name
 
         if verbose:
             print(f'DXGI_FORMAT: {dds_header.get_format_as_str()}')

@@ -72,7 +72,7 @@ class Utexture:
         self.name_list = uasset.name_list
         self.is_light_map = "LightMap" in class_name
         self.is_cube = "Cube" in class_name
-        self.is_3D = "Volume" in class_name
+        self.is_3d = "Volume" in class_name
         self.is_array = "Array" in class_name
         self.has_opt_data = False
 
@@ -93,7 +93,7 @@ class Utexture:
 
         if uexp_io.is_reading:
             self.print(uexp_io.verbose)
-            if (self.is_3D or self.is_array) and len(self.mipmaps) > 1:
+            if (self.is_3d or self.is_array) and len(self.mipmaps) > 1:
                 raise RuntimeError(f"Loaded {self.get_texture_type()} texture has mipmaps. This is unexpected.")
 
     def __calculate_prop_size(self, ar: ArchiveBase):
@@ -283,20 +283,26 @@ class Utexture:
 
         # make dds header
         header = DDSHeader()
-
-        mipmap_data = []
-        mipmap_size = []
-
-        # get mipmaps
-        for mip in self.mipmaps:
-            mipmap_data.append(mip.data)
-            mipmap_size.append([mip.width, mip.height])
-
-        # update header
         w, h = self.get_max_size()
-        header.update(w, h, self.get_depth(), len(mipmap_data), self.dxgi_format, self.is_cube, self.get_array_size())
+        header.update(
+            w, h, self.get_depth(), len(self.mipmaps),
+            self.dxgi_format, self.is_cube, self.get_array_size()
+        )
 
-        return DDS(header, mipmap_data, mipmap_size)
+        slice_bin_list = []
+        mipmap_size_list = []
+
+        # mip list to slice list
+        for i in range(self.num_slices):
+            data = b''
+            for mip in self.mipmaps:
+                size = int(mip.width * mip.height * self.byte_per_pixel)
+                offset = size * i
+                data = b''.join([data, mip.data[offset: offset + size]])
+            slice_bin_list.append(data)
+            mipmap_size_list.append([mip.width, mip.height])
+
+        return DDS(header, slice_bin_list, mipmap_size_list)
 
     def inject_dds(self, dds: DDS):
         """Inject dds into asset."""
@@ -322,25 +328,29 @@ class Utexture:
                 f"(Uasset: {self.get_array_size()}, DDS: {dds.get_array_size()})"
             )
 
+        # Store old info
         max_width, max_height = self.get_max_size()
         old_size = (max_width, max_height)
         old_mipmap_num = len(self.mipmaps)
-
-        uexp_width, uexp_height = self.get_max_uexp_size()
-
         old_depth = self.get_depth()
         new_depth = dds.header.depth
 
         # inject
+        uexp_width, uexp_height = self.get_max_uexp_size()
         self.first_mip_to_serialize = 0
-        i = 0
-        self.mipmaps = [Umipmap() for i in range(len(dds.mipmap_data))]
-        for data, size, mip in zip(dds.mipmap_data, dds.mipmap_size, self.mipmaps):
-            if self.has_ubulk and i + 1 < len(dds.mipmap_data) and size[0] * size[1] > uexp_width * uexp_height:
+        self.mipmaps = [Umipmap() for i in range(len(dds.mipmap_size_list))]
+        offset = 0
+        for size, mip, i in zip(dds.mipmap_size_list, self.mipmaps, range(len(self.mipmaps))):
+            # get a mip data from slices
+            data = b''
+            bin_size = int(size[0] * size[1] * self.byte_per_pixel)
+            for slice_bin in dds.slice_bin_list:
+                data = b''.join([data, slice_bin[offset: offset + bin_size]])
+            offset += bin_size
+            if self.has_ubulk and i + 1 < len(self.mipmaps) and size[0] * size[1] > uexp_width * uexp_height:
                 mip.update(data, size, new_depth, False)
             else:
                 mip.update(data, size, new_depth, True)
-            i += 1
 
         # print results
         max_width, max_height = self.get_max_size()
@@ -351,10 +361,9 @@ class Utexture:
         if self.version == "ff7r":
             self.has_opt_data = self.has_ubulk
         new_mipmap_num = len(self.mipmaps)
-
         print('DDS has been injected.')
         print(f'  size: {old_size} -> {new_size}')
-        if self.is_3D:
+        if self.is_3d:
             print(f'  depth: {old_depth} -> {new_depth}')
         else:
             print(f'  mipmap: {old_mipmap_num} -> {new_mipmap_num}')
@@ -378,7 +387,7 @@ class Utexture:
         print(f'  format: {self.pixel_format} ({self.dxgi_format.name})')
         print(f'  width: {max_width}')
         print(f'  height: {max_height}')
-        if self.is_3D:
+        if self.is_3d:
             print(f'  depth: {depth}')
         elif self.is_array:
             print(f'  array_size: {self.get_array_size()}')
@@ -422,7 +431,7 @@ class Utexture:
             self.packed_data |= self.has_opt_data * (1 << 30)
 
     def get_texture_type(self) -> str:
-        if self.is_3D:
+        if self.is_3d:
             return "3D"
         if self.is_cube:
             t = "Cube"
@@ -433,7 +442,7 @@ class Utexture:
         return t
 
     def get_array_size(self):
-        if self.is_3D:
+        if self.is_3d:
             return 1
         if self.is_cube:
             return self.num_slices // 6
@@ -441,6 +450,6 @@ class Utexture:
             return self.num_slices
 
     def get_depth(self):
-        if self.is_3D:
+        if self.is_3d:
             return self.num_slices
         return 1

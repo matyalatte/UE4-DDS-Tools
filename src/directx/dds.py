@@ -418,6 +418,9 @@ class DDSHeader(c.LittleEndianStructure):
     def get_array_size(self):
         return self.dx10_header.array_size
 
+    def get_num_slices(self):
+        return self.get_array_size() * self.depth * (1 + (self.is_cube() * 5))
+
     def get_texture_type(self):
         if self.is_3d():
             return "3D"
@@ -428,6 +431,37 @@ class DDSHeader(c.LittleEndianStructure):
         if self.is_array():
             t += "Array"
         return t
+
+    def get_size_list(self):
+        """Calculate mipmap sizes"""
+        mipmap_size_list = []
+        slice_size = 0
+        height, width = self.height, self.width
+        block_size = self.get_block_size()
+        byte_per_pixel = self.get_bpp()
+
+        def cail(val, unit):
+            remain = val % unit
+            val += (unit - remain) * (remain != 0)
+            return val
+
+        for i in range(self.mipmap_num):
+            _width, _height = width, height
+            if self.is_compressed():
+                # mipmap sizes should be multiples of 4
+                _width = cail(width, block_size)
+                _height = cail(height, block_size)
+
+            mipmap_size_list.append([_width, _height])
+            slice_size += _width * _height * byte_per_pixel
+            if slice_size != int(slice_size):
+                raise RuntimeError(
+                    'The size of mipmap data is not int. This is unexpected.'
+                )
+            width, height = width // 2, height // 2
+            width, height = max(block_size, width), max(block_size, height)
+
+        return mipmap_size_list, int(slice_size)
 
     def print(self):
         print(f'  type: {self.get_texture_type()}')
@@ -441,12 +475,21 @@ class DDSHeader(c.LittleEndianStructure):
         else:
             print(f'  mipmaps: {self.mipmap_num}')
 
+    def disassemble(self):
+        self.update(self.width, self.height, 1, self.mipmap_num, self.dxgi_format, self.is_cube(), 1)
+
+    def assemble(self, is_array, size):
+        if is_array:
+            self.update(self.width, self.height, 1, self.mipmap_num, self.dxgi_format, self.is_cube(), size)
+        else:
+            self.update(self.width, self.height, size, self.mipmap_num, self.dxgi_format, self.is_cube(), 1)
+
 
 class DDS:
-    def __init__(self, header: DDSHeader, mipmap_data: list[bytes], mipmap_size: list[list[int]]):
+    def __init__(self, header: DDSHeader, slices: list[bytes] = None, mipmap_sizes: list[list[int]] = None):
         self.header = header
-        self.mipmap_data = mipmap_data
-        self.mipmap_size = mipmap_size
+        self.slice_bin_list = slices
+        self.mipmap_size_list = mipmap_sizes
 
     @staticmethod
     def load(file: str, verbose=False):
@@ -459,48 +502,16 @@ class DDS:
             # read header
             header = DDSHeader.read(f)
 
-            mipmap_num = header.mipmap_num
-            byte_per_pixel = header.get_bpp()
-            array_size = header.get_array_size()
+            mipmap_sizes, slice_size = header.get_size_list()
+            num_slices = header.get_num_slices()
 
-            # calculate mipmap sizes
-            mipmap_size = []
-            height, width = header.height, header.width
-            block_size = header.get_block_size()
+            # read texture data
+            slices = []
+            for i in range(num_slices):
+                data = read_buffer(f, slice_size, end_offset)
+                slices.append(data)
 
-            def cail(val, unit):
-                remain = val % unit
-                val += (unit - remain) * (remain != 0)
-                return val
-
-            for i in range(mipmap_num):
-                _width, _height = width, height
-                if header.is_compressed():
-                    # mipmap sizes should be multiples of 4
-                    _width = cail(width, block_size)
-                    _height = cail(height, block_size)
-
-                mipmap_size.append([_width, _height])
-
-                width, height = width // 2, height // 2
-                width, height = max(block_size, width), max(block_size, height)
-
-            # read mipmaps
-            mipmap_data = [b''] * mipmap_num
-            for j in range(1 + (header.is_cube()) * 5):
-                for (width, height), i in zip(mipmap_size, range(mipmap_num)):
-                    # read mipmap data
-                    size = width * height * byte_per_pixel * array_size * header.depth
-                    if size != int(size):
-                        raise RuntimeError(
-                            'The size of mipmap data is not int. This is unexpected.'
-                        )
-                    data = read_buffer(f, int(size), end_offset)
-
-                    # store mipmap data
-                    mipmap_data[i] = b''.join([mipmap_data[i], data])
-
-            dds = DDS(header, mipmap_data, mipmap_size)
+            dds = DDS(header, slices, mipmap_sizes)
             dds.print(verbose)
 
             if f.tell() != end_offset:
@@ -520,10 +531,8 @@ class DDS:
             self.header.write(f)
 
             # write mipmap data
-            for i in range(1 + (self.header.is_cube()) * 5):
-                for d in self.mipmap_data:
-                    stride = len(d) // (1 + (self.header.is_cube()) * 5)
-                    f.write(d[i * stride: (i + 1) * stride])
+            for d in self.slice_bin_list:
+                f.write(d)
 
     def get_texture_type(self):
         return self.header.get_texture_type()
@@ -534,11 +543,37 @@ class DDS:
     def get_array_size(self):
         return self.header.get_array_size()
 
+    def get_disassembled_dds_list(self):
+        new_dds_num = self.header.depth * self.get_array_size()
+        num_slices = 1 + (5 * self.is_cube())
+        self.header.disassemble()
+        dds_list = []
+        for i in range(new_dds_num):
+            dds = DDS(
+                self.header,
+                self.slice_bin_list[i * num_slices: (i + 1) * num_slices],
+                self.mipmap_size_list
+            )
+            dds_list.append(dds)
+        return dds_list
+
+    @staticmethod
+    def assemble(dds_list, is_array=True):
+        header = dds_list[0].header
+        header.assemble(is_array, len(dds_list))
+        for dds in dds_list[1:]:
+            if header.dxgi_format != dds.header.dxgi_format:
+                raise RuntimeError("Failed to assemble dds files. DXGI formats should be the same")
+            if dds_list[0].mipmap_size_list != dds.mipmap_size_list:
+                raise RuntimeError("Failed to assemble dds files. Texture sizes should be the same")
+        slice_bin_list = sum([dds.slice_bin_list for dds in dds_list], [])
+        return DDS(header, slice_bin_list, dds_list[0].mipmap_size_list)
+
     def print(self, verbose):
         self.header.print()
         if verbose:
             # print mipmap info
-            for i in range(len(self.mipmap_size)):
+            for i, size in zip(range(len(self.mipmap_size_list)), self.mipmap_size_list):
                 print(f'  Mipmap {i}')
-                width, height = self.mipmap_size[i]
+                width, height = size
                 print(f'    size (w, h): ({width}, {height})')

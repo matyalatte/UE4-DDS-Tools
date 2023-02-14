@@ -113,12 +113,15 @@ def valid(folder, file, args, version=None, texconv=None):
                 compare(ubulk_name, new_ubulk_name)
 
 
-def search_texture_file(file_base, ext_list, index=None):
+def search_texture_file(file_base, ext_list, index=None, index2=None):
     """Sarch a texture file for injection mode."""
     if index is not None:
-        file_base += f".{index}"
+        file_base += index
     for ext in ext_list:
-        file = ".".join([file_base, ext])
+        file = file_base
+        if index2 is not None and ext != "dds":
+            file += index2
+        file = ".".join([file, ext])
         if os.path.exists(file):
             return file
     raise RuntimeError(f"Texture file not found. ({file_base})")
@@ -149,13 +152,18 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     textures = asset.get_texture_list()
     ext_list = [ext] + TEXTURES
     if len(textures) == 1:
-        src_files = [search_texture_file(file_base, ext_list)]
+        index2 = "-0" if textures[0].is_array or textures[0].is_3d else None
+        src_files = [search_texture_file(file_base, ext_list, index2=index2)]
     else:
         # Find other files for multiple textures
         splitted = file_base.split(".")
-        if len(splitted) >= 2 and splitted[-1] == "0":
+        if len(splitted) >= 2 and (splitted[-1] == "0" or splitted[-1] == "0-0"):
             file_base = ".".join(splitted[:-1])
-        src_files = [search_texture_file(file_base, ext_list, index=i) for i in range(len(textures))]
+        src_files = []
+        for i, tex in zip(range(len(textures)), textures):
+            index = f".{i}"
+            index2 = "-0" if tex.is_array or tex.is_3d else None
+            src_files.append(search_texture_file(file_base, ext_list, index=index, index2=index2))
 
     for tex, src in zip(textures, src_files):
         if args.force_uncompressed:
@@ -166,12 +174,30 @@ def inject(folder, file, args, texture_file=None, texconv=None):
             dds = DDS.load(src)
         else:
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
-                temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
-                                                  out=temp_dir, export_as_cubemap=tex.is_cube,
-                                                  no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
-                                                  image_filter=args.image_filter,
-                                                  allow_slow_codec=True, verbose=False)
-                dds = DDS.load(temp_dds)
+                if tex.is_array or tex.is_3d:
+                    src_base, src_ext = os.path.splitext(src)
+                    src_base = src_base[:-2]
+                    i = 0
+                    dds_list = []
+                    while True:
+                        src = f"{src_base}-{i}{src_ext}"
+                        if not os.path.exists(src):
+                            break
+                        temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
+                                                          out=temp_dir, export_as_cubemap=tex.is_cube,
+                                                          no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
+                                                          image_filter=args.image_filter,
+                                                          allow_slow_codec=True, verbose=False)
+                        dds_list.append(DDS.load(temp_dds))
+                        i += 1
+                    dds = DDS.assemble(dds_list, is_array=tex.is_array)
+                else:
+                    temp_dds = texconv.convert_to_dds(src, tex.dxgi_format,
+                                                      out=temp_dir, export_as_cubemap=tex.is_cube,
+                                                      no_mip=len(tex.mipmaps) <= 1 or args.no_mipmaps,
+                                                      image_filter=args.image_filter,
+                                                      allow_slow_codec=True, verbose=False)
+                    dds = DDS.load(temp_dds)
 
         # inject the DDS
         tex.inject_dds(dds)
@@ -218,19 +244,12 @@ def export(folder, file, args, texconv=None):
         if args.export_as == 'dds':
             dds.save(file_name)
         else:
-            if tex.is_3D or tex.is_array:
-                print(
-                    f"Warning: {args.export_as} is unsupported for {tex.get_texture_type()} textures."
-                    " It'll be exported as dds."
-                )
-                dds.save(file_name)
-            else:
-                # Convert if the export format is not DDS
-                with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
-                    temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
-                    dds.save(temp_dds)
-                    converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
-                    print(f"convert to: {converted_file}")
+            # Convert if the export format is not DDS
+            with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
+                temp_dds = os.path.join(temp_dir, os.path.basename(file_name))
+                dds.save(temp_dds)
+                converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
+                print(f"convert to: {converted_file}")
         flush_stdout()  # Need to flush to see the result for each asset
 
 
