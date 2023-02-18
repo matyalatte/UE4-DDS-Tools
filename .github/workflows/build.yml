@@ -19,11 +19,11 @@ jobs:
       - name: Check tag
         run: |
           if [[ ${{ github.ref }} == refs/tags/v* ]]; then
-            VERSION=-$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+            TAG=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
           else
-            VERSION=""
+            TAG=$(echo ${{ github.sha }} | cut -c1-7)
           fi
-          echo "REPO_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
         shell: bash
         
       - uses: actions/checkout@v3
@@ -31,66 +31,64 @@ jobs:
       
       - name: Download embeddable python
         run: |
-          mkdir -p ../release/python
+          mkdir -p release/python
           curl -OL https://www.python.org/ftp/python/${{env.PYTHON_VERSION}}/python-${{env.PYTHON_VERSION}}-embed-amd64.zip
           unzip -d python-${{env.PYTHON_VERSION}}-embed-amd64 python-${{env.PYTHON_VERSION}}-embed-amd64.zip
           cd python-${{env.PYTHON_VERSION}}-embed-amd64
-          cp python.exe ../../release/python
-          cp python39.dll ../../release/python
-          cp python39.zip ../../release/python
-          cp libffi-7.dll ../../release/python
-          cp _ctypes.pyd ../../release/python
-          cp LICENSE.txt ../../release/python
+          cp python.exe ../release/python
+          cp python39.dll ../release/python
+          cp python39.zip ../release/python
+          cp libffi-7.dll ../release/python
+          cp _ctypes.pyd ../release/python
+          cp LICENSE.txt ../release/python
         shell: bash
 
       - name: build dll
         run: |
           external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
-          mkdir -p ../release/src/directx
-          cp external/Texconv-Custom-DLL/texconv.dll ../release/src/directx
+          mkdir -p release/src/directx
+          cp external/Texconv-Custom-DLL/texconv.dll release/src/directx
 
       - name: Copy files
         run: |
-          cp -r src ../release
-          cp docs/changelog.txt ../release
-          cp docs/README.url ../release
-          cp LICENSE ../release
-          cp -r ../release ../release_gui
-          cp bat/* ../release
+          cp -r src release
+          cp docs/changelog.txt release
+          cp docs/README.url release
+          cp LICENSE release
+          cp -r release release_gui
+          cp bat/* release
         shell: bash
 
       - name: Download Simple Command Runner
         run: |
           curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
           unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
-          cp SimpleCommandRunner/SimpleCommandRunner.exe ../release_gui/GUI.exe
-          cp gui_definition.json ../release_gui
+          cp SimpleCommandRunner/SimpleCommandRunner.exe release_gui/GUI.exe
+          cp gui_definition.json release_gui
         shell: bash
 
       - name: Archive Release
         uses: thedoctor0/zip-release@master
         with:
-          directory: '../release'
+          directory: 'release'
           type: 'zip'
-          filename: '${{ env.ZIP_NAME }}.zip'
+          filename: '${{ env.ZIP_NAME }}-${{ env.TAG }}-Batch.zip'
           exclusions: '*.git* .gitignore'
 
       - name: Archive Release
         uses: thedoctor0/zip-release@master
         with:
-          directory: '../release_gui'
+          directory: 'release_gui'
           type: 'zip'
-          filename: '${{ env.ZIP_NAME }}.zip'
+          filename: '${{ env.ZIP_NAME }}-${{ env.TAG }}-GUI.zip'
           exclusions: '*.git* .gitignore'
 
       - name: Create Release Draft
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: create-release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.TAG }}
           body: |
             Changelog
             - First Change
@@ -99,21 +97,8 @@ jobs:
           prerelease: false
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ../release/${{ env.ZIP_NAME }}.zip
-          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}-Batch.zip
-          asset_content_type: application/zip
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ../release_gui/${{ env.ZIP_NAME }}.zip
-          asset_name: ${{ env.ZIP_NAME }}${{ env.REPO_VERSION }}-GUI.zip
-          asset_content_type: application/zip
+        run: |
+          gh release upload ${{ env.TAG }} release/${{ env.ZIP_NAME }}-${{ env.TAG }}-Batch.zip
+          gh release upload ${{ env.TAG }} release_gui/${{ env.ZIP_NAME }}-${{ env.TAG }}-GUI.zip

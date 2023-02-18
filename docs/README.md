@@ -71,6 +71,9 @@ This tool can convert textures between the following file formats.
 
 ## Supported Texture Classes
 
+<details>
+<summary>The List of supported texture classes</summary>
+
 - Texture2D
 - TextureCube
 - LightMapTexture2D
@@ -79,15 +82,19 @@ This tool can convert textures between the following file formats.
 - TextureCubeArray
 - VolumeTexture
 
-> Note that you can not use non-dds files for texture arrays and volume textures.
+</details>
 
 ## Download
 
-Download `UE4-DDS-tools*.zip` from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
+Dowload one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
+
+- `UE4-DDS-tools-*-Batch.zip` is for batch file users.
+- `UE4-DDS-tools-*-GUI.zip` is for GUI users.
 
 ## Getting Started
 
-[How to Use · matyalatte/UE4-DDS-tools Wiki](https://github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use)
+- [For GUI users](https://github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use)
+- [For batch file users](https://github.com/matyalatte/UE4-DDS-Tools/wiki/Batch-files)
 
 ## FAQ
 
