@@ -1,3 +1,12 @@
+ver 0.5.0
+- Supported Texture2DArray, TextureCubeArray, and VolumeTexture
+- Restored the batch file method for injection
+- Added "save detected version" option for check mode
+- Added "copy" mode
+- Fixed a bug that num slices won't be saved correctly for some old UE versions.
+- Refactored serialize functions
+- Removed file list method (txt will be used for batch file method)
+
 ver 0.4.5
 - Supported ShadowMapTexture2D
 - Added filter options (Possible to use bicubic interpolation for mip generation)

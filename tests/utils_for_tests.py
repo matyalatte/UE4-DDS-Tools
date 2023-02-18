@@ -17,6 +17,7 @@ class Args:
         self.disable_tempfile = False
         self.skip_non_texture = True
         self.image_filter = "linear"
+        self.save_detected_version = False
 
         if json_args != {}:
             self.init_with_json(json_args)

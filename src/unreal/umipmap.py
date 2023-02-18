@@ -1,10 +1,7 @@
 '''Mipmap class for texture asset'''
-import ctypes
 from enum import IntEnum
-from io import IOBase
-
-import io_util
-from .version import VersionInfo
+from .archive import (ArchiveBase, Int64, Uint32, Uint16, Buffer,
+                      SerializableBase)
 
 
 class BulkDataFlags(IntEnum):
@@ -19,7 +16,7 @@ class BulkDataFlags(IntEnum):
     BULKDATA_NoOffsetFixUp = 1 << 16            # no need to fix offset data
 
 
-class Umipmap(ctypes.LittleEndianStructure):
+class Umipmap(SerializableBase):
     """
     A mipmap (FTexture2DMipMap)
 
@@ -27,38 +24,81 @@ class Umipmap(ctypes.LittleEndianStructure):
         UnrealEngine/Engine/Source/Runtime/Engine/Public/TextureResource.h
         UnrealEngine/Engine/Source/Runtime/Engine/Private/Texture2D.cpp
     """
-    _pack_ = 1
-    _fields_ = [
-        # if version <= 4.27:
-        #    cooked, c_uint32 (always 1)
-        ("ubulk_flag", ctypes.c_uint32),  # BulkDataFlags
-        ("data_size", ctypes.c_uint32),  # 0->ff7r uexp
-        ("data_size2", ctypes.c_uint32),  # data size again
-        ("offset", ctypes.c_int64)
-        # data, c_ubyte*
-        # width, c_uint32
-        # height, c_uint32
-        # if version >= 4.20:
-        #    depth, c_uint32 (==1 for 2d and cube. !=1 for 3d textures)
-    ]
 
-    def __init__(self, version: VersionInfo):
-        self.version = version
+    def __init__(self):
+        self.depth = 1
         self.is_uexp = False
         self.is_meta = False
         self.is_upntl = False
+        self.ubulk_flag = 0
 
-    def update(self, data: bytes, size: int, is_uexp: bool):
+    def update(self, data: bytes, size: int, depth: int, is_uexp: bool):
         self.is_uexp = is_uexp
         self.is_meta = False
         self.data_size = len(data)
-        self.data_size2 = len(data)
         self.data = data
         self.offset = 0
         self.width = size[0]
         self.height = size[1]
-        self.pixel_num = self.width * self.height
+        self.depth = depth
+        self.pixel_num = self.width * self.height * self.depth
 
+    def serialize(self, ar: ArchiveBase):
+        self.version = ar.version
+        if ar.is_writing:
+            if not ar.valid:
+                self.__update_ubulk_flags()
+            if self.is_uexp:
+                self.offset = ar.args[0]
+        if ar.version <= "4.27":
+            ar == (Uint32, 1, "bCooked")
+
+        ar << (Uint32, self, "ubulk_flag")
+        if ar.is_reading:
+            self.__unpack_ubulk_flag()
+
+        ar << (Uint32, self, "data_size")
+        ar == (Uint32, self.data_size, "data_size2")
+        if ar.is_writing:
+            self.offset_to_offset = ar.tell()
+            if self.is_uexp:
+                self.offset += ar.tell() + 8
+
+        ar << (Int64, self, "offset")
+        if self.is_uexp and not self.is_meta:
+            ar << (Buffer, self, "data", self.data_size)
+
+        if ar.version == 'borderlands3':
+            int_type = Uint16
+        else:
+            int_type = Uint32
+        ar << (int_type, self, "width")
+        ar << (int_type, self, "height")
+        if ar.version >= '4.20':
+            ar << (int_type, self, "depth")
+        self.pixel_num = self.width * self.height * self.depth
+
+    def serialize_ubulk(self, ar: ArchiveBase):
+        if self.is_uexp:
+            return
+        ar << (Buffer, self, "data", self.data_size)
+
+    def rewrite_offset(self, ar: ArchiveBase, new_offset: int):
+        self.offset = new_offset
+        current = ar.tell()
+        ar.seek(self.offset_to_offset)
+        ar << (Int64, self, "offset")
+        ar.seek(current)
+
+    def __unpack_ubulk_flag(self):
+        self.is_uexp = (self.ubulk_flag & BulkDataFlags.BULKDATA_ForceInlinePayload > 0) or \
+                       (self.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0)
+        self.is_meta = self.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0
+        self.is_upntl = self.ubulk_flag & BulkDataFlags.BULKDATA_OptionalPayload > 0
+        if self.is_upntl:
+            raise RuntimeError("Optional payload (.is_upntl) is unsupported.")
+
+    def __update_ubulk_flags(self):
         # update bulk flags
         if self.is_uexp:
             if self.is_meta:
@@ -76,41 +116,6 @@ class Umipmap(ctypes.LittleEndianStructure):
             if (self.version == 'ff7r') or (self.version >= '4.26'):
                 self.ubulk_flag |= BulkDataFlags.BULKDATA_NoOffsetFixUp
 
-    @staticmethod
-    def read(f: IOBase, version: VersionInfo) -> "Umipmap":
-        mip = Umipmap(version)
-        if version <= '4.27':
-            io_util.read_const_uint32(f, 1)
-        f.readinto(mip)
-        mip.is_uexp = (mip.ubulk_flag & BulkDataFlags.BULKDATA_ForceInlinePayload > 0) or \
-                      (mip.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0)
-        mip.is_meta = mip.ubulk_flag & BulkDataFlags.BULKDATA_Unused > 0
-        mip.is_upntl = mip.ubulk_flag & BulkDataFlags.BULKDATA_OptionalPayload > 0
-        if mip.is_upntl:
-            raise RuntimeError("Optional payload (.is_upntl) is unsupported.")
-        if mip.is_uexp:
-            mip.data = io_util.read_buffer(f, mip.data_size)
-
-        if version == 'borderlands3':
-            read_int = io_util.read_uint16
-        else:
-            read_int = io_util.read_uint32
-
-        mip.width = read_int(f)
-        mip.height = read_int(f)
-        if version >= '4.20':
-            depth = read_int(f)
-            io_util.check(depth, 1, msg='3d texture is unsupported.')
-
-        io_util.check(mip.data_size, mip.data_size2)
-        mip.pixel_num = mip.width * mip.height
-        return mip
-
-    def read_ubulk(self, f: IOBase):
-        if self.is_uexp:
-            return
-        self.data = io_util.read_buffer(f, self.data_size)
-
     def print(self, padding: int = 2):
         pad = ' ' * padding
         print(pad + 'file: ' + 'uexp' * self.is_uexp + 'ubluk' * (not self.is_uexp))
@@ -118,36 +123,5 @@ class Umipmap(ctypes.LittleEndianStructure):
         print(pad + f'offset: {self.offset}')
         print(pad + f'width: {self.width}')
         print(pad + f'height: {self.height}')
-
-    def write(self, f: IOBase, uasset_size: int):
-        if self.version <= '4.27':
-            io_util.write_uint32(f, 1)
-
-        if self.is_uexp:
-            self.offset = uasset_size + f.tell() + 20
-            if self.is_meta:
-                self.data_size = 0
-                self.data_size2 = 0
-
-        self.offset_to_offset = f.tell() + 12
-        f.write(self)
-
-        if self.is_uexp and not self.is_meta:
-            f.write(self.data)
-
-        if self.version == 'borderlands3':
-            write_int = io_util.write_uint16
-        else:
-            write_int = io_util.write_uint32
-
-        write_int(f, self.width)
-        write_int(f, self.height)
-        if self.version >= '4.20':
-            write_int(f, 1)
-
-    def rewrite_offset(self, f: IOBase, new_offset: int):
-        self.offset = new_offset
-        current = f.tell()
-        f.seek(self.offset_to_offset)
-        io_util.write_int64(f, new_offset)
-        f.seek(current)
+        if self.version >= '4.20' and self.depth > 1:
+            print(pad + f'depth: {self.depth}')

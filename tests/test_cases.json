@@ -13,6 +13,13 @@
             "version": "5.0"
         }
     ],
+    "valid_error": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\5.0",
+            "version": "4.27",
+            "error": "Unexpected value for header.file_version."
+        }
+    ],
     "folders": [
         {
             "file": "external\\Matya-Uasset-Samples\\5.0",
@@ -43,6 +50,35 @@
             "version": "4.27",
             "export_as": "tga",
             "image_filter": "cubic"
+        }
+    ],
+    "save_version": [
+        {
+            "file": "external\\Matya-Uasset-Samples\\5.0\\T_Worm_A.uasset",
+            "version": null,
+            "save_detected_version": true
+        },
+        {
+            "file": "external\\Matya-Uasset-Samples\\4.27\\T_Worm_A.uasset",
+            "version": null,
+            "save_detected_version": true
+        }
+    ],
+    "dds": [
+        {
+            "file": "tests\\array.dds",
+            "mode": "valid"
+        },
+        {
+            "file": "tests\\array.dds",
+            "mode": "parse"
+        }
+    ],
+    "batch": [
+        {
+            "file": "tests\\test_file_path_.txt",
+            "version": "4.27",
+            "mode": "valid"
         }
     ]
 }

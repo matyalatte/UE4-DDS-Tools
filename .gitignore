@@ -23,10 +23,12 @@ test
 *.sh
 *.txt
 !changelog.txt
+!tests/test_file_path_.txt
 tests/local_test_cases.json
 
 #texture files
 *.dds
+!tests/array.dds
 *.png
 *.tga
 *.hdr
