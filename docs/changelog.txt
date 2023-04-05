@@ -1,3 +1,7 @@
+ver 0.5.1
+- Updated GUI to v0.3.0
+- Added tooltips to GUI
+
 ver 0.5.0
 - Supported Texture2DArray, TextureCubeArray, and VolumeTexture
 - Restored the batch file method for injection
