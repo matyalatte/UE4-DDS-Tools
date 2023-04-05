@@ -2,6 +2,7 @@ ver 0.5.1
 - Updated GUI to v0.3.0
 - Added tooltips to GUI
 - Fixed a bug that max size will be uexp's max size.
+- Fixed a bug that ubulk flags won't be updated correctly.
 
 ver 0.5.0
 - Supported Texture2DArray, TextureCubeArray, and VolumeTexture
