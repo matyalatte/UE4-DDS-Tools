@@ -110,9 +110,7 @@ class Utexture:
             Just searching x01 is not the best algorithm but fast enough.
             Because "found 01" means "found strip flags" for most texture assets.
             """
-            b = ar.read(1)
-            while (b != b'\x01'):
-                b = ar.read(1)
+            while (ar.read(1) != b'\x01'):
                 if (ar.tell() >= err_offset):
                     raise RuntimeError('Parse Failed. Make sure you specified UE4 version correctly.')
 
@@ -146,15 +144,12 @@ class Utexture:
         # FTexturePlatformData::SerializeCooked (SerializePlatformData)
         if ar.is_writing:
             # get mipmap info
-            max_width, max_height = self.get_max_uexp_size()
+            self.max_width, self.max_height = self.get_max_size()
             self.uexp_map_num, ubulk_map_num = self.get_mipmap_num()
             self.mip_count = len(self.mipmaps)
-            if not ar.valid:
-                self.original_height = max_height
-                self.original_width = max_width
 
-        ar << (Uint32, self, "original_width")
-        ar << (Uint32, self, "original_height")
+        ar << (Uint32, self, "max_width")
+        ar << (Uint32, self, "max_height")
         if ar.is_writing:
             self.__update_packed_data()
         ar << (Uint32, self, "packed_data")
