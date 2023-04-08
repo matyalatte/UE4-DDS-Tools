@@ -58,7 +58,7 @@
                         "Use uncompressed formats instead of BC1 ~ BC7 and ASTC.",
                         "No error for non-texture assets.",
                         "Use bicubic interpolation for mip generation."],
-                    "default": [false, false, false, true]
+                    "default": [false, false, true, true]
                 }
             ]
         },
@@ -115,7 +115,9 @@
                     "values": [" --no_mipmaps", " --skip_non_texture"],
                     "tooltip": [
                         "Discard mipmaps.",
-                        "No error for non-texture assets."]
+                        "No error for non-texture assets."
+                    ],
+                    "default": [false, true]
                 }
             ]
         },
