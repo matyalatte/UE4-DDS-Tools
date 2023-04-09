@@ -58,10 +58,10 @@ def memcrc_deprecated(string):
     """
     # Convert string to ints
     if string.isascii():
-        ints = string.upper().encode('ascii')
+        ints = string.upper().encode("ascii")
     else:
-        binary = string.upper().encode('utf-16-le')
-        ints = struct.unpack('<'+'B'*len(string)*2, binary)
+        binary = string.upper().encode("utf-16-le")
+        ints = struct.unpack("<"+"B"*len(string)*2, binary)
 
     # Generate hash from ints
     crc = 0
@@ -84,10 +84,10 @@ def strcrc_deprecated(string):
     """
     # Convert string to ints
     if string.isascii():
-        ints = string.upper().encode('ascii')
+        ints = string.upper().encode("ascii")
     else:
-        binary = string.upper().encode('utf-16-le')
-        ints = struct.unpack('<'+'H'*len(string), binary)
+        binary = string.upper().encode("utf-16-le")
+        ints = struct.unpack("<"+"H"*len(string), binary)
 
     # Generate hash from ints
     crc = 0xFFFFFFFF
@@ -149,10 +149,10 @@ def memcrc(string):
     """
     # Convert string to ints
     if string.isascii():
-        ints = string.encode('ascii')
+        ints = string.encode("ascii")
     else:
-        binary = string.encode('utf-16-le')
-        ints = struct.unpack('<'+'H'*len(string), binary)
+        binary = string.encode("utf-16-le")
+        ints = struct.unpack("<"+"H"*len(string), binary)
 
     # Generate hash from ints
     crc = 0xFFFFFFFF
@@ -180,5 +180,5 @@ def generate_hash(string):
     hash1 = memcrc_deprecated(string)
     hash2 = memcrc(string)
     hash_int = (hash1 & 0xFFFF) | ((hash2 & 0xFFFF) << 16)
-    hash_bin = struct.pack('<'+'I', hash_int)
+    hash_bin = struct.pack("<"+"I", hash_int)
     return hash_bin

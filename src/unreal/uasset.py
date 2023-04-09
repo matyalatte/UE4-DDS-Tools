@@ -1,4 +1,4 @@
-'''Classes for .uasset'''
+"""Classes for .uasset"""
 from enum import IntEnum
 import io
 from io import IOBase
@@ -14,14 +14,14 @@ from .archive import (ArchiveBase, ArchiveRead, ArchiveWrite,
                       SerializableBase)
 
 
-EXT = ['.uasset', '.uexp', '.ubulk']
+EXT = [".uasset", ".uexp", ".ubulk"]
 
 
 def get_all_file_path(file: str) -> list[str]:
-    '''Get all file paths for texture asset from a file path.'''
+    """Get all file paths for texture asset from a file path."""
     base_name, ext = os.path.splitext(file)
     if ext not in EXT:
-        raise RuntimeError(f'Not Uasset. ({file})')
+        raise RuntimeError(f"Not Uasset. ({file})")
     return [base_name + ext for ext in EXT]
 
 
@@ -44,8 +44,8 @@ class UassetFileSummary(SerializableBase):
     Notes:
         UnrealEngine/Engine/Source/Runtime/CoreUObject/Private/UObject/PackageFileSummary.cpp
     """
-    TAG = b'\xC1\x83\x2A\x9E'  # Magic for uasset files
-    TAG_SWAPPED = b'\x9E\x2A\x83\xC1'  # for big endian files
+    TAG = b"\xC1\x83\x2A\x9E"  # Magic for uasset files
+    TAG_SWAPPED = b"\x9E\x2A\x83\xC1"  # for big endian files
 
     def serialize(self, ar: ArchiveBase):
         self.file_name = ar.name
@@ -63,8 +63,8 @@ class UassetFileSummary(SerializableBase):
         -8: 5.0 ~
         """
         expected_version = (
-            -8 + (ar.version <= '4.6') * 2 + (ar.version <= '4.9')
-            + (ar.version <= '4.13') + (ar.version <= '4.27')
+            -8 + (ar.version <= "4.6") * 2 + (ar.version <= "4.9")
+            + (ar.version <= "4.13") + (ar.version <= "4.27")
         )
         ar == (Int32, expected_version, "header.file_version")
 
@@ -77,7 +77,7 @@ class UassetFileSummary(SerializableBase):
         - FileVersionLicenseeUE
         - CustomVersionContainer
         """
-        ar << (Bytes, self, "version_info", 16 + 4 * (ar.version >= '5.0'))
+        ar << (Bytes, self, "version_info", 16 + 4 * (ar.version >= "5.0"))
 
         ar << (Int32, self, "uasset_size")  # TotalHeaderSize
         ar << (String, self, "package_name")
@@ -92,14 +92,14 @@ class UassetFileSummary(SerializableBase):
         ar << (Int32, self, "name_count")
         ar << (Int32, self, "name_offset")
 
-        if ar.version >= '5.1':
+        if ar.version >= "5.1":
             # SoftObjectPaths
             ar == (Int32, 0, "soft_object_count")
             if ar.is_writing:
                 self.soft_object_offset = self.import_offset
             ar << (Int32, self, "soft_object_offset")
 
-        if ar.version >= '4.9':
+        if ar.version >= "4.9":
             # GatherableTextData
             ar == (Int32, 0, "gatherable_text_count")
             ar == (Int32, 0, "gatherable_text_offset")
@@ -115,13 +115,13 @@ class UassetFileSummary(SerializableBase):
         # DependsOffset
         ar << (Int32, self, "depends_offset")
 
-        if ar.version >= '4.4' and ar.version <= '4.14':
+        if ar.version >= "4.4" and ar.version <= "4.14":
             # StringAssetReferencesCount
             ar == (Int32, 0, "string_asset_count")
             if ar.is_writing:
                 self.string_asset_offset = self.asset_registry_data_offset
             ar << (Int32, self, "string_asset_offset")
-        elif ar.version >= '4.15':
+        elif ar.version >= "4.15":
             # SoftPackageReferencesCount
             ar == (Int32, 0, "soft_package_count")
             ar == (Int32, 0, "soft_package_offset")
@@ -144,7 +144,7 @@ class UassetFileSummary(SerializableBase):
         - SavedByEngineVersion (14 bytes)
         - CompatibleWithEngineVersion (14 bytes) (4.8 ~ )
         """
-        ar << (Bytes, self, "empty_engine_version", 14 * (1 + (ar.version >= '4.8')))
+        ar << (Bytes, self, "empty_engine_version", 14 * (1 + (ar.version >= "4.8")))
 
         # CompressionFlags, CompressedChunks
         ar << (Bytes, self, "compression_info", 8)
@@ -159,7 +159,7 @@ class UassetFileSummary(SerializableBase):
         # AdditionalPackagesToCook (zero length array)
         ar == (Int32, 0, "additional_packages_to_cook")
 
-        if ar.version <= '4.13':
+        if ar.version <= "4.13":
             ar == (Int32, 0, "num_texture_allocations")
         ar << (Int32, self, "asset_registry_data_offset")
         ar << (Int32, self, "bulk_offset")  # .uasset + .uexp - 4 (BulkDataStartOffset)
@@ -170,14 +170,14 @@ class UassetFileSummary(SerializableBase):
         # ChunkIDs (zero length array), ChunkID
         ar == (Int32Array, [0, 0], "ChunkID", 2)
 
-        if ar.version <= '4.13':
+        if ar.version <= "4.13":
             return
 
         # PreloadDependency
         ar << (Int32, self, "preload_dependency_count")
         ar << (Int32, self, "preload_dependency_offset")
 
-        if ar.version <= '4.27':
+        if ar.version <= "4.27":
             return
 
         # Number of names that are referenced from serialized export data
@@ -187,17 +187,17 @@ class UassetFileSummary(SerializableBase):
         ar << (Int64, self, "payload_toc_offset")
 
     def print(self):
-        print('File Summary')
-        print(f'  file size: {self.uasset_size}')
-        print(f'  number of names: {self.name_count}')
-        print('  name directory offset: 193')
-        print(f'  number of exports: {self.export_count}')
-        print(f'  export directory offset: {self.export_offset}')
-        print(f'  number of imports: {self.import_count}')
-        print(f'  import directory offset: {self.import_offset}')
-        print(f'  depends offset: {self.depends_offset}')
-        print(f'  file length (uasset+uexp-4): {self.bulk_offset}')
-        print(f'  official asset: {self.is_official()}')
+        print("File Summary")
+        print(f"  file size: {self.uasset_size}")
+        print(f"  number of names: {self.name_count}")
+        print("  name directory offset: 193")
+        print(f"  number of exports: {self.export_count}")
+        print(f"  export directory offset: {self.export_offset}")
+        print(f"  number of imports: {self.import_count}")
+        print(f"  import directory offset: {self.import_offset}")
+        print(f"  depends offset: {self.depends_offset}")
+        print(f"  file length (uasset+uexp-4): {self.bulk_offset}")
+        print(f"  official asset: {self.is_official()}")
         print(f"  unversioned: {self.is_unversioned()}")
 
     def is_unversioned(self):
@@ -258,7 +258,7 @@ class UassetImport(SerializableBase):
         ar << (Int32, self, "class_package_import_id")
         ar << (Int32, self, "name_id")
         ar << (Int32, self, "name_number")
-        if ar.version >= '5.0':
+        if ar.version >= "5.0":
             ar << (Uint32, self, "optional")
 
     def name_import(self, name_list: list[Name]) -> str:
@@ -268,10 +268,10 @@ class UassetImport(SerializableBase):
         return self.name
 
     def print(self, padding=2):
-        pad = ' ' * padding
+        pad = " " * padding
         print(pad + self.name)
-        print(pad + '  class: ' + self.class_name)
-        print(pad + '  class_file: ' + self.class_package_name)
+        print(pad + "  class: " + self.class_name)
+        print(pad + "  class_file: " + self.class_package_name)
 
 
 class Uunknown(SerializableBase):
@@ -304,14 +304,14 @@ class UassetExport(SerializableBase):
 
     def serialize(self, ar: ArchiveBase):
         ar << (Int32, self, "class_import_id")
-        if ar.version >= '4.14':
+        if ar.version >= "4.14":
             ar << (Int32, self, "template_index")
         ar << (Int32, self, "super_import_id")
         ar << (Int32, self, "outer_index")  # 0: main object, 1: not main
         ar << (Int32, self, "name_id")
         ar << (Int32, self, "name_number")
         ar << (Uint32, self, "object_flags")  # & 8: main object
-        if ar.version <= '4.15':
+        if ar.version <= "4.15":
             ar << (Uint32, self, "size")
         else:
             ar << (Uint64, self, "size")
@@ -324,12 +324,12 @@ class UassetExport(SerializableBase):
     @staticmethod
     def get_remainings_size(version: VersionInfo) -> int:
         sizes = [
-            ['4.2', 32],
-            ['4.10', 36],
-            ['4.13', 40],
-            ['4.15', 60],
-            ['4.27', 64],
-            ['5.0', 68]
+            ["4.2", 32],
+            ["4.10", 36],
+            ["4.13", 40],
+            ["4.15", 60],
+            ["4.27", 64],
+            ["5.0", 68]
         ]
         for ver, size in sizes:
             if version <= ver:
@@ -340,9 +340,9 @@ class UassetExport(SerializableBase):
     @staticmethod
     def get_meta_size(version: VersionInfo):
         meta_size = 32
-        if version >= '4.14':
+        if version >= "4.14":
             meta_size += 4
-        if version >= '4.16':
+        if version >= "4.16":
             meta_size += 4
         meta_size += UassetExport.get_remainings_size(version)
         return meta_size
@@ -370,38 +370,38 @@ class UassetExport(SerializableBase):
         return self.class_name in UassetExport.TEXTURE_CLASSES
 
     def print(self, padding=2):
-        pad = ' ' * padding
-        print(pad + f'{self.name}')
-        print(pad + f'  class: {self.class_name}')
-        print(pad + f'  super: {self.super_name}')
-        print(pad + f'  size: {self.size}')
-        print(pad + f'  offset: {self.offset}')
-        print(pad + f'  is public: {self.is_public()}')
-        print(pad + f'  is standalone: {self.is_standalone()}')
-        print(pad + f'  is base: {self.is_base()}')
-        print(pad + f'  object flags: {self.object_flags}')
+        pad = " " * padding
+        print(pad + f"{self.name}")
+        print(pad + f"  class: {self.class_name}")
+        print(pad + f"  super: {self.super_name}")
+        print(pad + f"  size: {self.size}")
+        print(pad + f"  offset: {self.offset}")
+        print(pad + f"  is public: {self.is_public()}")
+        print(pad + f"  is standalone: {self.is_standalone()}")
+        print(pad + f"  is base: {self.is_base()}")
+        print(pad + f"  object flags: {self.object_flags}")
 
 
 class Uasset:
     def __init__(self, file_path: str, version: str = "ff7r", verbose=False):
         if not os.path.isfile(file_path):
-            raise RuntimeError(f'Not File. ({file_path})')
+            raise RuntimeError(f"Not File. ({file_path})")
 
         self.texture = None
         self.uexp_io = None
         self.ubulk_io = None
         self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file_path)
-        print('load: ' + self.uasset_file)
+        print("load: " + self.uasset_file)
 
-        if self.uasset_file[-7:] != '.uasset':
-            raise RuntimeError(f'Not .uasset. ({self.uasset_file})')
+        if self.uasset_file[-7:] != ".uasset":
+            raise RuntimeError(f"Not .uasset. ({self.uasset_file})")
 
         if verbose:
-            print('Loading ' + self.uasset_file + '...')
+            print("Loading " + self.uasset_file + "...")
 
         self.version = VersionInfo(version)
         self.context = {"version": self.version, "verbose": verbose, "valid": False}
-        ar = ArchiveRead(open(self.uasset_file, 'rb'), context=self.context)
+        ar = ArchiveRead(open(self.uasset_file, "rb"), context=self.context)
         self.serialize(ar)
         ar.close()
         self.read_export_objects(verbose=verbose)
@@ -418,9 +418,9 @@ class Uasset:
         # read name map
         ar << (StructArray, self, "name_list", Name, self.header.name_count)
         if ar.verbose:
-            print('Names')
+            print("Names")
             for i, name in zip(range(len(self.name_list)), self.name_list):
-                print('  {}: {}'.format(i, name))
+                print("  {}: {}".format(i, name))
 
         # read imports
         if ar.is_reading:
@@ -431,7 +431,7 @@ class Uasset:
         if ar.is_reading:
             list(map(lambda x: x.name_import(self.name_list), self.imports))
             if ar.verbose:
-                print('Imports')
+                print("Imports")
                 list(map(lambda x: x.print(), self.imports))
 
         if ar.is_reading:
@@ -440,14 +440,14 @@ class Uasset:
             ar << (StructArray, self, "exports", UassetExport, self.header.export_count)
             list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
             if ar.verbose:
-                print('Exports')
+                print("Exports")
                 list(map(lambda x: x.print(), self.exports))
-                print(f'Main Export Class: {self.get_main_class_name()}')
+                print(f"Main Export Class: {self.get_main_class_name()}")
         else:
             # skip exports part
             self.header.export_offset = ar.tell()
             ar.seek(UassetExport.get_meta_size(ar.version) * self.header.export_count, 1)
-            if self.version not in ['4.15', '4.14']:
+            if self.version not in ["4.15", "4.14"]:
                 self.header.depends_offset = ar.tell()
 
         # read depends map
@@ -529,7 +529,7 @@ class Uasset:
 
     def save(self, file: str, valid=False):
         folder = os.path.dirname(file)
-        if folder not in ['.', ''] and not os.path.exists(folder):
+        if folder not in [".", ""] and not os.path.exists(folder):
             mkdir(folder)
 
         self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file)
@@ -537,12 +537,12 @@ class Uasset:
         if not self.has_ubulk():
             self.ubulk_file = None
 
-        print('save :' + self.uasset_file)
+        print("save :" + self.uasset_file)
 
         self.context = {"version": self.version, "verbose": False, "valid": valid}
         self.write_export_objects()
 
-        ar = ArchiveWrite(open(self.uasset_file, 'wb'), context=self.context)
+        ar = ArchiveWrite(open(self.uasset_file, "wb"), context=self.context)
 
         self.serialize(ar)
 
@@ -577,7 +577,7 @@ class Uasset:
             return main_obj.class_name
 
     def has_uexp(self):
-        return self.version >= '4.16'
+        return self.version >= "4.16"
 
     def has_ubulk(self):
         for exp in self.exports:
@@ -602,7 +602,7 @@ class Uasset:
         if self.has_uexp():
             opened_io = open(file, "rb" if rb else "wb")
         else:
-            opened_io = io.BytesIO(bin if rb else b'')
+            opened_io = io.BytesIO(bin if rb else b"")
 
         if rb:
             return ArchiveRead(opened_io, context=self.context)

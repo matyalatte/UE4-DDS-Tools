@@ -65,12 +65,12 @@ class ArchiveBase:
     def close(self):
         self.io.close()
 
-    def check(self, actual, expected, msg='Parse failed. Make sure you specified UE version correctly.'):
+    def check(self, actual, expected, msg="Parse failed. Make sure you specified UE version correctly."):
         if actual == expected:
             return
-        print(f'offset: {self.tell()}')
-        print(f'actual: {actual}')
-        print(f'expected: {expected}')
+        print(f"offset: {self.tell()}")
+        print(f"actual: {actual}")
+        print(f"expected: {expected}")
         raise RuntimeError(msg)
 
 
@@ -216,9 +216,9 @@ class String:
         utf16 = num < 0
         if utf16:
             num = -num
-            encode = 'utf-16-le'
+            encode = "utf-16-le"
         else:
-            encode = 'ascii'
+            encode = "ascii"
 
         string = ar.read((num - 1) * (1 + utf16)).decode(encode)
         ar.seek(1 + utf16, 1)
@@ -229,9 +229,9 @@ class String:
         num = len(val) + 1
         utf16 = not val.isascii()
         Int32.write(ar, num * (1 - 2 * utf16))
-        encode = 'utf-16-le' if utf16 else 'ascii'
+        encode = "utf-16-le" if utf16 else "ascii"
         str_byte = val.encode(encode)
-        ar.write(str_byte + b'\x00' * (1 + utf16))
+        ar.write(str_byte + b"\x00" * (1 + utf16))
 
 
 class SerializableBase:

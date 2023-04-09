@@ -20,11 +20,11 @@ class VersionInfo:
 
     def __init__(self, version: str, base_int: int = None):
         """Constractor."""
-        if version == 'ff7r':
-            base = '4.18'
+        if version == "ff7r":
+            base = "4.18"
             custom = version
-        elif version == 'borderlands3':
-            base = '4.22'
+        elif version == "borderlands3":
+            base = "4.22"
             custom = version
         else:
             base = version
@@ -68,7 +68,7 @@ class VersionInfo:
 
 def version_as_int(ver: str):  # ver (string): like "x.x.x"
     """Convert a string to int."""
-    ver_str = [int(s) for s in ver.split('.')]
+    ver_str = [int(s) for s in ver.split(".")]
     if len(ver_str) > 3:
-        raise RuntimeError(f'Unsupported version info.({ver})')
+        raise RuntimeError(f"Unsupported version info.({ver})")
     return sum(s * (10 ** ((2 - i) * 2)) for s, i in zip(ver_str, range(len(ver_str))))

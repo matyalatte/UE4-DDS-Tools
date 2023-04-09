@@ -20,15 +20,15 @@ def get_os_name():
 
 
 def is_windows():
-    return get_os_name() == 'Windows'
+    return get_os_name() == "Windows"
 
 
 def is_linux():
-    return get_os_name() == 'Linux'
+    return get_os_name() == "Linux"
 
 
 def is_mac():
-    return get_os_name() == 'Darwin'
+    return get_os_name() == "Darwin"
 
 
 class Texconv:
@@ -46,7 +46,7 @@ class Texconv:
             elif is_linux():
                 dll_name = "libtexconv.so"
             else:
-                raise RuntimeError(f'This OS ({get_os_name()}) is unsupported.')
+                raise RuntimeError(f"This OS ({get_os_name()}) is unsupported.")
             dirname = os.path.dirname(file_path)
             dll_path = os.path.join(dirname, dll_name)
             dll_path2 = os.path.join(os.path.dirname(dirname), dll_name)  # allow ../texconv.dll
@@ -55,7 +55,7 @@ class Texconv:
             if os.path.exists(dll_path2):
                 dll_path = dll_path2
             else:
-                raise RuntimeError(f'texconv not found. ({dll_path})')
+                raise RuntimeError(f"texconv not found. ({dll_path})")
 
         self.dll = ctypes.cdll.LoadLibrary(dll_path)
         self.com_initialized = com_initialized
@@ -85,35 +85,35 @@ class Texconv:
             return name
 
         if verbose:
-            print(f'DXGI_FORMAT: {dds_header.get_format_as_str()}')
+            print(f"DXGI_FORMAT: {dds_header.get_format_as_str()}")
 
         args = []
 
         if dds_header.is_hdr():
-            ext = 'hdr'
+            ext = "hdr"
             if fmt == "tga":
                 fmt = ext
             if not dds_header.convertible_to_hdr():
-                args += ['-f', 'fp32']
+                args += ["-f", "fp32"]
         else:
             ext = "tga"
             if not dds_header.convertible_to_tga():
-                args += ['-f', 'rgba']
+                args += ["-f", "rgba"]
 
         if dds_header.is_int():
-            msg = f'Int format detected. ({dds_header.get_format_as_str()})\n It might not be converted correctly.'
+            msg = f"Int format detected. ({dds_header.get_format_as_str()})\n It might not be converted correctly."
             print(msg)
 
-        args2 = ['-ft', fmt]
+        args2 = ["-ft", fmt]
 
         if dds_header.is_normals():
-            args2 += ['-reconstructz']
+            args2 += ["-reconstructz"]
             if invert_normals:
-                args2 += ['-inverty']
+                args2 += ["-inverty"]
 
         if dds_header.is_cube():
             name = os.path.join(out, os.path.basename(file))
-            name = '.'.join(name.split('.')[:-1] + [fmt])
+            name = ".".join(name.split(".")[:-1] + [fmt])
             temp = ".".join(file.split(".")[:-1] + [ext])
             self.__cube_to_image(file, temp, args, cubemap_layout=cubemap_layout, verbose=verbose)
             if fmt == ext:
@@ -123,7 +123,7 @@ class Texconv:
         else:
             out = self.__texconv(file, args + args2, out=out, verbose=verbose)
             name = os.path.join(out, os.path.basename(file))
-            name = '.'.join(name.split('.')[:-1] + [fmt])
+            name = ".".join(name.split(".")[:-1] + [fmt])
         return name
 
     def convert_to_dds(self, file: str, dxgi_format: DXGI_FORMAT, out=None,
@@ -136,8 +136,8 @@ class Texconv:
 
         dds_fmt = dxgi_format.name
 
-        if ('BC6' in dds_fmt or 'BC7' in dds_fmt) and (not is_windows()) and (not allow_slow_codec):
-            raise RuntimeError(f'Can NOT use CPU codec for {dds_fmt}. Or enable the "Allow Slow Codec" option.')
+        if ("BC6" in dds_fmt or "BC7" in dds_fmt) and (not is_windows()) and (not allow_slow_codec):
+            raise RuntimeError(f"Can NOT use CPU codec for {dds_fmt}. Or enable the 'Allow Slow Codec' option.")
         if dxgi_format.value > DXGI_FORMAT.get_max_canonical():
             raise RuntimeError(
                 f"DDS converter does NOT support {dds_fmt}.\n"
@@ -145,28 +145,28 @@ class Texconv:
             )
 
         if not DXGI_FORMAT.is_valid_format(dds_fmt):
-            raise RuntimeError(f'Not DXGI format. ({dds_fmt})')
+            raise RuntimeError(f"Not DXGI format. ({dds_fmt})")
 
         if verbose:
-            print(f'DXGI_FORMAT: {dds_fmt}')
+            print(f"DXGI_FORMAT: {dds_fmt}")
 
         base_name = os.path.basename(file)
-        base_name = '.'.join(base_name.split('.')[:-1] + ['dds'])
+        base_name = ".".join(base_name.split(".")[:-1] + ["dds"])
 
-        args = ['-f', dds_fmt]
+        args = ["-f", dds_fmt]
         if no_mip:
-            args += ['-m', '1']
+            args += ["-m", "1"]
         if image_filter.upper() != "LINEAR":
             args += ["-if", image_filter.upper()]
 
         if ("BC5" in dds_fmt or dds_fmt == "R8G8_UNORM") and invert_normals:
-            args += ['-inverty']
+            args += ["-inverty"]
 
         if export_as_cubemap:
             if is_hdr(dds_fmt):
-                temp_args = ['-f', 'fp32']
+                temp_args = ["-f", "fp32"]
             else:
-                temp_args = ['-f', 'rgba']
+                temp_args = ["-f", "rgba"]
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp = os.path.join(temp_dir, base_name)
                 self.__image_to_cube(file, temp, temp_args, cubemap_layout=cubemap_layout, verbose=verbose)
@@ -178,20 +178,20 @@ class Texconv:
 
     def convert_nondds(self, file: str, out=None, fmt="tga", verbose=True):
         """Convert non-dds to non-dds."""
-        out = self.__texconv(file, ['-ft', fmt], out=out, verbose=verbose)
+        out = self.__texconv(file, ["-ft", fmt], out=out, verbose=verbose)
         name = os.path.join(out, os.path.basename(file))
-        name = '.'.join(name.split('.')[:-1] + [fmt])
+        name = ".".join(name.split(".")[:-1] + [fmt])
         return name
 
     def __texconv(self, file: str, args: list[str],
                   out=None, verbose=True, allow_slow_codec=False):
         """Run texconv."""
         if out is not None and isinstance(out, str):
-            args += ['-o', out]
+            args += ["-o", out]
         else:
-            out = '.'
+            out = "."
 
-        if out not in ['.', ''] and not os.path.exists(out):
+        if out not in [".", ""] and not os.path.exists(out):
             mkdir(out)
 
         args += ["-y"]
@@ -226,7 +226,7 @@ class Texconv:
     def __texassemble(self, file: str, new_file: str, args: list[str], verbose=True):
         """Run texassemble."""
         out = os.path.dirname(new_file)
-        if out not in ['.', ''] and not os.path.exists(out):
+        if out not in [".", ""] and not os.path.exists(out):
             mkdir(out)
         args += ["-y", "-o", new_file, file]
 
