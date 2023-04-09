@@ -1,4 +1,4 @@
-'''Main file for UE4-DDS-Tools.'''
+"""Main file for UE4-DDS-Tools."""
 # std libs
 import argparse
 import json
@@ -14,13 +14,13 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = '0.5.0'
+TOOL_VERSION = "0.5.1"
 
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
-UE_VERSIONS = ['4.' + str(i) for i in range(28)] + ['5.' + str(i) for i in range(2)] + ['ff7r', 'borderlands3']
+UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(2)] + ["ff7r", "borderlands3"]
 
 # Supported file extensions.
-TEXTURES = ['dds', 'tga', 'hdr']
+TEXTURES = ["dds", "tga", "hdr"]
 if is_windows():
     TEXTURES += ["bmp", "jpg", "png"]
 
@@ -30,59 +30,59 @@ IMAGE_FILTERS = ["point", "linear", "cubic"]
 
 def get_args():  # pragma: no cover
     parser = argparse.ArgumentParser()
-    parser.add_argument('file', help='uasset, texture file, or folder')
-    parser.add_argument('texture', nargs='?', help='texture file for injection mode.')
-    parser.add_argument('--save_folder', default='output', type=str, help='output folder')
-    parser.add_argument('--mode', default='inject', type=str,
-                        help='valid, parse, inject, export, remove_mipmaps, check, convert, and copy are available.')
-    parser.add_argument('--version', default=None, type=str,
-                        help='UE version. it will overwrite the argment in config.json.')
-    parser.add_argument('--export_as', default='dds', type=str,
-                        help='format for export mode. dds, tga, png, jpg, and bmp are available.')
-    parser.add_argument('--convert_to', default='tga', type=str,
+    parser.add_argument("file", help="uasset, texture file, or folder")
+    parser.add_argument("texture", nargs="?", help="texture file for injection mode.")
+    parser.add_argument("--save_folder", default="output", type=str, help="output folder")
+    parser.add_argument("--mode", default="inject", type=str,
+                        help="valid, parse, inject, export, remove_mipmaps, check, convert, and copy are available.")
+    parser.add_argument("--version", default=None, type=str,
+                        help="UE version. it will overwrite the argment in config.json.")
+    parser.add_argument("--export_as", default="dds", type=str,
+                        help="format for export mode. dds, tga, png, jpg, and bmp are available.")
+    parser.add_argument("--convert_to", default="tga", type=str,
                         help=("format for convert mode."
                               "tga, hdr, png, jpg, bmp, and DXGI formats (e.g. BC1_UNORM) are available."))
-    parser.add_argument('--no_mipmaps', action='store_true',
-                        help='force no mips to dds and uasset.')
-    parser.add_argument('--force_uncompressed', action='store_true',
-                        help='use uncompressed format for compressed texture assets.')
-    parser.add_argument('--disable_tempfile', action='store_true',
+    parser.add_argument("--no_mipmaps", action="store_true",
+                        help="force no mips to dds and uasset.")
+    parser.add_argument("--force_uncompressed", action="store_true",
+                        help="use uncompressed format for compressed texture assets.")
+    parser.add_argument("--disable_tempfile", action="store_true",
                         help="store temporary files in the tool's directory.")
-    parser.add_argument('--skip_non_texture', action='store_true',
+    parser.add_argument("--skip_non_texture", action="store_true",
                         help="disable errors about non-texture assets.")
-    parser.add_argument('--image_filter', default='linear', type=str,
+    parser.add_argument("--image_filter", default="linear", type=str,
                         help=("image filter for mip generation."
                               " point, linear, and cubic are available."))
-    parser.add_argument('--save_detected_version', action='store_true',
+    parser.add_argument("--save_detected_version", action="store_true",
                         help="save detected version for batch file methods. this is an option for check mode.")
     return parser.parse_args()
 
 
 def get_config():
-    json_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    json_path = os.path.join(os.path.dirname(__file__), "config.json")
     if not os.path.exists(json_path):
         return {}
-    with open(json_path, encoding='utf-8') as f:
+    with open(json_path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def save_config(config):
-    json_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    with open(json_path, 'w', encoding='utf-8') as f:
+    json_path = os.path.join(os.path.dirname(__file__), "config.json")
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4, ensure_ascii=False)
 
 
 def parse(folder, file, args, texconv=None):
-    '''Parse mode (parse dds or uasset)'''
+    """Parse mode (parse dds or uasset)"""
     file = os.path.join(folder, file)
-    if get_ext(file) == 'dds':
+    if get_ext(file) == "dds":
         DDS.load(file, verbose=True)
     else:
         Uasset(file, version=args.version, verbose=True)
 
 
 def valid(folder, file, args, version=None, texconv=None):
-    '''Valid mode (check if the tool can read and write a file correctly.)'''
+    """Valid mode (check if the tool can read and write a file correctly.)"""
     if version is None:
         version = args.version
 
@@ -90,7 +90,7 @@ def valid(folder, file, args, version=None, texconv=None):
         src_file = os.path.join(folder, file)
         new_file = os.path.join(temp_dir, file)
 
-        if get_ext(file) == 'dds':
+        if get_ext(file) == "dds":
             # read and write dds
             dds = DDS.load(src_file)
             dds.save(new_file)
@@ -128,7 +128,7 @@ def search_texture_file(file_base, ext_list, index=None, index2=None):
 
 
 def inject(folder, file, args, texture_file=None, texconv=None):
-    '''Inject mode (inject dds into the asset)'''
+    """Inject mode (inject dds into the asset)"""
 
     # Read uasset
     uasset_file = os.path.join(folder, file)
@@ -147,7 +147,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     file_base, ext = os.path.splitext(texture_file)
     ext = ext[1:].lower()
     if ext not in TEXTURES:
-        raise RuntimeError(f'Unsupported texture format. ({ext})')
+        raise RuntimeError(f"Unsupported texture format. ({ext})")
 
     textures = asset.get_texture_list()
     ext_list = [ext] + TEXTURES
@@ -170,7 +170,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
             tex.to_uncompressed()
 
         # Get a image as a DDS object
-        if get_ext(src) == 'dds':
+        if get_ext(src) == "dds":
             dds = DDS.load(src)
         else:
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
@@ -212,7 +212,7 @@ def inject(folder, file, args, texture_file=None, texconv=None):
 
 
 def export(folder, file, args, texconv=None):
-    '''Export mode (export uasset as dds)'''
+    """Export mode (export uasset as dds)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
     new_dir = os.path.dirname(new_file)
@@ -232,16 +232,16 @@ def export(folder, file, args, texconv=None):
     for tex, i in zip(textures, range(len(textures))):
         if has_multi:
             # Add indices for multiple textures
-            file_name = os.path.splitext(new_file)[0] + f'.{i}.dds'
+            file_name = os.path.splitext(new_file)[0] + f".{i}.dds"
         else:
-            file_name = os.path.splitext(new_file)[0] + '.dds'
+            file_name = os.path.splitext(new_file)[0] + ".dds"
 
         if args.no_mipmaps:
             tex.remove_mipmaps()
 
         # Save texture
         dds = tex.get_dds()
-        if args.export_as == 'dds':
+        if args.export_as == "dds":
             dds.save(file_name)
         else:
             # Convert if the export format is not DDS
@@ -254,7 +254,7 @@ def export(folder, file, args, texconv=None):
 
 
 def remove_mipmaps(folder, file, args, texconv=None):
-    '''Remove mode (remove mipmaps from uasset)'''
+    """Remove mode (remove mipmaps from uasset)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
     asset = Uasset(src_file, version=args.version)
@@ -287,28 +287,28 @@ UTEX_VERSIONS = [
 
 
 def check_version(folder, file, args, texconv=None):
-    '''Check mode (check file version)'''
+    """Check mode (check file version)"""
 
-    print('Running valid mode with each version...')
+    print("Running valid mode with each version...")
     passed_version = []
     for ver in UTEX_VERSIONS:
         try:
             # try to parse with null stdout
-            with redirect_stdout(open(os.devnull, 'w')):
+            with redirect_stdout(open(os.devnull, "w")):
                 valid(folder, file, args, ver.split(" ~ ")[0])
-            print(f'  {(ver + " " * 11)[:11]}: Passed')
+            print(f"  {(ver + ' ' * 11)[:11]}: Passed")
             passed_version.append(ver)
         except Exception:
-            print(f'  {(ver + " " * 11)[:11]}: Failed')
+            print(f"  {(ver + ' ' * 11)[:11]}: Failed")
 
     # Show the result.
     if len(passed_version) == 0:
-        raise RuntimeError('Failed for all supported versions. You can not mod the asset with this tool.')
+        raise RuntimeError("Failed for all supported versions. You can not mod the asset with this tool.")
     elif len(passed_version) == 1 and ("~" not in passed_version[0]):
-        print(f'The version is {passed_version[0]}.')
+        print(f"The version is {passed_version[0]}.")
     else:
-        s = f'{passed_version}'[1:-1].replace("'", "")
-        print(f'Found some versions can handle the asset. ({s})')
+        s = f"{passed_version}"[1:-1].replace("'", "")
+        print(f"Found some versions can handle the asset. ({s})")
 
     if args.save_detected_version:
         passed_version = [ver.split(" ~ ")[0] for ver in passed_version]
@@ -320,7 +320,7 @@ def check_version(folder, file, args, texconv=None):
 
 
 def convert(folder, file, args, texconv=None):
-    '''Convert mode (convert texture files)'''
+    """Convert mode (convert texture files)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
 
@@ -352,18 +352,30 @@ def convert(folder, file, args, texconv=None):
         texconv.convert_nondds(src_file, out=os.path.dirname(new_file), fmt=args.convert_to, verbose=False)
 
 
-def main(args, config={}, texconv=None):
+MODE_FUNCTIONS = {
+    "valid": valid,
+    "inject": inject,
+    "remove_mipmaps": remove_mipmaps,
+    "parse": parse,
+    "export": export,
+    "check": check_version,
+    "convert": convert,
+    "copy": copy
+}
+
+
+def fix_args(args, config):
     # get config
-    if (args.version is None) and ('version' in config) and (config['version'] is not None):
-        args.version = config['version']
+    if (args.version is None) and ("version" in config) and (config["version"] is not None):
+        args.version = config["version"]
 
     if args.version is None:
-        args.version = '4.27'
+        args.version = "4.27"
 
     if args.file.endswith(".txt"):
         # file path for batch file injection.
         # you can set an asset path with "echo some_path > some.txt"
-        with open(args.file, 'r') as f:
+        with open(args.file, "r") as f:
             args.file = remove_quotes(f.readline())
 
     if args.mode == "check":
@@ -372,47 +384,66 @@ def main(args, config={}, texconv=None):
     else:
         if isinstance(args.version, list):
             args.version = args.version[0]
-        print(f'UE version: {args.version}')
+
+
+def print_args(args):
+    mode = args.mode
+    print(f"Mode: {mode}")
+
+    if args.mode != "check":
+        print(f"UE version: {args.version}")
+
+    if mode == "export":
+        print(f"Export as: {args.export_as}")
+
+    if mode == "convert":
+        print(f"Convert to: {args.convert_to}")
+
+    if mode in ["inject", "export"]:
+        print(f"No mipmaps: {args.no_mipmaps}")
+        print(f"Skip non textures: {args.skip_non_texture}")
+
+    if mode == "inject":
+        print(f"Force uncompressed: {args.force_uncompressed}")
+        print(f"Image filter: {args.image_filter}")
+
+
+def check_args(args):
+    texture_file = args.texture
+    mode = args.mode
+
+    if os.path.isfile(args.save_folder):
+        raise RuntimeError(f"Output path is not a folder. ({args.save_folder})")
+    if not os.path.exists(args.file):
+        raise RuntimeError(f"Path not found. ({args.file})")
+    if mode == "inject" and (texture_file is None or texture_file == ""):
+        raise RuntimeError("Specify texture file.")
+    if mode not in MODE_FUNCTIONS:
+        raise RuntimeError(f"Unsupported mode. ({mode})")
+    if mode != "check" and args.version not in UE_VERSIONS:
+        raise RuntimeError(f"Unsupported version. ({args.version})")
+    if args.export_as not in ["tga", "png", "dds", "jpg", "bmp"]:
+        raise RuntimeError(f"Unsupported format to export. ({args.export_as})")
+    if args.image_filter.lower() not in IMAGE_FILTERS:
+        raise RuntimeError(f"Unsupported image filter. ({args.image_filter})")
+
+
+def main(args, config={}, texconv=None):
+
+    fix_args(args, config)
+    print_args(args)
+    check_args(args)
 
     file = args.file
     texture_file = args.texture
     mode = args.mode
-
-    print(f'Mode: {mode}')
-
-    mode_functions = {
-        'valid': valid,
-        'inject': inject,
-        'remove_mipmaps': remove_mipmaps,
-        'parse': parse,
-        'export': export,
-        'check': check_version,
-        "convert": convert,
-        "copy": copy
-    }
-
-    # cehck args
-    if os.path.isfile(args.save_folder):
-        raise RuntimeError("Output path is not a folder.")
-    if file == "":
-        raise RuntimeError("Specify files.")
-    if mode == 'inject' and (texture_file is None or texture_file == ""):
-        raise RuntimeError("Specify texture file.")
-    if mode not in mode_functions:
-        raise RuntimeError(f'Unsupported mode. ({mode})')
-    if mode != 'check' and args.version not in UE_VERSIONS:
-        raise RuntimeError(f'Unsupported version. ({args.version})')
-    if args.export_as not in ['tga', 'png', 'dds', 'jpg', 'bmp']:
-        raise RuntimeError(f'Unsupported format to export. ({args.export_as})')
-    if args.image_filter.lower() not in IMAGE_FILTERS:
-        raise RuntimeError(f'Unsupported image filter. ({args.image_filter})')
 
     # load texconv
     if (mode == "export" and args.export_as != "dds") or mode in ["inject", "convert"]:
         if texconv is None:
             texconv = Texconv()
 
-    func = mode_functions[mode]
+    func = MODE_FUNCTIONS[mode]
 
     if os.path.isfile(file):
         folder = os.path.dirname(file)
@@ -420,18 +451,19 @@ def main(args, config={}, texconv=None):
         func(folder, file, args, texconv=texconv)
     else:
         # folder method
-        if mode == 'convert':
+        if mode == "convert":
             ext_list = TEXTURES
         else:
-            ext_list = ['uasset']
+            ext_list = ["uasset"]
 
+        # Todo: Use recursive function. No need to make file list anymore.
         folder, file_list = get_file_list(file, ext=ext_list, include_base=(mode != "inject"))
 
-        if mode == 'inject':
+        if mode == "inject":
             texture_folder = texture_file
             if not os.path.isdir(texture_folder):
                 raise RuntimeError(
-                    f'Specified a folder as uasset path. But texture path is not a folder. ({texture_folder})'
+                    f"Specified a folder as uasset path. But texture path is not a folder. ({texture_folder})"
                 )
             texture_file_list = [os.path.join(texture_folder, file[:-6] + TEXTURES[0]) for file in file_list]
             base_folder, folder = get_base_folder(folder)
@@ -448,18 +480,18 @@ def main(args, config={}, texconv=None):
         print("Saved the detected version as src/config.json")
         if len(args.version) == 1:
             args.version = args.version[0]
-        config['version'] = args.version
+        config["version"] = args.version
         save_config(config)
 
 
-if __name__ == '__main__':  # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     start_time = time.time()
 
-    print(f'UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte')
+    print(f"UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte")
 
     args = get_args()
     config = get_config()
     main(args, config=config)
 
     if args.mode != "check":
-        print(f'Success! Run time (s): {(time.time() - start_time)}')
+        print(f"Success! Run time (s): {(time.time() - start_time)}")

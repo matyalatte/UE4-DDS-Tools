@@ -1,4 +1,4 @@
-'''Classes for texture assets (.uexp and .ubulk)'''
+"""Classes for texture assets (.uexp and .ubulk)"""
 from .umipmap import Umipmap
 from .version import VersionInfo
 from directx.dds import DDSHeader, DDS
@@ -7,40 +7,40 @@ from .archive import (ArchiveBase, Bytes, Uint64, Uint32, String, StructArray)
 
 # Defined in UnrealEngine/Engine/Source/Runtime/D3D12RHI/Private/D3D12RHI.cpp
 PF_TO_DXGI = {
-    'PF_DXT1': DXGI_FORMAT.BC1_UNORM,
-    'PF_DXT3': DXGI_FORMAT.BC2_UNORM,
-    'PF_DXT5': DXGI_FORMAT.BC3_UNORM,
-    'PF_BC4': DXGI_FORMAT.BC4_UNORM,
-    'PF_BC5': DXGI_FORMAT.BC5_UNORM,
-    'PF_BC6H': DXGI_FORMAT.BC6H_UF16,
-    'PF_BC7': DXGI_FORMAT.BC7_UNORM,
-    'PF_A1': DXGI_FORMAT.R1_UNORM,
-    'PF_A8': DXGI_FORMAT.A8_UNORM,
-    'PF_G8': DXGI_FORMAT.R8_UNORM,
-    'PF_R8': DXGI_FORMAT.R8_UNORM,
-    'PF_R8G8': DXGI_FORMAT.R8G8_UNORM,
-    'PF_G16': DXGI_FORMAT.R16_UNORM,
-    'PF_G16R16': DXGI_FORMAT.R16G16_UNORM,
-    'PF_B8G8R8A8': DXGI_FORMAT.B8G8R8A8_UNORM,
-    'PF_A2B10G10R10': DXGI_FORMAT.R10G10B10A2_UNORM,
-    'PF_A16B16G16R16': DXGI_FORMAT.R16G16B16A16_UNORM,
-    'PF_FloatRGB': DXGI_FORMAT.R11G11B10_FLOAT,
-    'PF_FloatR11G11B10': DXGI_FORMAT.R11G11B10_FLOAT,
-    'PF_FloatRGBA': DXGI_FORMAT.R16G16B16A16_FLOAT,
-    'PF_A32B32G32R32F': DXGI_FORMAT.R32G32B32A32_FLOAT,
-    'PF_B5G5R5A1_UNORM': DXGI_FORMAT.B5G5R5A1_UNORM,
-    'PF_ASTC_4x4': DXGI_FORMAT.ASTC_4X4_UNORM
+    "PF_DXT1": DXGI_FORMAT.BC1_UNORM,
+    "PF_DXT3": DXGI_FORMAT.BC2_UNORM,
+    "PF_DXT5": DXGI_FORMAT.BC3_UNORM,
+    "PF_BC4": DXGI_FORMAT.BC4_UNORM,
+    "PF_BC5": DXGI_FORMAT.BC5_UNORM,
+    "PF_BC6H": DXGI_FORMAT.BC6H_UF16,
+    "PF_BC7": DXGI_FORMAT.BC7_UNORM,
+    "PF_A1": DXGI_FORMAT.R1_UNORM,
+    "PF_A8": DXGI_FORMAT.A8_UNORM,
+    "PF_G8": DXGI_FORMAT.R8_UNORM,
+    "PF_R8": DXGI_FORMAT.R8_UNORM,
+    "PF_R8G8": DXGI_FORMAT.R8G8_UNORM,
+    "PF_G16": DXGI_FORMAT.R16_UNORM,
+    "PF_G16R16": DXGI_FORMAT.R16G16_UNORM,
+    "PF_B8G8R8A8": DXGI_FORMAT.B8G8R8A8_UNORM,
+    "PF_A2B10G10R10": DXGI_FORMAT.R10G10B10A2_UNORM,
+    "PF_A16B16G16R16": DXGI_FORMAT.R16G16B16A16_UNORM,
+    "PF_FloatRGB": DXGI_FORMAT.R11G11B10_FLOAT,
+    "PF_FloatR11G11B10": DXGI_FORMAT.R11G11B10_FLOAT,
+    "PF_FloatRGBA": DXGI_FORMAT.R16G16B16A16_FLOAT,
+    "PF_A32B32G32R32F": DXGI_FORMAT.R32G32B32A32_FLOAT,
+    "PF_B5G5R5A1_UNORM": DXGI_FORMAT.B5G5R5A1_UNORM,
+    "PF_ASTC_4x4": DXGI_FORMAT.ASTC_4X4_UNORM
 }
 
 PF_TO_UNCOMPRESSED = {
-    'PF_DXT1': 'PF_B8G8R8A8',
-    'PF_DXT3': 'PF_B8G8R8A8',
-    'PF_DXT5': 'PF_B8G8R8A8',
-    'PF_BC4': 'PF_G8',
-    'PF_BC5': 'PF_R8G8',
-    'PF_BC6H': 'PF_FloatRGBA',
-    'PF_BC7': 'PF_B8G8R8A8',
-    'PF_ASTC_4x4': 'PF_B8G8R8A8'
+    "PF_DXT1": "PF_B8G8R8A8",
+    "PF_DXT3": "PF_B8G8R8A8",
+    "PF_DXT5": "PF_B8G8R8A8",
+    "PF_BC4": "PF_G8",
+    "PF_BC5": "PF_R8G8",
+    "PF_BC6H": "PF_FloatRGBA",
+    "PF_BC7": "PF_B8G8R8A8",
+    "PF_ASTC_4x4": "PF_B8G8R8A8"
 }
 
 
@@ -110,11 +110,11 @@ class Utexture:
             Just searching x01 is not the best algorithm but fast enough.
             Because "found 01" means "found strip flags" for most texture assets.
             """
-            while (ar.read(1) != b'\x01'):
+            while (ar.read(1) != b"\x01"):
                 if (ar.tell() >= err_offset):
-                    raise RuntimeError('Parse Failed. Make sure you specified UE4 version correctly.')
+                    raise RuntimeError("Parse Failed. Make sure you specified UE4 version correctly.")
 
-            if ar.read(7) == b'\x00\x01\x00\x01\x00\x00\x00':
+            if ar.read(7) == b"\x00\x01\x00\x01\x00\x00\x00":
                 # Found \x01\x00\x01\x00\x01\x00\x00\x00
                 break
             else:
@@ -136,9 +136,9 @@ class Utexture:
         ar << (Uint64, self, "pixel_format_name_id")
         self.skip_offset_location = ar.tell()  # offset to self.skip_offset
         ar << (Uint32, self, "skip_offset")  # Offset to the end of this object
-        if ar.version >= '4.20':
+        if ar.version >= "4.20":
             ar == (Uint32, 0, "?")
-        if ar.version >= '5.0':
+        if ar.version >= "5.0":
             ar << (Bytes, self, "placeholder", 16)
 
         # FTexturePlatformData::SerializeCooked (SerializePlatformData)
@@ -158,7 +158,7 @@ class Utexture:
             self.__unpack_packed_data()
             self.__update_format()
 
-        if self.version == 'ff7r' and self.has_opt_data:
+        if self.version == "ff7r" and self.has_opt_data:
             ar == (Uint32, 0, "?")
             ar == (Uint32, 0, "?")
             if ar.is_writing:
@@ -168,15 +168,15 @@ class Utexture:
         ar << (Uint32, self, "first_mip_to_serialize")
         ar << (Uint32, self, "mip_count")
 
-        if self.version == 'ff7r':
+        if self.version == "ff7r":
             # ff7r have all mipmap data in a mipmap object
             if ar.is_writing:
-                uexp_bulk = b''
+                uexp_bulk = b""
                 for mip in self.mipmaps:
                     if mip.is_uexp:
                         mip.is_meta = True
                         mip.data_size = 0
-                        uexp_bulk = b''.join([uexp_bulk, mip.data])
+                        uexp_bulk = b"".join([uexp_bulk, mip.data])
                 size = self.get_max_uexp_size()
                 self.uexp_optional_mip.update(uexp_bulk, size, 1, True)
             ar << (Umipmap, self, "uexp_optional_mip", uasset_size)
@@ -197,11 +197,11 @@ class Utexture:
             _, ubulk_map_num = self.get_mipmap_num()
             self.has_ubulk = ubulk_map_num > 0
 
-        if ar.version >= '4.23':
+        if ar.version >= "4.23":
             ar == (Uint32, 0, "bIsVirtual")
 
         if ar.is_writing:
-            if ar.version >= '5.0':
+            if ar.version >= "5.0":
                 self.skip_offset = ar.tell() - self.skip_offset_location
             else:
                 self.skip_offset = ar.tell() + uasset_size
@@ -214,7 +214,7 @@ class Utexture:
         self.uexp_size = ar.tell() - start_offset
 
         if ar.is_reading:
-            if self.version == 'ff7r' and self.has_supported_format():
+            if self.version == "ff7r" and self.has_supported_format():
                 # split mipmap data
                 offset = 0
                 for mip in self.mipmaps:
@@ -250,9 +250,9 @@ class Utexture:
         return uexp_map_num, ubulk_map_num
 
     def rewrite_offset_data(self):
-        if self.version <= '4.15' or self.version >= '4.26' or self.version == 'ff7r':
+        if self.version <= "4.15" or self.version >= "4.26" or self.version == "ff7r":
             return
-        # ubulk mipmaps have wierd offset data. (Fixed at 4.26)
+        # ubulk mipmaps have wierd offset data for old UE versions. (Fixed at 4.26)
         f = self.uasset.get_uexp_io(rb=False)
         uasset_size = self.uasset.get_size()
         uexp_size = self.uasset.get_uexp_size()
@@ -268,13 +268,13 @@ class Utexture:
         self.mipmaps = [self.mipmaps[0]]
         self.mipmaps[0].is_uexp = True
         self.has_ubulk = False
-        print('mipmaps have been removed.')
-        print(f'  mipmap: {old_mipmap_num} -> 1')
+        print("mipmaps have been removed.")
+        print(f"  mipmap: {old_mipmap_num} -> 1")
 
     def get_dds(self) -> DDS:
         """Get texture as dds."""
         if not self.has_supported_format():
-            raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
+            raise RuntimeError(f"Unsupported pixel format. ({self.pixel_format})")
 
         # make dds header
         header = DDSHeader()
@@ -289,11 +289,11 @@ class Utexture:
 
         # mip list to slice list
         for i in range(self.num_slices):
-            data = b''
+            data = b""
             for mip in self.mipmaps:
                 size = int(mip.width * mip.height * self.byte_per_pixel)
                 offset = size * i
-                data = b''.join([data, mip.data[offset: offset + size]])
+                data = b"".join([data, mip.data[offset: offset + size]])
             slice_bin_list.append(data)
             mipmap_size_list.append([mip.width, mip.height])
 
@@ -302,7 +302,7 @@ class Utexture:
     def inject_dds(self, dds: DDS):
         """Inject dds into asset."""
         if not self.has_supported_format():
-            raise RuntimeError(f'Unsupported pixel format. ({self.pixel_format})')
+            raise RuntimeError(f"Unsupported pixel format. ({self.pixel_format})")
 
         # check formats
         if dds.header.dxgi_format != self.dxgi_format:
@@ -337,10 +337,10 @@ class Utexture:
         offset = 0
         for size, mip, i in zip(dds.mipmap_size_list, self.mipmaps, range(len(self.mipmaps))):
             # get a mip data from slices
-            data = b''
+            data = b""
             bin_size = int(size[0] * size[1] * self.byte_per_pixel)
             for slice_bin in dds.slice_bin_list:
-                data = b''.join([data, slice_bin[offset: offset + bin_size]])
+                data = b"".join([data, slice_bin[offset: offset + bin_size]])
             offset += bin_size
             if self.has_ubulk and i + 1 < len(self.mipmaps) and size[0] * size[1] > uexp_width * uexp_height:
                 mip.update(data, size, new_depth, False)
@@ -356,38 +356,38 @@ class Utexture:
         if self.version == "ff7r":
             self.has_opt_data = self.has_ubulk
         new_mipmap_num = len(self.mipmaps)
-        print('DDS has been injected.')
-        print(f'  size: {old_size} -> {new_size}')
+        print("DDS has been injected.")
+        print(f"  size: {old_size} -> {new_size}")
         if self.is_3d:
-            print(f'  depth: {old_depth} -> {new_depth}')
+            print(f"  depth: {old_depth} -> {new_depth}")
         else:
-            print(f'  mipmap: {old_mipmap_num} -> {new_mipmap_num}')
+            print(f"  mipmap: {old_mipmap_num} -> {new_mipmap_num}")
 
         # warnings
         if new_mipmap_num > 1 and (not is_power_of_2(max_width) or not is_power_of_2(max_height)):
-            print(f'Warning: Mipmaps should have power of 2 as its width and height. ({max_width}, {max_height})')
+            print(f"Warning: Mipmaps should have power of 2 as its width and height. ({max_width}, {max_height})")
         if new_mipmap_num > 1 and old_mipmap_num == 1:
-            print('Warning: The original texture has only 1 mipmap. But your dds has multiple mipmaps.')
+            print("Warning: The original texture has only 1 mipmap. But your dds has multiple mipmaps.")
 
     def print(self, verbose=False):
         if verbose:
             i = 0
             for mip in self.mipmaps:
-                print(f'  Mipmap {i}')
+                print(f"  Mipmap {i}")
                 mip.print(padding=4)
                 i += 1
         max_width, max_height = self.get_max_size()
         depth = self.get_depth()
-        print(f'  type: {self.get_texture_type()}')
-        print(f'  format: {self.pixel_format} ({self.dxgi_format.name})')
-        print(f'  width: {max_width}')
-        print(f'  height: {max_height}')
+        print(f"  type: {self.get_texture_type()}")
+        print(f"  format: {self.pixel_format} ({self.dxgi_format.name})")
+        print(f"  width: {max_width}")
+        print(f"  height: {max_height}")
         if self.is_3d:
-            print(f'  depth: {depth}')
+            print(f"  depth: {depth}")
         elif self.is_array:
-            print(f'  array_size: {self.get_array_size()}')
+            print(f"  array_size: {self.get_array_size()}")
         else:
-            print(f'  mipmaps: {len(self.mipmaps)}')
+            print(f"  mipmaps: {len(self.mipmaps)}")
 
     def to_uncompressed(self):
         if self.pixel_format in PF_TO_UNCOMPRESSED:
@@ -396,7 +396,7 @@ class Utexture:
     def change_format(self, pixel_format: str):
         """Change pixel format."""
         if self.pixel_format != pixel_format:
-            print(f'Changed pixel format from {self.pixel_format} to {pixel_format}')
+            print(f"Changed pixel format from {self.pixel_format} to {pixel_format}")
         self.pixel_format = pixel_format
         self.__update_format()
         self.uasset.update_name_list(self.pixel_format_name_id, pixel_format)
@@ -406,7 +406,7 @@ class Utexture:
 
     def __update_format(self):
         if not self.has_supported_format():
-            print(f'Warning: Unsupported pixel format. ({self.pixel_format})')
+            print(f"Warning: Unsupported pixel format. ({self.pixel_format})")
             self.dxgi_format = DXGI_FORMAT.UNKNOWN
             self.byte_per_pixel = None
             return
@@ -414,14 +414,14 @@ class Utexture:
         self.byte_per_pixel = DXGI_BYTE_PER_PIXEL[self.dxgi_format]
 
     def __unpack_packed_data(self):
-        if self.version >= "4.24" or self.version == 'ff7r':
+        if self.version >= "4.24" or self.version == "ff7r":
             # self.is_cube = packed_data & (1 << 31) > 0
             self.has_opt_data = self.packed_data & (1 << 30) > 0
         self.num_slices = self.packed_data & ((1 << 30) - 1)
 
     def __update_packed_data(self) -> int:
         self.packed_data = self.num_slices
-        if self.version >= "4.24" or self.version == 'ff7r':
+        if self.version >= "4.24" or self.version == "ff7r":
             self.packed_data |= self.is_cube * (1 << 31)
             self.packed_data |= self.has_opt_data * (1 << 30)
 

@@ -43,9 +43,9 @@ def get_size(f: IOBase):
 
 
 def compare(file1: str, file2: str):
-    f1 = open(file1, 'rb')
-    f2 = open(file2, 'rb')
-    print(f'Comparing {file1} and {file2}...')
+    f1 = open(file1, "rb")
+    f2 = open(file2, "rb")
+    print(f"Comparing {file1} and {file2}...")
 
     f1_size = get_size(f1)
     f2_size = get_size(f2)
@@ -56,7 +56,7 @@ def compare(file1: str, file2: str):
     f2.close()
 
     if f1_size == f2_size and f1_bin == f2_bin:
-        print('Same data!')
+        print("Same data!")
         return
 
     i = 0
@@ -65,7 +65,7 @@ def compare(file1: str, file2: str):
             break
         i += 1
 
-    raise RuntimeError(f'Not same :{i}')
+    raise RuntimeError(f"Not same :{i}")
 
 
 def remove_quotes(string: str) -> str:

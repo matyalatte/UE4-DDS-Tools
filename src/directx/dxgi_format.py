@@ -1,11 +1,11 @@
-'''Constants for DXGI formats
+"""Constants for DXGI formats
 
 Notes:
     - Official document for DXGI formats
       https://docs.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format
     - Official repo for DDS
       https://github.com/microsoft/DirectXTex
-'''
+"""
 from enum import IntEnum
 
 
@@ -302,18 +302,18 @@ def int_to_byte(n):
 
 # Used to detect DXGI format from fourCC
 FOURCC_TO_DXGI = [
-    [[b'DXT1'], DXGI_FORMAT.BC1_UNORM],
-    [[b'DXT2', b'DXT3'], DXGI_FORMAT.BC2_UNORM],
-    [[b'DXT4', b'DXT5'], DXGI_FORMAT.BC3_UNORM],
-    [[b'ATI1', b'BC4U', b'3DC1'], DXGI_FORMAT.BC4_UNORM],
-    [[b'ATI2', b'BC5U', b'3DC2'], DXGI_FORMAT.BC5_UNORM],
-    [[b'BC4S'], DXGI_FORMAT.BC4_SNORM],
-    [[b'BC5S'], DXGI_FORMAT.BC5_SNORM],
-    [[b'BC6H'], DXGI_FORMAT.BC6H_UF16],
-    [[b'BC7L', b'BC7'], DXGI_FORMAT.BC7_UNORM],
-    [[b'RGBG'], DXGI_FORMAT.R8G8_B8G8_UNORM],
-    [[b'GRGB'], DXGI_FORMAT.G8R8_G8B8_UNORM],
-    [[b'YUY2', b'UYVY'], DXGI_FORMAT.YUY2],
+    [[b"DXT1"], DXGI_FORMAT.BC1_UNORM],
+    [[b"DXT2", b"DXT3"], DXGI_FORMAT.BC2_UNORM],
+    [[b"DXT4", b"DXT5"], DXGI_FORMAT.BC3_UNORM],
+    [[b"ATI1", b"BC4U", b"3DC1"], DXGI_FORMAT.BC4_UNORM],
+    [[b"ATI2", b"BC5U", b"3DC2"], DXGI_FORMAT.BC5_UNORM],
+    [[b"BC4S"], DXGI_FORMAT.BC4_SNORM],
+    [[b"BC5S"], DXGI_FORMAT.BC5_SNORM],
+    [[b"BC6H"], DXGI_FORMAT.BC6H_UF16],
+    [[b"BC7L", b"BC7"], DXGI_FORMAT.BC7_UNORM],
+    [[b"RGBG"], DXGI_FORMAT.R8G8_B8G8_UNORM],
+    [[b"GRGB"], DXGI_FORMAT.G8R8_G8B8_UNORM],
+    [[b"YUY2", b"UYVY"], DXGI_FORMAT.YUY2],
     [[int_to_byte(36)], DXGI_FORMAT.R16G16B16A16_UNORM],
     [[int_to_byte(110)], DXGI_FORMAT.R16G16B16A16_SNORM],
     [[int_to_byte(111)], DXGI_FORMAT.R16_FLOAT],

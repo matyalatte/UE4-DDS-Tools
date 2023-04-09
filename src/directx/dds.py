@@ -18,7 +18,7 @@ from util import get_size, mkdir
 
 
 class PF_FLAGS(IntEnum):
-    '''dwFlags for DDS_PIXELFORMAT'''
+    """dwFlags for DDS_PIXELFORMAT"""
     # ALPHAPIXELS = 0x00000001
     # ALPHA = 0x00000002
     FOURCC = 0x00000004
@@ -67,7 +67,7 @@ class DDSPixelFormat(c.LittleEndianStructure):
         self.bit_mask = (c.c_uint32 * 4)((0) * 4)
 
     def get_dxgi(self) -> DXGI_FORMAT:
-        '''Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp'''
+        """Similar method as GetDXGIFormat in DirectXTex/DDSTextureLoader/DDSTextureLoader12.cpp"""
 
         if not self.is_canonical():
             raise RuntimeError(f"Non-standard fourCC detected. ({self.fourCC.decode()})")
@@ -249,7 +249,7 @@ class DX10Header(c.LittleEndianStructure):
 
 
 def is_hdr(name: str):
-    return 'BC6' in name or 'FLOAT' in name or 'INT' in name or 'SNORM' in name
+    return "BC6" in name or "FLOAT" in name or "INT" in name or "SNORM" in name
 
 
 def convertible_to_tga(name: str):
@@ -270,10 +270,10 @@ def read_buffer(f: IOBase, size: int, end_offset: int):
 
 
 class DDSHeader(c.LittleEndianStructure):
-    MAGIC = b'DDS '
+    MAGIC = b"DDS "
     _pack_ = 1
     _fields_ = [
-        ("magic", c.c_char * 4),               # Magic == 'DDS '
+        ("magic", c.c_char * 4),               # Magic == "DDS "
         ("head_size", c.c_uint32),             # Size == 124
         ("flags", c.c_uint32),                 # DDS_FLAGS
         ("height", c.c_uint32),
@@ -334,7 +334,7 @@ class DDSHeader(c.LittleEndianStructure):
     @staticmethod
     def read_from_file(file_name: str) -> "DDSHeader":
         """Read dds header from a file."""
-        with open(file_name, 'rb') as f:
+        with open(file_name, "rb") as f:
             head = DDSHeader.read(f)
         return head
 
@@ -390,16 +390,16 @@ class DDSHeader(c.LittleEndianStructure):
 
     def is_normals(self):
         dxgi = self.get_format_as_str()
-        return 'BC5' in dxgi or dxgi == 'R8G8_UNORM'
+        return "BC5" in dxgi or dxgi == "R8G8_UNORM"
 
     def get_format_as_str(self):
         return self.dxgi_format.name
 
     def is_srgb(self):
-        return 'SRGB' in self.dxgi_format.name
+        return "SRGB" in self.dxgi_format.name
 
     def is_int(self):
-        return 'UINT' in self.dxgi_format.name or 'SINT' in self.dxgi_format.name
+        return "UINT" in self.dxgi_format.name or "SINT" in self.dxgi_format.name
 
     def is_canonical(self):
         return self.pixel_format.is_canonical()
@@ -456,7 +456,7 @@ class DDSHeader(c.LittleEndianStructure):
             slice_size += _width * _height * byte_per_pixel
             if slice_size != int(slice_size):
                 raise RuntimeError(
-                    'The size of mipmap data is not int. This is unexpected.'
+                    "The size of mipmap data is not int. This is unexpected."
                 )
             width, height = width // 2, height // 2
             width, height = max(block_size, width), max(block_size, height)
@@ -464,16 +464,16 @@ class DDSHeader(c.LittleEndianStructure):
         return mipmap_size_list, int(slice_size)
 
     def print(self):
-        print(f'  type: {self.get_texture_type()}')
-        print(f'  format: {self.get_format_as_str()}')
-        print(f'  width: {self.width}')
-        print(f'  height: {self.height}')
+        print(f"  type: {self.get_texture_type()}")
+        print(f"  format: {self.get_format_as_str()}")
+        print(f"  width: {self.width}")
+        print(f"  height: {self.height}")
         if self.is_3d():
-            print(f'  depth: {self.depth}')
+            print(f"  depth: {self.depth}")
         elif self.is_array():
-            print(f'  array_size: {self.get_array_size()}')
+            print(f"  array_size: {self.get_array_size()}")
         else:
-            print(f'  mipmaps: {self.mipmap_num}')
+            print(f"  mipmaps: {self.mipmap_num}")
 
     def disassemble(self):
         self.update(self.width, self.height, 1, self.mipmap_num, self.dxgi_format, self.is_cube(), 1)
@@ -493,10 +493,10 @@ class DDS:
 
     @staticmethod
     def load(file: str, verbose=False):
-        if file[-3:] not in ['dds', 'DDS']:
-            raise RuntimeError(f'Not DDS. ({file})')
-        print('load: ' + file)
-        with open(file, 'rb') as f:
+        if file[-3:] not in ["dds", "DDS"]:
+            raise RuntimeError(f"Not DDS. ({file})")
+        print("load: " + file)
+        with open(file, "rb") as f:
             end_offset = get_size(f)
 
             # read header
@@ -521,12 +521,12 @@ class DDS:
 
     # save as dds
     def save(self, file: str):
-        print('save: {}'.format(file))
+        print("save: {}".format(file))
         folder = os.path.dirname(file)
-        if folder not in ['.', ''] and not os.path.exists(folder):
+        if folder not in [".", ""] and not os.path.exists(folder):
             mkdir(folder)
 
-        with open(file, 'wb') as f:
+        with open(file, "wb") as f:
             # write header
             self.header.write(f)
 
@@ -574,6 +574,6 @@ class DDS:
         if verbose:
             # print mipmap info
             for i, size in zip(range(len(self.mipmap_size_list)), self.mipmap_size_list):
-                print(f'  Mipmap {i}')
+                print(f"  Mipmap {i}")
                 width, height = size
-                print(f'    size (w, h): ({width}, {height})')
+                print(f"    size (w, h): ({width}, {height})")
