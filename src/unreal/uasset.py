@@ -303,7 +303,7 @@ class UassetExport(SerializableBase):
         self.meta_size = 0  # binary size of meta data
 
     def serialize(self, ar: ArchiveBase):
-        ar << (Int32, self, "class_import_id")
+        ar << (Int32, self, "class_import_id")  # -: import id, +: export id
         if ar.version >= "4.14":
             ar << (Int32, self, "template_index")
         ar << (Int32, self, "super_import_id")
@@ -351,10 +351,13 @@ class UassetExport(SerializableBase):
         self.size = size
         self.offset = offset
 
-    def name_export(self, imports: list[UassetImport], name_list: list[Name]):
+    def name_export(self, exports: list["UassetExport"], imports: list[UassetImport], name_list: list[Name]):
         self.name = str(name_list[self.name_id])
-        self.class_name = imports[-self.class_import_id-1].name
-        self.super_name = imports[-self.super_import_id-1].name
+        if -self.class_import_id - 1 < 0:
+            self.class_name = exports[self.class_import_id].name
+        else:
+            self.class_name = imports[-self.class_import_id - 1].name
+        self.super_name = imports[-self.super_import_id - 1].name
 
     def is_base(self):
         return (self.object_flags & ObjectFlags.RF_ArchetypeObject > 0
@@ -438,7 +441,7 @@ class Uasset:
             # read exports
             ar.check(self.header.export_offset, ar.tell())
             ar << (StructArray, self, "exports", UassetExport, self.header.export_count)
-            list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
+            list(map(lambda x: x.name_export(self.exports, self.imports, self.name_list), self.exports))
             if ar.verbose:
                 print("Exports")
                 list(map(lambda x: x.print(), self.exports))
