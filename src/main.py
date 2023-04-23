@@ -5,9 +5,11 @@ import json
 import os
 import time
 from contextlib import redirect_stdout
+import concurrent.futures
+import functools
 
 # my scripts
-from util import (compare, get_ext, get_temp_dir, flush_stdout,
+from util import (compare, get_ext, get_temp_dir,
                   get_file_list, get_base_folder, remove_quotes)
 from unreal.uasset import Uasset
 from directx.dds import DDS
@@ -41,7 +43,7 @@ def get_args():  # pragma: no cover
                         help="format for export mode. dds, tga, png, jpg, and bmp are available.")
     parser.add_argument("--convert_to", default="tga", type=str,
                         help=("format for convert mode."
-                              "tga, hdr, png, jpg, bmp, and DXGI formats (e.g. BC1_UNORM) are available."))
+                              " tga, hdr, png, jpg, bmp, and DXGI formats (e.g. BC1_UNORM) are available."))
     parser.add_argument("--no_mipmaps", action="store_true",
                         help="force no mips to dds and uasset.")
     parser.add_argument("--force_uncompressed", action="store_true",
@@ -55,6 +57,9 @@ def get_args():  # pragma: no cover
                               " point, linear, and cubic are available."))
     parser.add_argument("--save_detected_version", action="store_true",
                         help="save detected version for batch file methods. this is an option for check mode.")
+    parser.add_argument("--max_workers", default=-1, type=int,
+                        help=("The number of workers for multiprocessing."
+                              " If -1, it will default to the number of processors on the machine."))
     return parser.parse_args()
 
 
@@ -72,7 +77,33 @@ def save_config(config):
         json.dump(config, f, indent=4, ensure_ascii=False)
 
 
-def parse(folder, file, args, texconv=None):
+def stdout_wrapper(func):
+    """Stdout wrapper to order the outputs in multiprocessing."""
+    @functools.wraps(func)
+    def caller(*args, **kwargs):
+        from io import StringIO
+        import sys
+        default_stdout = sys.stdout
+        sys.stdout = StringIO()  # Store the outputs in a string
+
+        def flush(stdout):
+            """Print outputs to the true stdout."""
+            stdout.seek(0)
+            print(stdout.read()[:-1], file=default_stdout, flush=True)
+            sys.stdout = default_stdout
+
+        try:
+            response = func(*args, **kwargs)
+        except Exception as e:
+            flush(sys.stdout)  # Print outputs after execution
+            raise e
+        flush(sys.stdout)  # Print outputs after execution
+        return response
+    return caller
+
+
+@stdout_wrapper
+def parse(folder, file, args, texture_file=None):
     """Parse mode (parse dds or uasset)"""
     file = os.path.join(folder, file)
     if get_ext(file) == "dds":
@@ -81,7 +112,8 @@ def parse(folder, file, args, texconv=None):
         Uasset(file, version=args.version, verbose=True)
 
 
-def valid(folder, file, args, version=None, texconv=None):
+@stdout_wrapper
+def valid(folder, file, args, version=None, texture_file=None):
     """Valid mode (check if the tool can read and write a file correctly.)"""
     if version is None:
         version = args.version
@@ -127,7 +159,8 @@ def search_texture_file(file_base, ext_list, index=None, index2=None):
     raise RuntimeError(f"Texture file not found. ({file_base})")
 
 
-def inject(folder, file, args, texture_file=None, texconv=None):
+@stdout_wrapper
+def inject(folder, file, args, texture_file=None):
     """Inject mode (inject dds into the asset)"""
 
     # Read uasset
@@ -169,6 +202,9 @@ def inject(folder, file, args, texture_file=None, texconv=None):
             index = f".{i}"
             index2 = "-0" if tex.is_array or tex.is_3d else None
             src_files.append(search_texture_file(file_base, ext_list, index=index, index2=index2))
+
+    if any([(src is not None) and (get_ext(src) != "dds") for src in src_files]):
+        texconv = Texconv()
 
     for tex, src in zip(textures, src_files):
         if tex.is_empty():
@@ -212,7 +248,6 @@ def inject(folder, file, args, texture_file=None, texconv=None):
         tex.inject_dds(dds)
         if args.no_mipmaps:
             tex.remove_mipmaps()
-        flush_stdout()  # Need to flush to see the result for each asset
 
     # Write uasset
     asset.update_package_source(is_official=False)
@@ -220,7 +255,8 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     asset.save(new_file)
 
 
-def export(folder, file, args, texconv=None):
+@stdout_wrapper
+def export(folder, file, args, texture_file=None):
     """Export mode (export uasset as dds)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
@@ -238,6 +274,9 @@ def export(folder, file, args, texconv=None):
 
     textures = asset.get_texture_list()
     has_multi = len(textures) > 1
+    if args.export_as != "dds":
+        texconv = Texconv()
+
     for tex, i in zip(textures, range(len(textures))):
         if tex.is_empty():
             print("Skipped an empty texture.")
@@ -263,10 +302,10 @@ def export(folder, file, args, texconv=None):
                 dds.save(temp_dds)
                 converted_file = texconv.convert_dds_to(temp_dds, out=new_dir, fmt=args.export_as, verbose=False)
                 print(f"convert to: {converted_file}")
-        flush_stdout()  # Need to flush to see the result for each asset
 
 
-def remove_mipmaps(folder, file, args, texconv=None):
+@stdout_wrapper
+def remove_mipmaps(folder, file, args, texture_file=None):
     """Remove mode (remove mipmaps from uasset)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
@@ -280,7 +319,8 @@ def remove_mipmaps(folder, file, args, texconv=None):
     asset.save(new_file)
 
 
-def copy(folder, file, args, texconv=None):
+@stdout_wrapper
+def copy(folder, file, args, texture_file=None):
     """Copy mode (copy texture assets)"""
     # Read uasset
     uasset_file = os.path.join(folder, file)
@@ -302,7 +342,8 @@ UTEX_VERSIONS = [
 ]
 
 
-def check_version(folder, file, args, texconv=None):
+@stdout_wrapper
+def check_version(folder, file, args, texture_file=None):
     """Check mode (check file version)"""
 
     print("Running valid mode with each version...")
@@ -326,16 +367,12 @@ def check_version(folder, file, args, texconv=None):
         s = f"{passed_version}"[1:-1].replace("'", "")
         print(f"Found some versions can handle the asset. ({s})")
 
-    if args.save_detected_version:
-        passed_version = [ver.split(" ~ ")[0] for ver in passed_version]
-        common = list(set(passed_version) & set(args.version))
-        if len(common) > 0:
-            args.version = common
-        else:
-            args.version = passed_version
+    passed_version = [ver.split(" ~ ")[0] for ver in passed_version]
+    return passed_version
 
 
-def convert(folder, file, args, texconv=None):
+@stdout_wrapper
+def convert(folder, file, args, texture_file=None):
     """Convert mode (convert texture files)"""
     src_file = os.path.join(folder, file)
     new_file = os.path.join(args.save_folder, file)
@@ -353,6 +390,7 @@ def convert(folder, file, args, texconv=None):
 
     print(f"Converting {src_file} to {new_file}...")
 
+    texconv = Texconv()
     if ext == "dds":
         # image to dds
         texconv.convert_to_dds(src_file, DXGI_FORMAT[args.convert_to],
@@ -401,6 +439,9 @@ def fix_args(args, config):
         if isinstance(args.version, list):
             args.version = args.version[0]
 
+    if args.max_workers is not None and args.max_workers <= 0:
+        args.max_workers = None
+
 
 def print_args(args):
     mode = args.mode
@@ -423,17 +464,28 @@ def print_args(args):
         print(f"Force uncompressed: {args.force_uncompressed}")
         print(f"Image filter: {args.image_filter}")
 
+    with concurrent.futures.ProcessPoolExecutor(args.max_workers) as executor:
+        print(f"Max workers: {executor._max_workers}")
+
 
 def check_args(args):
-    texture_file = args.texture
     mode = args.mode
-
     if os.path.isfile(args.save_folder):
         raise RuntimeError(f"Output path is not a folder. ({args.save_folder})")
     if not os.path.exists(args.file):
         raise RuntimeError(f"Path not found. ({args.file})")
-    if mode == "inject" and (texture_file is None or texture_file == ""):
-        raise RuntimeError("Specify texture file.")
+    if mode == "inject":
+        if args.texture is None or args.texture == "":
+            raise RuntimeError("Specify texture file.")
+        if os.path.isdir(args.file):
+            if not os.path.isdir(args.texture):
+                raise RuntimeError(
+                    f"Specified a folder as uasset path. But texture path is not a folder. ({args.texture})"
+                )
+        elif os.path.isdir(args.texture):
+            raise RuntimeError(
+                f"Specified a file as uasset path. But texture path is a folder. ({args.texture})"
+            )
     if mode not in MODE_FUNCTIONS:
         raise RuntimeError(f"Unsupported mode. ({mode})")
     if mode != "check" and args.version not in UE_VERSIONS:
@@ -444,59 +496,61 @@ def check_args(args):
         raise RuntimeError(f"Unsupported image filter. ({args.image_filter})")
 
 
-def main(args, config={}, texconv=None):
-
+def main(args, config={}):
     fix_args(args, config)
     print_args(args)
     check_args(args)
 
-    file = args.file
     texture_file = args.texture
     mode = args.mode
 
-    # load texconv
-    if (mode == "export" and args.export_as != "dds") or mode in ["inject", "convert"]:
-        if texconv is None:
-            texconv = Texconv()
-
     func = MODE_FUNCTIONS[mode]
 
-    if os.path.isfile(file):
+    if os.path.isfile(args.file):
+        file = args.file
         folder = os.path.dirname(file)
         file = os.path.basename(file)
-        func(folder, file, args, texconv=texconv)
+        results = [func(folder, file, args)]
     else:
-        # folder method
+        # args.file is a folder
         if mode == "convert":
             ext_list = TEXTURES
         else:
             ext_list = ["uasset"]
 
-        # Todo: Use recursive function. No need to make file list anymore.
-        folder, file_list = get_file_list(file, ext=ext_list, include_base=(mode != "inject"))
+        folder = args.file
+        file_list = get_file_list(folder, ext=ext_list)
 
         if mode == "inject":
-            texture_folder = texture_file
-            if not os.path.isdir(texture_folder):
-                raise RuntimeError(
-                    f"Specified a folder as uasset path. But texture path is not a folder. ({texture_folder})"
-                )
-            texture_file_list = [os.path.join(texture_folder, file[:-6] + TEXTURES[0]) for file in file_list]
-            base_folder, folder = get_base_folder(folder)
-            file_list = [os.path.join(folder, file) for file in file_list]
-            for file, texture in zip(file_list, texture_file_list):
-                func(base_folder, file, args, texture_file=texture, texconv=texconv)
-                flush_stdout()
+            texture_file_list = [os.path.join(texture_file, file[:-6] + TEXTURES[0]) for file in file_list]
         else:
-            for file in file_list:
-                func(folder, file, args, texconv=texconv)
-                flush_stdout()
+            texture_file_list = [None] * len(file_list)
+
+        folder, base_folder = get_base_folder(folder)
+        file_list = [os.path.join(base_folder, file) for file in file_list]
+
+        # multiprocessing
+        with concurrent.futures.ProcessPoolExecutor(args.max_workers) as executor:
+            futures = [
+                executor.submit(func, folder, file, args, texture_file=texture)
+                for file, texture in zip(file_list, texture_file_list)
+            ]
+            concurrent.futures.wait(futures)
+            results = [future.result() for future in futures]
 
     if mode == "check" and args.save_detected_version:
-        print("Saved the detected version as src/config.json")
-        if len(args.version) == 1:
-            args.version = args.version[0]
-        config["version"] = args.version
+        passed_versions = args.version
+        for res in results:
+            # res: a list of passed versions for a file
+            common = list(set(res) & set(passed_versions))
+            if len(common) > 0:
+                passed_versions = common
+            else:
+                passed_versions = res
+        if len(passed_versions) == 1:
+            passed_versions = passed_versions[0]
+        config["version"] = passed_versions
+        print(f"Saved the detected version ({passed_versions}) in src/config.json", flush=True)
         save_config(config)
 
 

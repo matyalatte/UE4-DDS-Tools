@@ -9,7 +9,7 @@ on:
 env:
   ZIP_NAME: UE4-DDS-Tools
   GUI_VERSION: v0.3.0
-  PYTHON_VERSION: 3.9.12
+  PYTHON_VERSION: 3.10.11
 
 jobs:
   build:
@@ -36,10 +36,13 @@ jobs:
           unzip -d python-${{env.PYTHON_VERSION}}-embed-amd64 python-${{env.PYTHON_VERSION}}-embed-amd64.zip
           cd python-${{env.PYTHON_VERSION}}-embed-amd64
           cp python.exe ../release/python
-          cp python39.dll ../release/python
-          cp python39.zip ../release/python
+          cp python310.dll ../release/python
+          cp python310.zip ../release/python
           cp libffi-7.dll ../release/python
           cp _ctypes.pyd ../release/python
+          cp _multiprocessing.pyd ../release/python
+          cp _socket.pyd ../release/python
+          cp select.pyd ../release/python
           cp LICENSE.txt ../release/python
         shell: bash
 
