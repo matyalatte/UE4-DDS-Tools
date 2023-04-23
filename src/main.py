@@ -152,8 +152,11 @@ def inject(folder, file, args, texture_file=None, texconv=None):
     textures = asset.get_texture_list()
     ext_list = [ext] + TEXTURES
     if len(textures) == 1:
-        index2 = "-0" if textures[0].is_array or textures[0].is_3d else None
-        src_files = [search_texture_file(file_base, ext_list, index2=index2)]
+        if textures[0].is_empty():
+            src_files = [None]
+        else:
+            index2 = "-0" if textures[0].is_array or textures[0].is_3d else None
+            src_files = [search_texture_file(file_base, ext_list, index2=index2)]
     else:
         # Find other files for multiple textures
         splitted = file_base.split(".")
@@ -161,11 +164,17 @@ def inject(folder, file, args, texture_file=None, texconv=None):
             file_base = ".".join(splitted[:-1])
         src_files = []
         for i, tex in zip(range(len(textures)), textures):
+            if tex.is_empty():
+                src_files.append(None)
             index = f".{i}"
             index2 = "-0" if tex.is_array or tex.is_3d else None
             src_files.append(search_texture_file(file_base, ext_list, index=index, index2=index2))
 
     for tex, src in zip(textures, src_files):
+        if tex.is_empty():
+            print("Skipped an empty texture.")
+            continue
+
         if args.force_uncompressed:
             tex.to_uncompressed()
 
@@ -230,6 +239,10 @@ def export(folder, file, args, texconv=None):
     textures = asset.get_texture_list()
     has_multi = len(textures) > 1
     for tex, i in zip(textures, range(len(textures))):
+        if tex.is_empty():
+            print("Skipped an empty texture.")
+            continue
+
         if has_multi:
             # Add indices for multiple textures
             file_name = os.path.splitext(new_file)[0] + f".{i}.dds"
@@ -260,6 +273,9 @@ def remove_mipmaps(folder, file, args, texconv=None):
     asset = Uasset(src_file, version=args.version)
     textures = asset.get_texture_list()
     for tex in textures:
+        if tex.is_empty():
+            print("Skipped an empty texture.")
+            continue
         tex.remove_mipmaps()
     asset.save(new_file)
 

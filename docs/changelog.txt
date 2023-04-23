@@ -1,3 +1,7 @@
+ver 0.5.2
+- Fixed an error when loading empty textures.
+- Fixed an error when exporting BC6 textures.
+
 ver 0.5.1
 - Updated GUI to v0.3.0
 - Added tooltips to GUI

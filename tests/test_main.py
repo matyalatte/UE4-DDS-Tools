@@ -140,3 +140,12 @@ def test_dds_io(json_args):
 def test_batch_method(json_args):
     """Test with _file_path_.txt"""
     base(json_args)
+
+
+@pytest.mark.parametrize("json_args", util.get_test_cases("empty"))
+def test_empty(json_args):
+    """Test with empty textures."""
+    json_args["mode"] = "valid"
+    base(json_args)
+    json_args["mode"] = "export"
+    base(json_args)
