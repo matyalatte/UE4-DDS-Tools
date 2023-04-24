@@ -29,8 +29,9 @@ class Umipmap(SerializableBase):
         self.depth = 1
         self.is_uexp = False
         self.is_meta = False
-        self.is_upntl = False
+        self.is_uptnl = False
         self.ubulk_flags = 0
+        self.has_wrong_offset = False
 
     def update(self, data: bytes, size: int, depth: int, is_uexp: bool):
         self.is_uexp = is_uexp
@@ -45,6 +46,7 @@ class Umipmap(SerializableBase):
 
     def serialize(self, ar: ArchiveBase):
         self.version = ar.version
+
         if ar.is_writing:
             if not ar.valid:
                 self.__update_ubulk_flags()
@@ -56,7 +58,9 @@ class Umipmap(SerializableBase):
         ar << (Uint32, self, "ubulk_flags")
         if ar.is_reading:
             self.__unpack_ubulk_flags()
-
+            if not self.has_wrong_offset:
+                ar.check((self.version == "ff7r") or (self.version >= "4.26"), True,
+                         msg=f"BULKDATA_NoOffsetFixUp is not supported for this UE version. ({ar.version})")
         ar << (Uint32, self, "data_size")
         ar == (Uint32, self.data_size, "data_size2")
         if ar.is_writing:
@@ -78,10 +82,13 @@ class Umipmap(SerializableBase):
             ar << (int_type, self, "depth")
         self.pixel_num = self.width * self.height * self.depth
 
-    def serialize_ubulk(self, ar: ArchiveBase):
+    def serialize_ubulk(self, ubulk_ar: ArchiveBase, uptnl_ar: ArchiveBase):
         if self.is_uexp:
             return
-        ar << (Buffer, self, "data", self.data_size)
+        if self.is_uptnl:
+            uptnl_ar << (Buffer, self, "data", self.data_size)
+        else:
+            ubulk_ar << (Buffer, self, "data", self.data_size)
 
     def rewrite_offset(self, ar: ArchiveBase, new_offset: int):
         self.offset = new_offset
@@ -94,9 +101,8 @@ class Umipmap(SerializableBase):
         self.is_uexp = (self.ubulk_flags & BulkDataFlags.BULKDATA_ForceInlinePayload > 0) or \
                        (self.ubulk_flags & BulkDataFlags.BULKDATA_Unused > 0)
         self.is_meta = self.ubulk_flags & BulkDataFlags.BULKDATA_Unused > 0
-        self.is_upntl = self.ubulk_flags & BulkDataFlags.BULKDATA_OptionalPayload > 0
-        if self.is_upntl:
-            raise RuntimeError("Optional payload (.upntl) is unsupported.")
+        self.is_uptnl = self.ubulk_flags & BulkDataFlags.BULKDATA_OptionalPayload > 0
+        self.has_wrong_offset = self.ubulk_flags & BulkDataFlags.BULKDATA_NoOffsetFixUp == 0
 
     def __update_ubulk_flags(self):
         # update bulk flags
@@ -115,10 +121,20 @@ class Umipmap(SerializableBase):
                 self.ubulk_flags |= BulkDataFlags.BULKDATA_PayloadInSeperateFile
             if (self.version == "ff7r") or (self.version >= "4.26"):
                 self.ubulk_flags |= BulkDataFlags.BULKDATA_NoOffsetFixUp
+            else:
+                self.has_wrong_offset = True
+            if self.is_uptnl:
+                self.ubulk_flags |= BulkDataFlags.BULKDATA_OptionalPayload
 
     def print(self, padding: int = 2):
         pad = " " * padding
-        print(pad + "file: " + "uexp" * self.is_uexp + "ubluk" * (not self.is_uexp))
+        if self.is_uexp:
+            ext = "uexp"
+        elif self.is_uptnl:
+            ext = "uptnl"
+        else:
+            ext = "ubulk"
+        print(pad + f"file: {ext}")
         print(pad + f"data size: {self.data_size}")
         print(pad + f"offset: {self.offset}")
         print(pad + f"width: {self.width}")

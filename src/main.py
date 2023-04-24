@@ -11,7 +11,7 @@ import functools
 # my scripts
 from util import (compare, get_ext, get_temp_dir,
                   get_file_list, get_base_folder, remove_quotes)
-from unreal.uasset import Uasset
+from unreal.uasset import Uasset, UASSET_EXT
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
@@ -133,16 +133,13 @@ def valid(folder, file, args, version=None, texture_file=None):
         else:
             # read and write uasset
             asset = Uasset(src_file, version=version, verbose=True)
-            uasset_name, uexp_name, ubulk_name = asset.get_all_file_path()
+            old_name = asset.file_name
             asset.save(new_file, valid=True)
-            new_uasset_name, new_uexp_name, new_ubulk_name = asset.get_all_file_path()
-
+            new_name = asset.file_name
             # compare files
-            compare(uasset_name, new_uasset_name)
-            if new_uexp_name is not None:
-                compare(uexp_name, new_uexp_name)
-            if new_ubulk_name is not None:
-                compare(ubulk_name, new_ubulk_name)
+            for ext in UASSET_EXT:
+                if (os.path.exists(f"{old_name}.{ext}") and (asset.has_textures() or ext == "uasset")):
+                    compare(f"{old_name}.{ext}", f"{new_name}.{ext}")
 
 
 def search_texture_file(file_base, ext_list, index=None, index2=None):
@@ -429,7 +426,7 @@ def fix_args(args, config):
     if args.file.endswith(".txt"):
         # file path for batch file injection.
         # you can set an asset path with "echo some_path > some.txt"
-        with open(args.file, "r") as f:
+        with open(args.file, "r", encoding="utf-8") as f:
             args.file = remove_quotes(f.readline())
 
     if args.mode == "check":

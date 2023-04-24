@@ -16,11 +16,13 @@ exported
 injected
 converted
 test
+tmp
 
 #for testing
 *.bat
 !bat/*.bat
 *.sh
+!.github/workflows/*.sh
 *.txt
 !changelog.txt
 !tests/test_file_path_.txt
@@ -35,3 +37,4 @@ tests/local_test_cases.json
 *.uasset
 *.uexp
 *.ubulk
+*.uptnl
