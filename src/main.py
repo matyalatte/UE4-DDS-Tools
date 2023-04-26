@@ -16,7 +16,7 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = "0.5.1"
+TOOL_VERSION = "0.5.2"
 
 # UE version: 4.0 ~ 5.1, ff7r, borderlands3
 UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(2)] + ["ff7r", "borderlands3"]
@@ -216,6 +216,7 @@ def inject(folder, file, args, texture_file=None):
             dds = DDS.load(src)
         else:
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
+                print(f"convert: {src}")
                 if tex.is_array or tex.is_3d:
                     src_base, src_ext = os.path.splitext(src)
                     src_base = src_base[:-2]
@@ -442,27 +443,28 @@ def fix_args(args, config):
 
 def print_args(args):
     mode = args.mode
+    print("-" * 16)
     print(f"Mode: {mode}")
-
-    if args.mode != "check":
+    if mode != "check":
         print(f"UE version: {args.version}")
-
+    print(f"File: {args.file}")
+    if mode == "inject":
+        print(f"Texture: {args.texture}")
+    if mode not in ["check", "parse", "valid"]:
+        print(f"Save folder: {args.save_folder}")
     if mode == "export":
         print(f"Export as: {args.export_as}")
-
     if mode == "convert":
         print(f"Convert to: {args.convert_to}")
-
     if mode in ["inject", "export"]:
         print(f"No mipmaps: {args.no_mipmaps}")
         print(f"Skip non textures: {args.skip_non_texture}")
-
     if mode == "inject":
         print(f"Force uncompressed: {args.force_uncompressed}")
         print(f"Image filter: {args.image_filter}")
-
     with concurrent.futures.ProcessPoolExecutor(args.max_workers) as executor:
         print(f"Max workers: {executor._max_workers}")
+    print("-" * 16)
 
 
 def check_args(args):
@@ -498,12 +500,12 @@ def main(args, config={}):
     print_args(args)
     check_args(args)
 
-    texture_file = args.texture
     mode = args.mode
 
     func = MODE_FUNCTIONS[mode]
 
     if os.path.isfile(args.file):
+        # args.file is a file
         file = args.file
         folder = os.path.dirname(file)
         file = os.path.basename(file)
@@ -517,9 +519,10 @@ def main(args, config={}):
 
         folder = args.file
         file_list = get_file_list(folder, ext=ext_list)
+        texture_folder = args.texture
 
         if mode == "inject":
-            texture_file_list = [os.path.join(texture_file, file[:-6] + TEXTURES[0]) for file in file_list]
+            texture_file_list = [os.path.join(texture_folder, file[:-6] + TEXTURES[0]) for file in file_list]
         else:
             texture_file_list = [None] * len(file_list)
 

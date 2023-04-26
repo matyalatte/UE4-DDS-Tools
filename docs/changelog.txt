@@ -6,6 +6,7 @@ ver 0.5.2
 - Fixed an error when loading empty textures.
 - Fixed an error when exporting BC6 textures.
 - Fixed an error when exports have positive values for class ids.
+- Fixed an error when exporting cubemaps as tga.
 
 ver 0.5.1
 - Updated GUI to v0.3.0
