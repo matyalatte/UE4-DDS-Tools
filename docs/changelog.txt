@@ -1,3 +1,13 @@
+ver 0.5.2
+- Supported *.uptnl files.
+- Introduced multiprocessing.
+- Updated python from 3.9 to 3.10.
+- Removed unnecessary files from embeddable python.
+- Fixed an error when loading empty textures.
+- Fixed an error when exporting BC6 textures.
+- Fixed an error when exports have positive values for class ids.
+- Fixed an error when exporting cubemaps as tga.
+
 ver 0.5.1
 - Updated GUI to v0.3.0
 - Added tooltips to GUI

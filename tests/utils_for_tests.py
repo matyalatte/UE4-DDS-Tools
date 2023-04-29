@@ -1,6 +1,5 @@
 import json
 import os
-from src.directx.texconv import Texconv
 
 
 class Args:
@@ -18,6 +17,7 @@ class Args:
         self.skip_non_texture = True
         self.image_filter = "linear"
         self.save_detected_version = False
+        self.max_workers = -1
 
         if json_args != {}:
             self.init_with_json(json_args)
@@ -52,10 +52,3 @@ def get_test_cases(key):
     if key in local_test_cases:
         cases += local_test_cases[key]
     return cases
-
-
-texconv = Texconv()
-
-
-def get_texconv():
-    return texconv

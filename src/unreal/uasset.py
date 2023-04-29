@@ -14,15 +14,7 @@ from .archive import (ArchiveBase, ArchiveRead, ArchiveWrite,
                       SerializableBase)
 
 
-EXT = [".uasset", ".uexp", ".ubulk"]
-
-
-def get_all_file_path(file: str) -> list[str]:
-    """Get all file paths for texture asset from a file path."""
-    base_name, ext = os.path.splitext(file)
-    if ext not in EXT:
-        raise RuntimeError(f"Not Uasset. ({file})")
-    return [base_name + ext for ext in EXT]
+UASSET_EXT = ["uasset", "uexp", "ubulk", "uptnl"]
 
 
 class PackageFlags(IntEnum):
@@ -303,7 +295,7 @@ class UassetExport(SerializableBase):
         self.meta_size = 0  # binary size of meta data
 
     def serialize(self, ar: ArchiveBase):
-        ar << (Int32, self, "class_import_id")
+        ar << (Int32, self, "class_import_id")  # -: import id, +: export id
         if ar.version >= "4.14":
             ar << (Int32, self, "template_index")
         ar << (Int32, self, "super_import_id")
@@ -351,10 +343,13 @@ class UassetExport(SerializableBase):
         self.size = size
         self.offset = offset
 
-    def name_export(self, imports: list[UassetImport], name_list: list[Name]):
+    def name_export(self, exports: list["UassetExport"], imports: list[UassetImport], name_list: list[Name]):
         self.name = str(name_list[self.name_id])
-        self.class_name = imports[-self.class_import_id-1].name
-        self.super_name = imports[-self.super_import_id-1].name
+        if -self.class_import_id - 1 < 0:
+            self.class_name = exports[self.class_import_id].name
+        else:
+            self.class_name = imports[-self.class_import_id - 1].name
+        self.super_name = imports[-self.super_import_id - 1].name
 
     def is_base(self):
         return (self.object_flags & ObjectFlags.RF_ArchetypeObject > 0
@@ -388,20 +383,20 @@ class Uasset:
             raise RuntimeError(f"Not File. ({file_path})")
 
         self.texture = None
-        self.uexp_io = None
-        self.ubulk_io = None
-        self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file_path)
-        print("load: " + self.uasset_file)
-
-        if self.uasset_file[-7:] != ".uasset":
-            raise RuntimeError(f"Not .uasset. ({self.uasset_file})")
-
-        if verbose:
-            print("Loading " + self.uasset_file + "...")
+        self.io_dict = {}
+        self.bin_dict = {}
+        for k in UASSET_EXT[1:]:
+            self.io_dict[k] = None
+            self.bin_dict[k] = None
+        self.file_name, ext = os.path.splitext(file_path)
+        if ext[1:] not in UASSET_EXT:
+            raise RuntimeError(f"Not Uasset. ({file_path})")
+        uasset_file = self.file_name + ".uasset"
+        print("load: " + uasset_file)
 
         self.version = VersionInfo(version)
         self.context = {"version": self.version, "verbose": verbose, "valid": False}
-        ar = ArchiveRead(open(self.uasset_file, "rb"), context=self.context)
+        ar = ArchiveRead(open(uasset_file, "rb"), context=self.context)
         self.serialize(ar)
         ar.close()
         self.read_export_objects(verbose=verbose)
@@ -438,7 +433,7 @@ class Uasset:
             # read exports
             ar.check(self.header.export_offset, ar.tell())
             ar << (StructArray, self, "exports", UassetExport, self.header.export_count)
-            list(map(lambda x: x.name_export(self.imports, self.name_list), self.exports))
+            list(map(lambda x: x.name_export(self.exports, self.imports, self.name_list), self.exports))
             if ar.verbose:
                 print("Exports")
                 list(map(lambda x: x.print(), self.exports))
@@ -470,13 +465,10 @@ class Uasset:
 
         if ar.is_reading:
             ar.check(ar.tell(), self.get_size())
-            if self.has_uexp():
-                self.uexp_bin = None
-                self.ubulk_bin = None
-            else:
+            if not self.has_uexp():
                 self.uexp_size = self.header.bulk_offset - self.header.uasset_size
-                self.uexp_bin = ar.read(self.uexp_size)
-                self.ubulk_bin = ar.read(ar.size - ar.tell() - 4)
+                self.bin_dict["uexp"] = ar.read(self.uexp_size)
+                self.bin_dict["ubulk"] = ar.read(ar.size - ar.tell() - 4)
                 ar == (Bytes, self.header.tag, "tail_tag", 4)
         else:
             self.header.uasset_size = ar.tell()
@@ -496,12 +488,12 @@ class Uasset:
 
             if not self.has_uexp():
                 ar.seek(self.header.uasset_size)
-                ar.write(self.uexp_bin)
-                ar.write(self.ubulk_bin)
+                ar.write(self.bin_dict["uexp"])
+                ar.write(self.bin_dict["ubulk"])
                 ar.write(self.header.tag)
 
     def read_export_objects(self, verbose=False):
-        uexp_io = self.get_uexp_io(rb=True)
+        uexp_io = self.get_io(ext="uexp", rb=True)
         for exp in self.exports:
             if verbose:
                 print(f"{exp.name}: (offset: {uexp_io.tell()})")
@@ -511,11 +503,10 @@ class Uasset:
                 exp.object = Uunknown(self, exp.size)
             exp.object.serialize(uexp_io)
             uexp_io.check(exp.object.uexp_size, exp.size)
-        self.close_uexp_io(rb=True)
-        self.close_ubulk_io(rb=True)
+        self.close_all_io(rb=True)
 
     def write_export_objects(self):
-        uexp_io = self.get_uexp_io(rb=False)
+        uexp_io = self.get_io(ext="uexp", rb=False)
         for exp in self.exports:
             exp.object.serialize(uexp_io)
             offset = uexp_io.tell()
@@ -524,25 +515,24 @@ class Uasset:
         for exp in self.exports:
             if exp.is_texture():
                 exp.object.rewrite_offset_data()
-        self.close_uexp_io(rb=False)
-        self.close_ubulk_io(rb=False)
+        self.close_all_io(rb=False)
 
     def save(self, file: str, valid=False):
         folder = os.path.dirname(file)
         if folder not in [".", ""] and not os.path.exists(folder):
             mkdir(folder)
 
-        self.uasset_file, self.uexp_file, self.ubulk_file = get_all_file_path(file)
+        self.file_name, ext = os.path.splitext(file)
+        if ext[1:] not in UASSET_EXT:
+            raise RuntimeError(f"Not Uasset. ({file})")
 
-        if not self.has_ubulk():
-            self.ubulk_file = None
-
-        print("save :" + self.uasset_file)
+        uasset_file = self.file_name + ".uasset"
+        print("save :" + uasset_file)
 
         self.context = {"version": self.version, "verbose": False, "valid": valid}
         self.write_export_objects()
 
-        ar = ArchiveWrite(open(self.uasset_file, "wb"), context=self.context)
+        ar = ArchiveWrite(open(uasset_file, "wb"), context=self.context)
 
         self.serialize(ar)
 
@@ -598,7 +588,7 @@ class Uasset:
                 textures.append(exp.object)
         return textures
 
-    def __get_io(self, file: str, bin: bytes, rb: bool) -> IOBase:
+    def __get_io_base(self, file: str, bin: bytes, rb: bool) -> IOBase:
         if self.has_uexp():
             opened_io = open(file, "rb" if rb else "wb")
         else:
@@ -609,54 +599,34 @@ class Uasset:
         else:
             return ArchiveWrite(opened_io, context=self.context)
 
-    def get_uexp_io(self, rb=True) -> IOBase:
-        if self.uexp_io is None:
-            self.uexp_io = self.__get_io(self.uexp_file, self.uexp_bin, rb)
-        return self.uexp_io
+    def get_io(self, ext="uexp", rb=True) -> IOBase:
+        if ext not in self.io_dict or self.io_dict[ext] is None:
+            self.io_dict[ext] = self.__get_io_base(f"{self.file_name}.{ext}", self.bin_dict[ext], rb)
+        return self.io_dict[ext]
 
-    def get_ubulk_io(self, rb=True) -> IOBase:
-        if self.ubulk_io is None:
-            self.ubulk_io = self.__get_io(self.ubulk_file, self.ubulk_bin, rb)
-        return self.ubulk_io
-
-    def close_uexp_io(self, rb=True):
-        if self.uexp_io is None:
+    def __close_io(self, ext="uexp", rb=True):
+        if ext not in self.io_dict or self.io_dict[ext] is None:
             return
-        ar = self.uexp_io
-        self.uexp_size = ar.tell()
-        if self.has_uexp():
+        ar = self.io_dict[ext]
+        if ext == "uexp":
+            self.uexp_size = ar.tell()
+            if self.has_uexp():
+                if rb:
+                    ar.check(ar.read(4), UassetFileSummary.TAG)
+                else:
+                    ar.write(UassetFileSummary.TAG)
+        else:
             if rb:
-                ar.check(ar.read(4), UassetFileSummary.TAG)
-            else:
-                ar.write(UassetFileSummary.TAG)
-        else:
-            if not rb:
-                ar.seek(0)
-                self.uexp_bin = ar.read()
+                ar.check(ar.tell(), ar.size)
+        if not self.has_uexp() and not rb:
+            ar.seek(0)
+            self.bin_dict[ext] = ar.read()
         ar.close()
-        self.uexp_io = None
+        self.io_dict[ext] = None
 
-    def close_ubulk_io(self, rb=True):
-        if self.ubulk_io is None:
-            return
-        ar = self.ubulk_io
-        if rb:
-            ar.check(ar.tell(), ar.size)
-        else:
-            if not self.has_uexp():
-                ar.seek(0)
-                self.ubulk_bin = ar.read()
-        ar.close()
-        self.ubulk_io = None
-
-    def get_all_file_path(self):
-        if self.has_uexp():
-            if self.has_ubulk():
-                return self.uasset_file, self.uexp_file, self.ubulk_file
-            else:
-                return self.uasset_file, self.uexp_file, None
-        else:
-            return self.uasset_file, None, None
+    def close_all_io(self, rb=True):
+        for ext in UASSET_EXT[1:]:
+            self.__close_io(ext=ext, rb=rb)
 
     def get_size(self):
         return self.header.uasset_size

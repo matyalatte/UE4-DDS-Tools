@@ -117,6 +117,7 @@ class Texconv:
             temp = ".".join(file.split(".")[:-1] + [ext])
             self.__cube_to_image(file, temp, args, cubemap_layout=cubemap_layout, verbose=verbose)
             if fmt == ext:
+                mkdir(os.path.dirname(name))
                 shutil.copy(temp, name)
             else:
                 self.__texconv(temp, args2, out=out, verbose=verbose)

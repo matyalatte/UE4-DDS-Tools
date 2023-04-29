@@ -448,7 +448,7 @@ class DDSHeader(c.LittleEndianStructure):
         for i in range(self.mipmap_num):
             _width, _height = width, height
             if self.is_compressed():
-                # mipmap sizes should be multiples of 4
+                # mipmap sizes should be multiples of block_size
                 _width = cail(width, block_size)
                 _height = cail(height, block_size)
 

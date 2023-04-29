@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   
 env:
-  PYTHON_VERSION: 3.9.12
+  PYTHON_VERSION: 3.10.11
 
 jobs:
   test:

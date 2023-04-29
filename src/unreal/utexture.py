@@ -78,18 +78,27 @@ class Utexture:
 
     def serialize(self, uexp_io: ArchiveBase):
         # read .uexp
-        if uexp_io.is_writing and self.has_ubulk:
-            ubulk_io = self.uasset.get_ubulk_io(rb=uexp_io.is_reading)
-            ubulk_start_offset = ubulk_io.tell()
-        else:
-            ubulk_start_offset = 0
-        self.__serialize_uexp(uexp_io, ubulk_start_offset)
+        ubulk_start_offset = 0
+        uptnl_start_offset = 0
+        if uexp_io.is_writing:
+            if self.has_ubulk:
+                ubulk_io = self.uasset.get_io(ext="ubulk", rb=uexp_io.is_reading)
+                ubulk_start_offset = ubulk_io.tell()
+            if self.has_uptnl:
+                uptnl_io = self.uasset.get_io(ext="uptnl", rb=uexp_io.is_reading)
+                uptnl_start_offset = uptnl_io.tell()
+
+        self.__serialize_uexp(uexp_io, ubulk_start_offset, uptnl_start_offset)
 
         # read .ubulk if exists
+        ubulk_io = None
         if self.has_ubulk:
-            ubulk_io = self.uasset.get_ubulk_io(rb=uexp_io.is_reading)
-            for mip in self.mipmaps:
-                mip.serialize_ubulk(ubulk_io)
+            ubulk_io = self.uasset.get_io(ext="ubulk", rb=uexp_io.is_reading)
+        uptnl_io = None
+        if self.has_uptnl:
+            uptnl_io = self.uasset.get_io(ext="uptnl", rb=uexp_io.is_reading)
+        for mip in self.mipmaps:
+            mip.serialize_ubulk(ubulk_io, uptnl_io)
 
         if uexp_io.is_reading:
             self.print(uexp_io.verbose)
@@ -123,7 +132,7 @@ class Utexture:
         ar.seek(start_offset)
         return size
 
-    def __serialize_uexp(self, ar: ArchiveBase, ubulk_start_offset: int = 0):
+    def __serialize_uexp(self, ar: ArchiveBase, ubulk_start_offset: int = 0, uptnl_start_offset: int = 0):
         start_offset = ar.tell()
         uasset_size = self.uasset.get_size()
         if ar.is_reading:
@@ -145,7 +154,7 @@ class Utexture:
         if ar.is_writing:
             # get mipmap info
             self.max_width, self.max_height = self.get_max_size()
-            self.uexp_map_num, ubulk_map_num = self.get_mipmap_num()
+            self.uexp_map_num, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
             self.mip_count = len(self.mipmaps)
 
         ar << (Uint32, self, "max_width")
@@ -185,17 +194,23 @@ class Utexture:
 
         if ar.is_writing:
             ubulk_offset = ubulk_start_offset
+            uptnl_offset = uptnl_start_offset
             for mip in self.mipmaps:
                 if not mip.is_uexp:
-                    mip.offset = ubulk_offset
-                ubulk_offset += mip.data_size
+                    if mip.is_uptnl:
+                        mip.offset = uptnl_offset
+                        uptnl_offset += mip.data_size
+                    else:
+                        mip.offset = ubulk_offset
+                        ubulk_offset += mip.data_size
 
         # read mipmaps
         ar << (StructArray, self, "mipmaps", Umipmap, self.mip_count, uasset_size)
 
         if ar.is_reading:
-            _, ubulk_map_num = self.get_mipmap_num()
+            _, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
             self.has_ubulk = ubulk_map_num > 0
+            self.has_uptnl = uptnl_map_num > 0
 
         if ar.version >= "4.23":
             ar == (Uint32, 0, "bIsVirtual")
@@ -232,6 +247,8 @@ class Utexture:
 
     def get_max_uexp_size(self) -> tuple[int, int]:
         """Get max size of uexp mips."""
+        if self.is_empty():
+            return 0, 0
         for mip in self.mipmaps:
             if mip.is_uexp:
                 break
@@ -239,26 +256,33 @@ class Utexture:
 
     def get_max_size(self) -> tuple[int, int]:
         """Get max size of mips."""
+        if self.is_empty():
+            return 0, 0
         return self.mipmaps[0].width, self.mipmaps[0].height
 
-    def get_mipmap_num(self) -> tuple[int, int]:
+    def get_mipmap_num(self) -> tuple[int, int, int]:
         uexp_map_num = 0
         ubulk_map_num = 0
+        uptnl_map_num = 0
         for mip in self.mipmaps:
-            uexp_map_num += mip.is_uexp
-            ubulk_map_num += not mip.is_uexp
-        return uexp_map_num, ubulk_map_num
+            if mip.is_uexp:
+                uexp_map_num += 1
+            elif mip.is_uptnl:
+                uptnl_map_num += 1
+            else:
+                ubulk_map_num += 1
+        return uexp_map_num, ubulk_map_num, uptnl_map_num
 
     def rewrite_offset_data(self):
-        if self.version <= "4.15" or self.version >= "4.26" or self.version == "ff7r":
+        if self.version <= "4.15":
             return
         # ubulk mipmaps have wierd offset data for old UE versions. (Fixed at 4.26)
-        f = self.uasset.get_uexp_io(rb=False)
+        f = self.uasset.get_io(ext="uexp", rb=False)
         uasset_size = self.uasset.get_size()
         uexp_size = self.uasset.get_uexp_size()
         ubulk_offset_base = -uasset_size - uexp_size
         for mip in self.mipmaps:
-            if not mip.is_uexp:
+            if not mip.is_uexp and mip.has_wrong_offset:
                 mip.rewrite_offset(f, ubulk_offset_base + mip.offset)
 
     def remove_mipmaps(self):
@@ -278,20 +302,35 @@ class Utexture:
 
         # make dds header
         header = DDSHeader()
-        w, h = self.get_max_size()
+        w, h = self.max_width, self.max_height
         header.update(
             w, h, self.get_depth(), len(self.mipmaps),
             self.dxgi_format, self.is_cube, self.get_array_size()
         )
 
-        slice_bin_list = []
-        mipmap_size_list = []
+        # calculate binary size
+        def cail(val, unit):
+            remain = val % unit
+            val += (unit - remain) * (remain != 0)
+            return val
+
+        bin_sizes = []
+        block_size = self.get_block_size()
+        for mip in self.mipmaps:
+            if not self.is_compressed():
+                bin_sizes.append(int(mip.width * mip.height * self.byte_per_pixel))
+                continue
+            # mipmap sizes should be multiples of block_size
+            width = cail(mip.width, block_size)
+            height = cail(mip.height, block_size)
+            bin_sizes.append(int(width * height * self.byte_per_pixel))
 
         # mip list to slice list
+        slice_bin_list = []
+        mipmap_size_list = []
         for i in range(self.num_slices):
             data = b""
-            for mip in self.mipmaps:
-                size = int(mip.width * mip.height * self.byte_per_pixel)
+            for mip, size in zip(self.mipmaps, bin_sizes):
                 offset = size * i
                 data = b"".join([data, mip.data[offset: offset + size]])
             slice_bin_list.append(data)
@@ -324,8 +363,7 @@ class Utexture:
             )
 
         # Store old info
-        max_width, max_height = self.get_max_size()
-        old_size = (max_width, max_height)
+        old_size = (self.max_width, self.max_height)
         old_mipmap_num = len(self.mipmaps)
         old_depth = self.get_depth()
         new_depth = dds.header.depth
@@ -348,11 +386,11 @@ class Utexture:
                 mip.update(data, size, new_depth, True)
 
         # print results
-        max_width, max_height = self.get_max_size()
-        new_size = (max_width, max_height)
-        _, ubulk_map_num = self.get_mipmap_num()
-        if ubulk_map_num == 0:
-            self.has_ubulk = False
+        self.max_width, self.max_height = self.get_max_size()
+        new_size = (self.max_width, self.max_height)
+        _, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
+        self.has_ubulk = ubulk_map_num > 0
+        self.has_uptnl = uptnl_map_num > 0
         if self.version == "ff7r":
             self.has_opt_data = self.has_ubulk
         new_mipmap_num = len(self.mipmaps)
@@ -364,8 +402,9 @@ class Utexture:
             print(f"  mipmap: {old_mipmap_num} -> {new_mipmap_num}")
 
         # warnings
-        if new_mipmap_num > 1 and (not is_power_of_2(max_width) or not is_power_of_2(max_height)):
-            print(f"Warning: Mipmaps should have power of 2 as its width and height. ({max_width}, {max_height})")
+        if new_mipmap_num > 1 and (not is_power_of_2(self.max_width) or not is_power_of_2(self.max_height)):
+            print("Warning: Mipmaps should have power of 2 as its width and height."
+                  f" ({self.max_width}, {self.max_height})")
         if new_mipmap_num > 1 and old_mipmap_num == 1:
             print("Warning: The original texture has only 1 mipmap. But your dds has multiple mipmaps.")
 
@@ -376,12 +415,11 @@ class Utexture:
                 print(f"  Mipmap {i}")
                 mip.print(padding=4)
                 i += 1
-        max_width, max_height = self.get_max_size()
         depth = self.get_depth()
         print(f"  type: {self.get_texture_type()}")
         print(f"  format: {self.pixel_format} ({self.dxgi_format.name})")
-        print(f"  width: {max_width}")
-        print(f"  height: {max_height}")
+        print(f"  width: {self.max_width}")
+        print(f"  height: {self.max_height}")
         if self.is_3d:
             print(f"  depth: {depth}")
         elif self.is_array:
@@ -389,8 +427,14 @@ class Utexture:
         else:
             print(f"  mipmaps: {len(self.mipmaps)}")
 
+    def is_compressed(self):
+        return self.pixel_format in PF_TO_UNCOMPRESSED
+
+    def get_block_size(self):
+        return 4 if self.is_compressed() else 1
+
     def to_uncompressed(self):
-        if self.pixel_format in PF_TO_UNCOMPRESSED:
+        if self.is_compressed():
             self.change_format(PF_TO_UNCOMPRESSED[self.pixel_format])
 
     def change_format(self, pixel_format: str):
@@ -448,3 +492,6 @@ class Utexture:
         if self.is_3d:
             return self.num_slices
         return 1
+
+    def is_empty(self):
+        return len(self.mipmaps) == 0
