@@ -9,8 +9,6 @@ on:
 env:
   ZIP_NAME: UE4-DDS-Tools
   GUI_VERSION: v0.3.0
-  PYTHON_VER: 3.10.11
-  PYTHON_VER_SHORT: 310
 
 jobs:
   build:
@@ -32,29 +30,10 @@ jobs:
       
       - name: Download embeddable python
         run: |
-          mkdir -p release/python
-          curl -OL https://www.python.org/ftp/python/${{env.PYTHON_VER}}/python-${{env.PYTHON_VER}}-embed-amd64.zip
-          unzip -d python-${{env.PYTHON_VER}}-embed-amd64 python-${{env.PYTHON_VER}}-embed-amd64.zip
-          cd python-${{env.PYTHON_VER}}-embed-amd64
-          cp python.exe ../release/python
-          cp python${{env.PYTHON_VER_SHORT}}.dll ../release/python
-          cp libffi-7.dll ../release/python
-          cp _ctypes.pyd ../release/python
-          cp _multiprocessing.pyd ../release/python
-          cp _socket.pyd ../release/python
-          cp select.pyd ../release/python
-          cp LICENSE.txt ../release/python
-          bash ../.github/workflows/edit_python_zip.sh
-        shell: bash
-
-      - name: Zip python${{env.PYTHON_VER_SHORT}}
-        run: |
-          cd python-${{env.PYTHON_VER}}-embed-amd64
-          cd python${{env.PYTHON_VER_SHORT}}
-          Compress-Archive -Force -Path * -Destination ../python${{env.PYTHON_VER_SHORT}}.zip
-          cd ..
-          Remove-Item -Force -Recurse -Path python${{env.PYTHON_VER_SHORT}}
-          Copy-Item -Path python${{env.PYTHON_VER_SHORT}}.zip -Destination ../release/python
+          mkdir -p release
+          cd release
+          ../.github/workflows/download_portable_python.bat
+        shell: cmd
 
       - name: build dll
         run: |

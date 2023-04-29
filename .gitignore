@@ -21,8 +21,8 @@ tmp
 #for testing
 *.bat
 !bat/*.bat
+!.github/workflows/*.bat
 *.sh
-!.github/workflows/*.sh
 *.txt
 !changelog.txt
 !tests/test_file_path_.txt
