@@ -1,3 +1,6 @@
+ver 0.5.3
+- Fixed a bug that python requires installed vcruntime.
+
 ver 0.5.2
 - Supported *.uptnl files.
 - Introduced multiprocessing.

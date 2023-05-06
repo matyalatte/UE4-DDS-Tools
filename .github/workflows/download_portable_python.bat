@@ -17,7 +17,6 @@ cd python-%PYTHON_VERSION%-embed-amd64
 REM Remove unnecessary files
 del pythonw.exe python.cat python%PYTHON_VER_SHORT%._pth
 del python3.dll libcrypto-1_1.dll libssl-1_1.dll sqlite3.dll
-del vcruntime140.dll vcruntime140_1.dll
 del _asyncio.pyd _bz2.pyd _decimal.pyd _elementtree.pyd _hashlib.pyd
 del _lzma.pyd _msi.pyd _overlapped.pyd _queue.pyd
 del _sqlite3.pyd _ssl.pyd _uuid.pyd _zoneinfo.pyd
