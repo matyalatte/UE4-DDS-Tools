@@ -1,5 +1,5 @@
 {
-    "recommended": "0.3.0",
+    "recommended": "0.3.1",
     "gui": [
         {
             "label": "Inject",
@@ -28,7 +28,6 @@
                     "add_quotes": true,
                     "empty_message": "Drop a folder here!",
                     "default": "injected"
-
                 },
                 {
                     "type": "choice",
