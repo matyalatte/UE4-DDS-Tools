@@ -6,6 +6,7 @@ import os
 
 from util import mkdir
 from .crc import generate_hash, strcrc_deprecated
+from .data_resource import UassetDataResource
 from .utexture import Utexture
 from .version import VersionInfo
 from .archive import (ArchiveBase, ArchiveRead, ArchiveWrite,
@@ -177,6 +178,12 @@ class UassetFileSummary(SerializableBase):
 
         # Location into the file on disk for the payload table of contents data
         ar << (Int64, self, "payload_toc_offset")
+
+        if ar.version <= "5.1":
+            return
+
+        # Location into the file of the data resource
+        ar << (Int32, self, "data_resource_offset")
 
     def print(self):
         print("File Summary")
@@ -461,7 +468,19 @@ class Uasset:
                 ar.check(self.header.preload_dependency_offset, ar.tell())
             else:
                 self.header.preload_dependency_offset = ar.tell()
-            ar << (Int32Array, self, "preload_dependencly_ids", self.header.preload_dependency_count)
+            ar << (Int32Array, self, "preload_dependency_ids", self.header.preload_dependency_count)
+
+        if ar.version >= "5.2":
+            if ar.is_reading:
+                ar.check(self.header.data_resource_offset, ar.tell())
+            else:
+                self.header.data_resource_offset = ar.tell()
+                self.data_resource_count = len(self.data_resources)
+            ar == (Int32, 1, "deta_resource_version")
+            ar << (Int32, self, "data_resource_count")
+            ar << (StructArray, self, "data_resources", UassetDataResource, self.data_resource_count)
+        else:
+            self.data_resources = []
 
         if ar.is_reading:
             ar.check(ar.tell(), self.get_size())
@@ -506,6 +525,7 @@ class Uasset:
         self.close_all_io(rb=True)
 
     def write_export_objects(self):
+        self.data_resources.clear()
         uexp_io = self.get_io(ext="uexp", rb=False)
         for exp in self.exports:
             exp.object.serialize(uexp_io)

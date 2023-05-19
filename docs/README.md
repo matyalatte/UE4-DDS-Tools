@@ -3,7 +3,7 @@
 ![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.5.2
+# UE4-DDS-Tools ver0.5.3
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -17,7 +17,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 
 ## Supported UE versions
 
-- UE5.0 ~ 5.1
+- UE5.0 ~ 5.2
 - UE4.0 ~ 4.27
 - FF7R
 - Borderlands3
@@ -108,7 +108,7 @@ Dowload one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-t
 is a texture converter developed by Microsoft.  
 It's the best DDS converter as far as I know.  
 And [Texconv-Custom-DLL](https://github.com/matyalatte/Texconv-Custom-DLL) is a cross-platform implementation I made.  
-The official Texconv only supports Windows but you can use it on Unix systems.  
+The official Texconv only supports Windows but you can use it on other platforms.  
 
 ### Simple-Command-Runner
 
@@ -117,6 +117,6 @@ It can define a simple GUI with a json file.
 
 ## License
 
-* The files in this repository are licensed under [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
-* Released packeges use [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) for GUI. It is licensed under [wxWindows Library Licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt).
-* Released packeges use [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is licensed under [PSF license](https://docs.python.org/3/license.html).
+* The files in this repository (including all submodules) are available under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
+* Released packeges contain [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) for GUI. It is released under the [wxWindows Library Licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt).
+* Released packeges contain [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is released under the [PSF license](https://docs.python.org/3/license.html).

@@ -1,4 +1,5 @@
 """Classes for texture assets (.uexp and .ubulk)"""
+from .data_resource import BulkType
 from .umipmap import Umipmap
 from .version import VersionInfo
 from directx.dds import DDSHeader, DDS
@@ -62,14 +63,12 @@ class Utexture:
     """
 
     verison: VersionInfo
-    name_list: list[str]
     is_light_map: bool
     dxgi_format: DXGI_FORMAT
 
     def __init__(self, uasset, class_name="Texture2D"):
         self.uasset = uasset
         self.version = uasset.version
-        self.name_list = uasset.name_list
         self.is_light_map = "LightMap" in class_name
         self.is_cube = "Cube" in class_name
         self.is_3d = "Volume" in class_name
@@ -167,7 +166,7 @@ class Utexture:
             self.__unpack_packed_data()
             self.__update_format()
 
-        if self.version == "ff7r" and self.has_opt_data:
+        if ar.version == "ff7r" and self.has_opt_data:
             ar == (Uint32, 0, "?")
             ar == (Uint32, 0, "?")
             if ar.is_writing:
@@ -177,18 +176,18 @@ class Utexture:
         ar << (Uint32, self, "first_mip_to_serialize")
         ar << (Uint32, self, "mip_count")
 
-        if self.version == "ff7r":
+        if ar.version == "ff7r":
             # ff7r have all mipmap data in a mipmap object
             if ar.is_writing:
                 uexp_bulk = b""
                 for mip in self.mipmaps:
-                    if mip.is_uexp:
-                        mip.is_meta = True
-                        mip.data_size = 0
+                    if mip.has_uexp_bulk() or mip.has_no_bulk():
+                        mip.data_resource.bulk_type = BulkType.NONE
+                        mip.data_resource.data_size = 0
                         uexp_bulk = b"".join([uexp_bulk, mip.data])
                 size = self.get_max_uexp_size()
                 self.uexp_optional_mip.update(uexp_bulk, size, 1, True)
-            ar << (Umipmap, self, "uexp_optional_mip", uasset_size)
+            ar << (Umipmap, self, "uexp_optional_mip", uasset_size, self.uasset.data_resources)
             ar == (Uint32, self.num_slices, "num_slices")
             ar << (Uint32, self, "uexp_map_num")
 
@@ -196,16 +195,15 @@ class Utexture:
             ubulk_offset = ubulk_start_offset
             uptnl_offset = uptnl_start_offset
             for mip in self.mipmaps:
-                if not mip.is_uexp:
-                    if mip.is_uptnl:
-                        mip.offset = uptnl_offset
-                        uptnl_offset += mip.data_size
-                    else:
-                        mip.offset = ubulk_offset
-                        ubulk_offset += mip.data_size
+                if mip.has_ubulk_bulk():
+                    mip.data_resource.offset = ubulk_offset
+                    ubulk_offset += mip.get_data_size()
+                elif mip.has_uptnl_bulk():
+                    mip.data_resource.offset = uptnl_offset
+                    uptnl_offset += mip.get_data_size()
 
         # read mipmaps
-        ar << (StructArray, self, "mipmaps", Umipmap, self.mip_count, uasset_size)
+        ar << (StructArray, self, "mipmaps", Umipmap, self.mip_count, uasset_size, self.uasset.data_resources)
 
         if ar.is_reading:
             _, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
@@ -229,11 +227,11 @@ class Utexture:
         self.uexp_size = ar.tell() - start_offset
 
         if ar.is_reading:
-            if self.version == "ff7r" and self.has_supported_format():
+            if ar.version == "ff7r" and self.has_supported_format():
                 # split mipmap data
                 offset = 0
                 for mip in self.mipmaps:
-                    if mip.is_uexp:
+                    if mip.has_uexp_bulk() or mip.has_no_bulk():
                         size = int(mip.pixel_num * self.byte_per_pixel * self.num_slices)
                         mip.data = self.uexp_optional_mip.data[offset: offset + size]
                         offset += size
@@ -250,7 +248,7 @@ class Utexture:
         if self.is_empty():
             return 0, 0
         for mip in self.mipmaps:
-            if mip.is_uexp:
+            if mip.has_uexp_bulk() or mip.has_no_bulk():
                 break
         return mip.width, mip.height
 
@@ -265,9 +263,9 @@ class Utexture:
         ubulk_map_num = 0
         uptnl_map_num = 0
         for mip in self.mipmaps:
-            if mip.is_uexp:
+            if mip.has_uexp_bulk() or mip.has_no_bulk():
                 uexp_map_num += 1
-            elif mip.is_uptnl:
+            elif mip.has_uptnl_bulk():
                 uptnl_map_num += 1
             else:
                 ubulk_map_num += 1
@@ -282,16 +280,15 @@ class Utexture:
         uexp_size = self.uasset.get_uexp_size()
         ubulk_offset_base = -uasset_size - uexp_size
         for mip in self.mipmaps:
-            if not mip.is_uexp and mip.has_wrong_offset:
-                mip.rewrite_offset(f, ubulk_offset_base + mip.offset)
+            if (mip.has_ubulk_bulk() or mip.has_uptnl_bulk()) and mip.has_wrong_offset():
+                mip.rewrite_offset(f, ubulk_offset_base + mip.data_resource.offset)
 
     def remove_mipmaps(self):
         old_mipmap_num = len(self.mipmaps)
         if old_mipmap_num == 1:
             return
         self.mipmaps = [self.mipmaps[0]]
-        self.mipmaps[0].is_uexp = True
-        self.has_ubulk = False
+        self.mipmaps[0].data_resource.bulk_type = BulkType.UEXP
         print("mipmaps have been removed.")
         print(f"  mipmap: {old_mipmap_num} -> 1")
 
@@ -374,6 +371,7 @@ class Utexture:
         self.mipmaps = [Umipmap() for i in range(len(dds.mipmap_size_list))]
         offset = 0
         for size, mip, i in zip(dds.mipmap_size_list, self.mipmaps, range(len(self.mipmaps))):
+            mip.init_data_resource(self.version)
             # get a mip data from slices
             data = b""
             bin_size = int(size[0] * size[1] * self.byte_per_pixel)

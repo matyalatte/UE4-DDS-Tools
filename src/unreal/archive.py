@@ -254,7 +254,8 @@ class StructArray:
     @staticmethod
     def read_obj(ar: ArchiveBase, cls, args: tuple):
         ar.args = args
-        return cls.read(ar)
+        obj = cls.read(ar)
+        return obj
 
     @staticmethod
     def read(ar: ArchiveBase):
