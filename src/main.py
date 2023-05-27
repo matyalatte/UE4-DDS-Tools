@@ -176,6 +176,8 @@ def inject(folder, file, args, texture_file=None):
         texture_file = args.texture
     file_base, ext = os.path.splitext(texture_file)
     ext = ext[1:].lower()
+    if ext == "uasset":
+        raise RuntimeError("Can NOT inject uasset file into another uasset file.")
     if ext not in TEXTURES:
         raise RuntimeError(f"Unsupported texture format. ({ext})")
 
