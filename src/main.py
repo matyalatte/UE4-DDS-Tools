@@ -358,7 +358,9 @@ def check_version(folder, file, args, texture_file=None):
 
     # Show the result.
     if len(passed_version) == 0:
-        raise RuntimeError("Failed for all supported versions. You can not mod the asset with this tool.")
+        raise RuntimeError(
+            "Failed for all supported versions. You can not mod the asset with this tool.\n"
+            f"({folder}/{file})")
     elif len(passed_version) == 1 and ("~" not in passed_version[0]):
         print(f"The version is {passed_version[0]}.")
     else:

@@ -186,7 +186,7 @@ class Utexture:
                         mip.data_resource.data_size = 0
                         uexp_bulk = b"".join([uexp_bulk, mip.data])
                 size = self.get_max_uexp_size()
-                self.uexp_optional_mip.update(uexp_bulk, size, 1, True)
+                self.uexp_optional_mip.update(uexp_bulk, size, 1, True, False)
             ar << (Umipmap, self, "uexp_optional_mip", uasset_size, self.uasset.data_resources)
             ar == (Uint32, self.num_slices, "num_slices")
             ar << (Uint32, self, "uexp_map_num")
@@ -364,6 +364,7 @@ class Utexture:
         old_mipmap_num = len(self.mipmaps)
         old_depth = self.get_depth()
         new_depth = dds.header.depth
+        use_io_dispatcher = any([mip.data_resource.use_io_dispatcher for mip in self.mipmaps]) > 0
 
         # inject
         uexp_width, uexp_height = self.get_max_uexp_size()
@@ -379,9 +380,9 @@ class Utexture:
                 data = b"".join([data, slice_bin[offset: offset + bin_size]])
             offset += bin_size
             if self.has_ubulk and i + 1 < len(self.mipmaps) and size[0] * size[1] > uexp_width * uexp_height:
-                mip.update(data, size, new_depth, False)
+                mip.update(data, size, new_depth, False, use_io_dispatcher)
             else:
-                mip.update(data, size, new_depth, True)
+                mip.update(data, size, new_depth, True, False)
 
         # print results
         self.max_width, self.max_height = self.get_max_size()

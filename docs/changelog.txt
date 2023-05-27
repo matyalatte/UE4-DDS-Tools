@@ -1,6 +1,7 @@
 ver 0.5.3
 - Supported UE5.2
 - Fixed a bug that python requires installed vcruntime.
+- Fixed an error for some UE4.25 assets.
 
 ver 0.5.2
 - Supported *.uptnl files.
