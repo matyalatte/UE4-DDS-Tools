@@ -468,7 +468,7 @@ def print_args(args):
         print(f"Image filter: {args.image_filter}")
     with concurrent.futures.ProcessPoolExecutor(args.max_workers) as executor:
         print(f"Max workers: {executor._max_workers}")
-    print("-" * 16)
+    print("-" * 16, flush=True)
 
 
 def check_args(args):
