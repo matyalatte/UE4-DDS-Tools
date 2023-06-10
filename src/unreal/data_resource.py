@@ -16,7 +16,6 @@ class BulkDataFlags(IntEnum):
     BULKDATA_OptionalPayload = 1 << 11          # uptnl
     BULKDATA_Size64Bit = 1 << 13                # data size is written as int64
     BULKDATA_NoOffsetFixUp = 1 << 16            # no need to fix offset data
-    BULKDATA_UsesIoDispatcher = 1 << 31         # using IoDispatcher at runtime
     # BULKDATA_UsesIoDispatcher = 1 << 16         for UE 4.25
 
 
@@ -42,7 +41,6 @@ class DataResourceBase:
         self.bulk_type = BulkType.UNKNOWN
         self.has_wrong_offset = False
         self.has_64bit_size = False
-        self.use_io_dispatcher = False
 
     def unpack_bulk_flags(self, ar: ArchiveBase):
         if self.bulk_flags & BulkDataFlags.BULKDATA_ForceInlinePayload > 0:
@@ -55,9 +53,9 @@ class DataResourceBase:
             self.bulk_type = BulkType.UBULK
         if (ar.version == "ff7r") or (ar.version >= "4.26"):
             self.has_wrong_offset = self.bulk_flags & BulkDataFlags.BULKDATA_NoOffsetFixUp == 0
-            self.use_io_dispatcher = self.bulk_flags & BulkDataFlags.BULKDATA_UsesIoDispatcher > 0
         else:
-            self.use_io_dispatcher = self.bulk_flags & BulkDataFlags.BULKDATA_NoOffsetFixUp > 0
+            if (self.bulk_flags & BulkDataFlags.BULKDATA_NoOffsetFixUp > 0) and ar.version <= "4.23":
+                raise RuntimeError(f"BULKDATA_UsesIODispatcher is not supported for this UE version. ({ar.version})")
             self.has_wrong_offset = True
         self.has_64bit_size = self.bulk_flags & BulkDataFlags.BULKDATA_Size64Bit > 0
 
@@ -78,12 +76,8 @@ class DataResourceBase:
                     self.bulk_flags |= BulkDataFlags.BULKDATA_PayloadInSeperateFile
                 if (ar.version == "ff7r") or (ar.version >= "4.26"):
                     self.bulk_flags |= BulkDataFlags.BULKDATA_NoOffsetFixUp
-                    if self.use_io_dispatcher:
-                        self.bulk_flags |= BulkDataFlags.BULKDATA_UsesIoDispatcher
                 else:
                     self.has_wrong_offset = True
-                    if self.use_io_dispatcher:
-                        self.bulk_flags |= BulkDataFlags.BULKDATA_NoOffsetFixUp
                 if self.has_uptnl_bulk():
                     self.bulk_flags |= BulkDataFlags.BULKDATA_OptionalPayload
 
@@ -105,14 +99,13 @@ class DataResourceBase:
     def has_uptnl_bulk(self):
         return self.bulk_type == BulkType.UPTNL
 
-    def update(self, data_size: int, has_uexp_bulk: bool, use_io_dispatcher: bool):
+    def update(self, data_size: int, has_uexp_bulk: bool):
         self.data_size = data_size
         self.offset = 0
         if has_uexp_bulk:
             self.bulk_type = BulkType.UEXP
         else:
             self.bulk_type = BulkType.UBULK
-        self.use_io_dispatcher = use_io_dispatcher
 
     def rewrite_offset(self, ar: ArchiveBase, new_offset: int):
         pass
@@ -149,8 +142,8 @@ class LegacyDataResource(SerializableBase, DataResourceBase):
         self.offset_to_offset = ar.tell()
         ar << (Int64, self, "offset")
 
-    def update(self, data_size: int, has_uexp_bulk: bool, use_io_dispatcher: bool):
-        super().update(data_size, has_uexp_bulk, use_io_dispatcher)
+    def update(self, data_size: int, has_uexp_bulk: bool):
+        super().update(data_size, has_uexp_bulk)
         self.has_64bit_size = data_size > (1 << 31)
 
     def rewrite_offset(self, ar: ArchiveBase, new_offset: int):
@@ -190,8 +183,8 @@ class UassetDataResource(SerializableBase, DataResourceBase):
         if ar.is_reading:
             self.unpack_bulk_flags(ar)
 
-    def update(self, data_size: int, has_uexp_bulk: bool, use_io_dispatcher: bool):
-        super().update(data_size, has_uexp_bulk, use_io_dispatcher)
+    def update(self, data_size: int, has_uexp_bulk: bool):
+        super().update(data_size, has_uexp_bulk)
         self.has_64bit_size = True
 
     def print(self, padding=2):

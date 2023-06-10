@@ -23,13 +23,13 @@ class Umipmap(SerializableBase):
         else:
             self.data_resource = LegacyDataResource()
 
-    def update(self, data: bytes, size: tuple[int, int], depth: int, has_uexp_bulk: bool, use_io_dispatcher: bool):
+    def update(self, data: bytes, size: tuple[int, int], depth: int, has_uexp_bulk: bool):
         self.data = data
         self.width = size[0]
         self.height = size[1]
         self.depth = depth
         self.pixel_num = self.width * self.height * self.depth
-        self.data_resource.update(len(data), has_uexp_bulk, use_io_dispatcher)
+        self.data_resource.update(len(data), has_uexp_bulk)
 
     def serialize(self, ar: ArchiveBase):
         offset = ar.args[0]

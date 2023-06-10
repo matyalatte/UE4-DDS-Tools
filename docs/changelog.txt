@@ -3,6 +3,8 @@ ver 0.5.3
 - Fixed a bug that python requires installed vcruntime.
 - Fixed an error for some UE4.25 assets.
 - Fixed a bug that check mode won't work with cubemaps for UE4.24 and 4.25
+- Fixed an error when UE4.16 assets have no .uexp files
+- Updated GUI to v0.3.1
 
 ver 0.5.2
 - Supported *.uptnl files.

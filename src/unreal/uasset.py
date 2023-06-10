@@ -587,7 +587,7 @@ class Uasset:
             return main_obj.class_name
 
     def has_uexp(self):
-        return self.version >= "4.16"
+        return self.version >= "4.16" and (self.header.preload_dependency_count >= 0)
 
     def has_ubulk(self):
         for exp in self.exports:
