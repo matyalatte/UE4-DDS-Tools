@@ -1,19 +1,7 @@
 """Mipmap class for texture asset"""
-from enum import IntEnum
-from .archive import (ArchiveBase, Int64, Uint32, Uint16, Buffer,
+from .data_resource import LegacyDataResource, UassetDataResource
+from .archive import (ArchiveBase, Int32, Uint32, Uint16, Buffer,
                       SerializableBase)
-
-
-class BulkDataFlags(IntEnum):
-    # UnrealEngine/Engine/Source/Runtime/CoreUObject/Public/Serialization/BulkData.h
-    BULKDATA_PayloadAtEndOfFile = 1 << 0        # not inline (end of file or ubulk)
-    BULKDATA_SingleUse = 1 << 3                 # only used once at runtime
-    BULKDATA_Unused = 1 << 5                    # only meta data (no dds data)
-    BULKDATA_ForceInlinePayload = 1 << 6        # inline (uexp)
-    BULKDATA_PayloadInSeperateFile = 1 << 8     # ubulk
-    BULKDATA_Force_NOT_InlinePayload = 1 << 10  # not inline
-    BULKDATA_OptionalPayload = 1 << 11          # uptnl
-    BULKDATA_NoOffsetFixUp = 1 << 16            # no need to fix offset data
 
 
 class Umipmap(SerializableBase):
@@ -27,50 +15,46 @@ class Umipmap(SerializableBase):
 
     def __init__(self):
         self.depth = 1
-        self.is_uexp = False
-        self.is_meta = False
-        self.is_uptnl = False
-        self.ubulk_flags = 0
-        self.has_wrong_offset = False
+        self.data_resource = None
 
-    def update(self, data: bytes, size: int, depth: int, is_uexp: bool):
-        self.is_uexp = is_uexp
-        self.is_meta = False
-        self.data_size = len(data)
+    def init_data_resource(self, version):
+        if version >= "5.2":
+            self.data_resource = UassetDataResource()
+        else:
+            self.data_resource = LegacyDataResource()
+
+    def update(self, data: bytes, size: tuple[int, int], depth: int, has_uexp_bulk: bool):
         self.data = data
-        self.offset = 0
         self.width = size[0]
         self.height = size[1]
         self.depth = depth
         self.pixel_num = self.width * self.height * self.depth
+        self.data_resource.update(len(data), has_uexp_bulk)
 
     def serialize(self, ar: ArchiveBase):
-        self.version = ar.version
-
-        if ar.is_writing:
-            if not ar.valid:
-                self.__update_ubulk_flags()
-            if self.is_uexp:
-                self.offset = ar.args[0]
+        offset = ar.args[0]
+        data_resources = ar.args[1]
         if ar.version <= "4.27":
             ar == (Uint32, 1, "bCooked")
 
-        ar << (Uint32, self, "ubulk_flags")
-        if ar.is_reading:
-            self.__unpack_ubulk_flags()
-            if not self.has_wrong_offset:
-                ar.check((self.version == "ff7r") or (self.version >= "4.26"), True,
-                         msg=f"BULKDATA_NoOffsetFixUp is not supported for this UE version. ({ar.version})")
-        ar << (Uint32, self, "data_size")
-        ar == (Uint32, self.data_size, "data_size2")
-        if ar.is_writing:
-            if self.is_uexp:
-                self.offset += ar.tell() + 8
+        if ar.version <= "5.1":
+            ar << (LegacyDataResource, self, "data_resource", offset)
+        else:  # >= "5.2"
+            # id for UassetDataResource
+            if ar.is_writing:
+                self.data_resource_id = len(data_resources)
+                data_resources.append(self.data_resource)
 
-        self.offset_to_offset = ar.tell()
-        ar << (Int64, self, "offset")
-        if self.is_uexp and not self.is_meta:
-            ar << (Buffer, self, "data", self.data_size)
+            ar << (Int32, self, "data_resource_id")
+
+            if ar.is_reading:
+                self.data_resource = data_resources[self.data_resource_id]
+            else:
+                if self.has_uexp_bulk() or self.has_no_bulk():
+                    self.data_resource.offset = ar.tell()
+
+        if self.has_uexp_bulk():
+            ar << (Buffer, self, "data", self.data_resource.data_size)
 
         if ar.version == "borderlands3":
             int_type = Uint16
@@ -83,61 +67,40 @@ class Umipmap(SerializableBase):
         self.pixel_num = self.width * self.height * self.depth
 
     def serialize_ubulk(self, ubulk_ar: ArchiveBase, uptnl_ar: ArchiveBase):
-        if self.is_uexp:
+        if self.has_uexp_bulk() or self.has_no_bulk():
             return
-        if self.is_uptnl:
-            uptnl_ar << (Buffer, self, "data", self.data_size)
+        if self.has_uptnl_bulk():
+            uptnl_ar << (Buffer, self, "data", self.data_resource.data_size)
         else:
-            ubulk_ar << (Buffer, self, "data", self.data_size)
+            ubulk_ar << (Buffer, self, "data", self.data_resource.data_size)
 
     def rewrite_offset(self, ar: ArchiveBase, new_offset: int):
-        self.offset = new_offset
-        current = ar.tell()
-        ar.seek(self.offset_to_offset)
-        ar << (Int64, self, "offset")
-        ar.seek(current)
-
-    def __unpack_ubulk_flags(self):
-        self.is_uexp = (self.ubulk_flags & BulkDataFlags.BULKDATA_ForceInlinePayload > 0) or \
-                       (self.ubulk_flags & BulkDataFlags.BULKDATA_Unused > 0)
-        self.is_meta = self.ubulk_flags & BulkDataFlags.BULKDATA_Unused > 0
-        self.is_uptnl = self.ubulk_flags & BulkDataFlags.BULKDATA_OptionalPayload > 0
-        self.has_wrong_offset = self.ubulk_flags & BulkDataFlags.BULKDATA_NoOffsetFixUp == 0
-
-    def __update_ubulk_flags(self):
-        # update bulk flags
-        if self.is_uexp:
-            if self.is_meta:
-                self.ubulk_flags = BulkDataFlags.BULKDATA_Unused
-            else:
-                self.ubulk_flags = BulkDataFlags.BULKDATA_ForceInlinePayload
-                if self.version != "ff7r":
-                    self.ubulk_flags |= BulkDataFlags.BULKDATA_SingleUse
-        else:
-            self.ubulk_flags = BulkDataFlags.BULKDATA_PayloadAtEndOfFile
-            if self.version >= "4.14":
-                self.ubulk_flags |= BulkDataFlags.BULKDATA_Force_NOT_InlinePayload
-            if self.version >= "4.16":
-                self.ubulk_flags |= BulkDataFlags.BULKDATA_PayloadInSeperateFile
-            if (self.version == "ff7r") or (self.version >= "4.26"):
-                self.ubulk_flags |= BulkDataFlags.BULKDATA_NoOffsetFixUp
-            else:
-                self.has_wrong_offset = True
-            if self.is_uptnl:
-                self.ubulk_flags |= BulkDataFlags.BULKDATA_OptionalPayload
+        self.data_resource.rewrite_offset(ar, new_offset)
 
     def print(self, padding: int = 2):
         pad = " " * padding
-        if self.is_uexp:
-            ext = "uexp"
-        elif self.is_uptnl:
-            ext = "uptnl"
-        else:
-            ext = "ubulk"
-        print(pad + f"file: {ext}")
-        print(pad + f"data size: {self.data_size}")
-        print(pad + f"offset: {self.offset}")
+        print(pad + f"bulk type: {self.data_resource.get_type_str()}")
+        print(pad + f"data size: {self.get_data_size()}")
+        print(pad + f"offset: {self.data_resource.offset}")
         print(pad + f"width: {self.width}")
         print(pad + f"height: {self.height}")
-        if self.version >= "4.20" and self.depth > 1:
+        if self.depth > 1:
             print(pad + f"depth: {self.depth}")
+
+    def has_uexp_bulk(self):
+        return self.data_resource.has_uexp_bulk()
+
+    def has_no_bulk(self):
+        return self.data_resource.has_no_bulk()
+
+    def has_ubulk_bulk(self):
+        return self.data_resource.has_ubulk_bulk()
+
+    def has_uptnl_bulk(self):
+        return self.data_resource.has_uptnl_bulk()
+
+    def has_wrong_offset(self):
+        return self.data_resource.has_wrong_offset
+
+    def get_data_size(self):
+        return self.data_resource.data_size

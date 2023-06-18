@@ -16,10 +16,10 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = "0.5.2"
+TOOL_VERSION = "0.5.3"
 
-# UE version: 4.0 ~ 5.1, ff7r, borderlands3
-UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(2)] + ["ff7r", "borderlands3"]
+# UE version: 4.0 ~ 5.2, ff7r, borderlands3
+UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(3)] + ["ff7r", "borderlands3"]
 
 # Supported file extensions.
 TEXTURES = ["dds", "tga", "hdr"]
@@ -176,6 +176,8 @@ def inject(folder, file, args, texture_file=None):
         texture_file = args.texture
     file_base, ext = os.path.splitext(texture_file)
     ext = ext[1:].lower()
+    if ext == "uasset":
+        raise RuntimeError("Can NOT inject uasset file into another uasset file.")
     if ext not in TEXTURES:
         raise RuntimeError(f"Unsupported texture format. ({ext})")
 
@@ -332,8 +334,8 @@ def copy(folder, file, args, texture_file=None):
 
 # UE version for textures
 UTEX_VERSIONS = [
-    "5.1", "5.0",
-    "4.26 ~ 4.27", "4.23 ~ 4.25", "4.20 ~ 4.22",
+    "5.2", "5.1", "5.0",
+    "4.26 ~ 4.27", "4.24 ~ 4.25", "4.23", "4.20 ~ 4.22",
     "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
     "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
     "ff7r", "borderlands3"
@@ -358,7 +360,9 @@ def check_version(folder, file, args, texture_file=None):
 
     # Show the result.
     if len(passed_version) == 0:
-        raise RuntimeError("Failed for all supported versions. You can not mod the asset with this tool.")
+        raise RuntimeError(
+            "Failed for all supported versions. You can not mod the asset with this tool.\n"
+            f"({folder}/{file})")
     elif len(passed_version) == 1 and ("~" not in passed_version[0]):
         print(f"The version is {passed_version[0]}.")
     else:
@@ -464,7 +468,7 @@ def print_args(args):
         print(f"Image filter: {args.image_filter}")
     with concurrent.futures.ProcessPoolExecutor(args.max_workers) as executor:
         print(f"Max workers: {executor._max_workers}")
-    print("-" * 16)
+    print("-" * 16, flush=True)
 
 
 def check_args(args):
