@@ -1,3 +1,6 @@
+ver 0.5.4
+- Updated GUI to v0.5.1
+
 ver 0.5.3
 - Supported UE5.2
 - Fixed a bug that python requires installed vcruntime.
