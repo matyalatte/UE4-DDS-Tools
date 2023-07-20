@@ -6,7 +6,7 @@
             "label": "Inject",
             "window_name": "UE4-DDS-Tools (Inject mode)",
             "command": "python3 src/main.py %uasset% %texture% --save_folder=%out_inject% --version=%version%%options_inject%",
-            "command_win": "python\\python.exe src\\main.py %uasset% %texture% --save_folder=%out_inject% --version=%version%%options_inject%",
+            "command_win": "python\\python.exe -E src\\main.py %uasset% %texture% --save_folder=%out_inject% --version=%version%%options_inject%",
             "button": "Inject",
             "components": [
                 {
@@ -116,7 +116,7 @@
             "label": "Export",
             "window_name": "UE4-DDS-Tools (Export mode)",
             "command": "python3 src/main.py %uasset% --mode=export --save_folder=%out_export% --version=%version% --export_as=%fmt% %options_export%",
-            "command_win": "python\\python.exe src\\main.py %uasset% --mode=export --save_folder=%out_export% --version=%version% --export_as=%fmt% %options_export%",
+            "command_win": "python\\python.exe -E src\\main.py %uasset% --mode=export --save_folder=%out_export% --version=%version% --export_as=%fmt% %options_export%",
             "button": "Export",
             "components": [
                 {
@@ -236,7 +236,7 @@
             "label": "Check version",
             "window_name": "UE4-DDS-Tools (Check mode)",
             "command": "python3 src/main.py %uasset% --mode=check",
-            "command_win": "python\\python.exe src\\main.py %uasset% --mode=check",
+            "command_win": "python\\python.exe -E src\\main.py %uasset% --mode=check",
             "button": "Check",
             "show_last_line": true,
             "components": [
@@ -253,7 +253,7 @@
             "label": "Convert",
             "window_name": "UE4-DDS-Tools (Convert mode)",
             "command": "python3 src/main.py %file% --mode=convert --save_folder=%out_convert% --convert_to=%fmt% %option%",
-            "command_win": "python\\python.exe src\\main.py %file% --mode=convert --save_folder=%out_convert% --convert_to=%fmt% %option%",
+            "command_win": "python\\python.exe -E src\\main.py %file% --mode=convert --save_folder=%out_convert% --convert_to=%fmt% %option%",
             "button": "Convert",
             "show_last_line": true,
             "components": [
