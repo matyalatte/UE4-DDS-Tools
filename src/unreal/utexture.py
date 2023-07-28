@@ -30,7 +30,11 @@ PF_TO_DXGI = {
     "PF_FloatRGBA": DXGI_FORMAT.R16G16B16A16_FLOAT,
     "PF_A32B32G32R32F": DXGI_FORMAT.R32G32B32A32_FLOAT,
     "PF_B5G5R5A1_UNORM": DXGI_FORMAT.B5G5R5A1_UNORM,
-    "PF_ASTC_4x4": DXGI_FORMAT.ASTC_4X4_UNORM
+    "PF_ASTC_4x4": DXGI_FORMAT.ASTC_4X4_UNORM,
+    "PF_ASTC_6x6": DXGI_FORMAT.ASTC_6X6_UNORM,
+    "PF_ASTC_8x8": DXGI_FORMAT.ASTC_8X8_UNORM,
+    "PF_ASTC_10x10": DXGI_FORMAT.ASTC_10X10_UNORM,
+    "PF_ASTC_12x12": DXGI_FORMAT.ASTC_12X12_UNORM
 }
 
 PF_TO_UNCOMPRESSED = {
@@ -41,7 +45,11 @@ PF_TO_UNCOMPRESSED = {
     "PF_BC5": "PF_R8G8",
     "PF_BC6H": "PF_FloatRGBA",
     "PF_BC7": "PF_B8G8R8A8",
-    "PF_ASTC_4x4": "PF_B8G8R8A8"
+    "PF_ASTC_4x4": "PF_B8G8R8A8",
+    "PF_ASTC_6x6": "PF_B8G8R8A8",
+    "PF_ASTC_8x8": "PF_B8G8R8A8",
+    "PF_ASTC_10x10": "PF_B8G8R8A8",
+    "PF_ASTC_12x12": "PF_B8G8R8A8"
 }
 
 
@@ -429,7 +437,7 @@ class Utexture:
         return self.pixel_format in PF_TO_UNCOMPRESSED
 
     def get_block_size(self):
-        return 4 if self.is_compressed() else 1
+        return DXGI_FORMAT.get_block_size(self.dxgi_format)
 
     def to_uncompressed(self):
         if self.is_compressed():

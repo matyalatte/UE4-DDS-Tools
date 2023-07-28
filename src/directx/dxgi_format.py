@@ -134,6 +134,14 @@ class DXGI_FORMAT(IntEnum):
     # non-official formats
     ASTC_4X4_TYPELESS = 133
     ASTC_4X4_UNORM = 134
+    ASTC_6X6_TYPELESS = 149
+    ASTC_6X6_UNORM = 150
+    ASTC_8X8_TYPELESS = 161
+    ASTC_8X8_UNORM = 162
+    ASTC_10X10_TYPELESS = 177
+    ASTC_10X10_UNORM = 178
+    ASTC_12X12_TYPELESS = 185
+    ASTC_12X12_UNORM = 186
 
     @classmethod
     def is_valid_format(cls, fmt_name):
@@ -167,6 +175,29 @@ class DXGI_FORMAT(IntEnum):
             return DXGI_FORMAT[name]
         else:
             return fmt
+
+    @staticmethod
+    def get_block_size(fmt):
+        name = fmt.name
+        if "BC" in name:
+            return 4
+        if "ASTC" not in name:
+            return 1
+        if "4X4" in name:
+            return 4
+        if "6X6" in name:
+            return 6
+        if "8X8" in name:
+            return 8
+        if "10X10" in name:
+            return 10
+        # if "12X12" in name:
+        return 12
+
+    @staticmethod
+    def is_compressed(fmt):
+        name = fmt.name
+        return "BC" in name or "ASTC" in name
 
 
 # Used to get the size of a mipmap
@@ -292,7 +323,15 @@ DXGI_BYTE_PER_PIXEL = {
     DXGI_FORMAT.V208: 2,
     DXGI_FORMAT.V408: 3,
     DXGI_FORMAT.ASTC_4X4_TYPELESS: 8,
-    DXGI_FORMAT.ASTC_4X4_UNORM: 8
+    DXGI_FORMAT.ASTC_4X4_UNORM: 8,
+    DXGI_FORMAT.ASTC_6X6_TYPELESS: 128 / 36,
+    DXGI_FORMAT.ASTC_6X6_UNORM: 128 / 36,
+    DXGI_FORMAT.ASTC_8X8_TYPELESS: 2,
+    DXGI_FORMAT.ASTC_8X8_UNORM: 2,
+    DXGI_FORMAT.ASTC_10X10_TYPELESS: 1.28,
+    DXGI_FORMAT.ASTC_10X10_UNORM: 1.28,
+    DXGI_FORMAT.ASTC_12X12_TYPELESS: 128 / 144,
+    DXGI_FORMAT.ASTC_12X12_UNORM: 128 / 144
 }
 
 
