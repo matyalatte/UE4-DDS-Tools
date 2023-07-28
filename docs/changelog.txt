@@ -2,6 +2,7 @@ ver 0.5.4
 - Added support for ASTC formats. (6x6, 8x8, 10x10, and 12x12)
 - Fixed a bug that the DDS converter will accept unknown DXGI formats.
 - Fixed a bug that the portable python can refer the installed python with some environment variables.
+- Fixed a bug that the imported size will be used as the actual size.
 - Updated GUI to v0.5.1
 
 ver 0.5.3

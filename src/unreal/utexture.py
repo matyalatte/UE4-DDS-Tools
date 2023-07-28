@@ -160,12 +160,11 @@ class Utexture:
         # FTexturePlatformData::SerializeCooked (SerializePlatformData)
         if ar.is_writing:
             # get mipmap info
-            self.max_width, self.max_height = self.get_max_size()
             self.uexp_map_num, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
             self.mip_count = len(self.mipmaps)
 
-        ar << (Uint32, self, "max_width")
-        ar << (Uint32, self, "max_height")
+        ar << (Uint32, self, "imported_width")
+        ar << (Uint32, self, "imported_height")
         if ar.is_writing:
             self.__update_packed_data()
         ar << (Uint32, self, "packed_data")
@@ -307,7 +306,7 @@ class Utexture:
 
         # make dds header
         header = DDSHeader()
-        w, h = self.max_width, self.max_height
+        w, h = self.get_max_size()
         header.update(
             w, h, self.get_depth(), len(self.mipmaps),
             self.dxgi_format, self.is_cube, self.get_array_size()
@@ -368,7 +367,7 @@ class Utexture:
             )
 
         # Store old info
-        old_size = (self.max_width, self.max_height)
+        old_size = self.get_max_size()
         old_mipmap_num = len(self.mipmaps)
         old_depth = self.get_depth()
         new_depth = dds.header.depth
@@ -392,8 +391,8 @@ class Utexture:
                 mip.update(data, size, new_depth, True)
 
         # print results
-        self.max_width, self.max_height = self.get_max_size()
-        new_size = (self.max_width, self.max_height)
+        new_size = self.get_max_size()
+        self.imported_width, self.imported_height = new_size
         _, ubulk_map_num, uptnl_map_num = self.get_mipmap_num()
         self.has_ubulk = ubulk_map_num > 0
         self.has_uptnl = uptnl_map_num > 0
@@ -408,9 +407,9 @@ class Utexture:
             print(f"  mipmap: {old_mipmap_num} -> {new_mipmap_num}")
 
         # warnings
-        if new_mipmap_num > 1 and (not is_power_of_2(self.max_width) or not is_power_of_2(self.max_height)):
+        if new_mipmap_num > 1 and (not is_power_of_2(self.imported_width) or not is_power_of_2(self.imported_height)):
             print("Warning: Mipmaps should have power of 2 as its width and height."
-                  f" ({self.max_width}, {self.max_height})")
+                  f" ({self.imported_width}, {self.imported_height})")
         if new_mipmap_num > 1 and old_mipmap_num == 1:
             print("Warning: The original texture has only 1 mipmap. But your dds has multiple mipmaps.")
 
@@ -421,11 +420,12 @@ class Utexture:
                 print(f"  Mipmap {i}")
                 mip.print(padding=4)
                 i += 1
+        width, height = self.get_max_size()
         depth = self.get_depth()
         print(f"  type: {self.get_texture_type()}")
         print(f"  format: {self.pixel_format} ({self.dxgi_format.name})")
-        print(f"  width: {self.max_width}")
-        print(f"  height: {self.max_height}")
+        print(f"  width: {width}")
+        print(f"  height: {height}")
         if self.is_3d:
             print(f"  depth: {depth}")
         elif self.is_array:
