@@ -3,7 +3,7 @@
 ![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.5.3
+# UE4-DDS-Tools ver0.5.4
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -63,6 +63,10 @@ This tool can convert textures between the following file formats.
 - A32B32G32R32F
 - B5G5R5A1_UNORM
 - ASTC_4x4
+- ASTC_6x6
+- ASTC_8x8
+- ASTC_10x10
+- ASTC_12x12
 
 </details>
 
@@ -112,11 +116,11 @@ The official Texconv only supports Windows but you can use it on other platforms
 
 ### Simple-Command-Runner
 
-[Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) is a GUI wrapper for executing commands.  
+[Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) is a GUI wrapper for command-line tools.  
 It can define a simple GUI with a json file.  
 
 ## License
 
 * The files in this repository (including all submodules) are available under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
-* Released packeges contain [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) for GUI. It is released under the [wxWindows Library Licence](https://github.com/wxWidgets/wxWidgets/blob/master/docs/licence.txt).
+* Released packeges contain [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) (`GUI.exe`) for GUI. It is released under the [GPL2+](https://github.com/matyalatte/Simple-Command-Runner/blob/main/license.txt).
 * Released packeges contain [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is released under the [PSF license](https://docs.python.org/3/license.html).

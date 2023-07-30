@@ -367,11 +367,10 @@ class DDSHeader(c.LittleEndianStructure):
         self.dx10_header.update(self.dxgi_format, is_cube, is_3d, array_size)
 
     def is_compressed(self):
-        dxgi = self.get_format_as_str()
-        return "BC" in dxgi or "ASTC" in dxgi
+        return DXGI_FORMAT.is_compressed(self.dxgi_format)
 
     def get_block_size(self):
-        return 4 if self.is_compressed() else 1
+        return DXGI_FORMAT.get_block_size(self.dxgi_format)
 
     def has_mips(self):
         return self.mipmap_num > 1

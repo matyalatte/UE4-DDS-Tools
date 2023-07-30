@@ -16,7 +16,7 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = "0.5.3"
+TOOL_VERSION = "0.5.4"
 
 # UE version: 4.0 ~ 5.2, ff7r, borderlands3
 UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(3)] + ["ff7r", "borderlands3"]
@@ -212,6 +212,10 @@ def inject(folder, file, args, texture_file=None):
 
         if args.force_uncompressed:
             tex.to_uncompressed()
+        elif "ASTC" in tex.dxgi_format.name:
+            print("Warning: DDS converter doesn't support ASTC. "
+                  "The texture will use an uncompressed format.")
+            tex.to_uncompressed()
 
         # Get a image as a DDS object
         if get_ext(src) == "dds":
@@ -294,6 +298,9 @@ def export(folder, file, args, texture_file=None):
         # Save texture
         dds = tex.get_dds()
         if args.export_as == "dds":
+            dds.save(file_name)
+        elif "ASTC" in dds.header.dxgi_format.name:
+            print("Warning: DDS converter doesn't support ASTC. The texture will be exported as DDS.")
             dds.save(file_name)
         else:
             # Convert if the export format is not DDS

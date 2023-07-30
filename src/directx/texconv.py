@@ -65,11 +65,10 @@ class Texconv:
         """Convert dds to non-dds."""
         dds_header = DDSHeader.read_from_file(file)
 
-        if dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical():
+        if (dds_header.dxgi_format.value > DXGI_FORMAT.get_max_canonical() or
+                dds_header.dxgi_format == DXGI_FORMAT.UNKNOWN):
             raise RuntimeError(
-                f"DDS converter does NOT support {dds_header.get_format_as_str()}.\n"
-                "Use '.dds' as an export format."
-            )
+                f"DDS converter does NOT support {dds_header.get_format_as_str()}.")
 
         if dds_header.is_3d() or dds_header.is_array():
             dds = DDS.load(file)
@@ -139,11 +138,10 @@ class Texconv:
 
         if ("BC6" in dds_fmt or "BC7" in dds_fmt) and (not is_windows()) and (not allow_slow_codec):
             raise RuntimeError(f"Can NOT use CPU codec for {dds_fmt}. Or enable the 'Allow Slow Codec' option.")
-        if dxgi_format.value > DXGI_FORMAT.get_max_canonical():
+        if (dxgi_format.value > DXGI_FORMAT.get_max_canonical() or
+                dxgi_format == DXGI_FORMAT.UNKNOWN):
             raise RuntimeError(
-                f"DDS converter does NOT support {dds_fmt}.\n"
-                "You should convert it to dds with another tool first."
-            )
+                f"DDS converter does NOT support {dds_fmt}.")
 
         if not DXGI_FORMAT.is_valid_format(dds_fmt):
             raise RuntimeError(f"Not DXGI format. ({dds_fmt})")

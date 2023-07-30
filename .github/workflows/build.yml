@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.4.1
+  GUI_VERSION: v0.5.1
 
 jobs:
   build:
@@ -46,7 +46,7 @@ jobs:
           cp -r src release
           cp docs/changelog.txt release
           cp docs/README.url release
-          cp LICENSE release
+          cp LICENSE release/src
           cp -r release release_gui
           cp bat/* release
         shell: bash
