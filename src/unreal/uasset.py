@@ -39,6 +39,7 @@ class UassetFileSummary(SerializableBase):
     """
     TAG = b"\xC1\x83\x2A\x9E"  # Magic for uasset files
     TAG_SWAPPED = b"\x9E\x2A\x83\xC1"  # for big endian files
+    TAG_UCAS = b"\x00\x00\x00\x00"  # ucas assets don't have tag and file version.
 
     def serialize(self, ar: ArchiveBase):
         self.file_name = ar.name
@@ -220,6 +221,8 @@ class UassetFileSummary(SerializableBase):
             return "little"
         elif self.tag == UassetFileSummary.TAG_SWAPPED:
             return "big"
+        elif self.tag == UassetFileSummary.TAG_UCAS:
+            raise RuntimeError("Assets should be from *.pak. *.ucas is not supported yet.")
         raise RuntimeError(f"Invalid tag detected. ({self.tag})")
 
 
