@@ -148,6 +148,9 @@ class Utexture:
             prop_size = 0
         ar << (Bytes, self, "props", prop_size)
 
+        if ar.version >= "5.3":
+            ar << (Uint32, self, "?")
+
         # UTexture::SerializeCookedPlatformData
         ar << (Uint64, self, "pixel_format_name_id")
         self.skip_offset_location = ar.tell()  # offset to self.skip_offset
