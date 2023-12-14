@@ -1,5 +1,5 @@
 ver 0.5.5
-- Supported UE5.3
+- Added support for UE5.3 (experimental)
 
 ver 0.5.4
 - Added support for ASTC formats. (6x6, 8x8, 10x10, and 12x12)
