@@ -1,3 +1,6 @@
+ver 0.5.5
+- Supported UE5.3
+
 ver 0.5.4
 - Added support for ASTC formats. (6x6, 8x8, 10x10, and 12x12)
 - Fixed a bug that the DDS converter will accept unknown DXGI formats.

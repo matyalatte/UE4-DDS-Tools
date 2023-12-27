@@ -148,6 +148,10 @@ class Utexture:
             prop_size = 0
         ar << (Bytes, self, "props", prop_size)
 
+        if ar.version >= "5.3" and self.is_2d():
+            # UTexture2D::Serialize
+            ar << (Uint32, self, "serialize_mip_data")
+
         # UTexture::SerializeCookedPlatformData
         ar << (Uint64, self, "pixel_format_name_id")
         self.skip_offset_location = ar.tell()  # offset to self.skip_offset
@@ -435,6 +439,9 @@ class Utexture:
 
     def is_compressed(self):
         return self.pixel_format in PF_TO_UNCOMPRESSED
+
+    def is_2d(self) -> bool:
+        return not (self.is_cube or self.is_array or self.is_3d)
 
     def get_block_size(self):
         return DXGI_FORMAT.get_block_size(self.dxgi_format)

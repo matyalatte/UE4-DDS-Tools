@@ -35,6 +35,7 @@
                     "type": "choice",
                     "label": "UE version",
                     "items": [
+                        { "label": "5.3" },
                         { "label": "5.2" },
                         { "label": "5.1" },
                         { "label": "5.0" },
@@ -138,6 +139,7 @@
                     "type": "choice",
                     "label": "UE version",
                     "items": [
+                        { "label": "5.3" },
                         { "label": "5.2" },
                         { "label": "5.1" },
                         { "label": "5.0" },
