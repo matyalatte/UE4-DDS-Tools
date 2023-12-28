@@ -1,4 +1,3 @@
-[![discord](https://badgen.net/badge/icon/discord?icon=discord&label)](https://discord.gg/Qx2Ff3MByF)
 ![build](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/build.yml/badge.svg)
 ![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -67,6 +66,9 @@ This tool can convert textures between the following file formats.
 - ASTC_8x8
 - ASTC_10x10
 - ASTC_12x12
+- ETC1
+- ETC2_RGB
+- ETC2_RGBA
 
 </details>
 

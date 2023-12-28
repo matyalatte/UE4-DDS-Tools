@@ -212,15 +212,16 @@ def inject(folder, file, args, texture_file=None):
 
         if args.force_uncompressed:
             tex.to_uncompressed()
-        elif "ASTC" in tex.dxgi_format.name:
-            print("Warning: DDS converter doesn't support ASTC. "
-                  "The texture will use an uncompressed format.")
-            tex.to_uncompressed()
 
         # Get a image as a DDS object
         if get_ext(src) == "dds":
             dds = DDS.load(src)
         else:
+            if tex.dxgi_format > DXGI_FORMAT.get_max_canonical():
+                print(f"Warning: DDS converter doesn't support {tex.dxgi_format.name}. "
+                      "The texture will use an uncompressed format.")
+                tex.to_uncompressed()
+
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
                 print(f"convert: {src}")
                 if tex.is_array or tex.is_3d:
@@ -299,8 +300,9 @@ def export(folder, file, args, texture_file=None):
         dds = tex.get_dds()
         if args.export_as == "dds":
             dds.save(file_name)
-        elif "ASTC" in dds.header.dxgi_format.name:
-            print("Warning: DDS converter doesn't support ASTC. The texture will be exported as DDS.")
+        elif dds.header.dxgi_format > DXGI_FORMAT.get_max_canonical():
+            print(f"Warning: DDS converter doesn't support {dds.header.dxgi_format.name}. "
+                  "The texture will be exported as DDS.")
             dds.save(file_name)
         else:
             # Convert if the export format is not DDS
