@@ -187,6 +187,9 @@ def inject(folder, file, args, texture_file=None):
         if textures[0].is_empty():
             src_files = [None]
         else:
+            splitted = file_base.split("-")
+            if len(splitted) >= 2 and splitted[-1] == "0":
+                file_base = "-".join(splitted[:-1])
             index2 = "-0" if textures[0].is_array or textures[0].is_3d else None
             src_files = [search_texture_file(file_base, ext_list, index2=index2)]
     else:
