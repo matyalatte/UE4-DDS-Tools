@@ -116,13 +116,13 @@ It's the best DDS converter as far as I know.
 And [Texconv-Custom-DLL](https://github.com/matyalatte/Texconv-Custom-DLL) is a cross-platform implementation I made.  
 The official Texconv only supports Windows but you can use it on other platforms.  
 
-### Simple-Command-Runner
+### Tuw
 
-[Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) is a GUI wrapper for command-line tools.  
+[Tuw](https://github.com/matyalatte/tuw) is a GUI wrapper for command-line tools.  
 It can define a simple GUI with a json file.  
 
 ## License
 
 * The files in this repository (including all submodules) are available under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
-* Released packeges contain [Simple Command Runner](https://github.com/matyalatte/Simple-Command-Runner) (`GUI.exe`) for GUI. It is released under the [GPL2+](https://github.com/matyalatte/Simple-Command-Runner/blob/main/license.txt).
+* Released packeges contain [Tuw](https://github.com/matyalatte/tuw) (`GUI.exe`) for GUI. It is released under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
 * Released packeges contain [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is released under the [PSF license](https://docs.python.org/3/license.html).

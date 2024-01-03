@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.5.1
+  GUI_VERSION: v0.6.1
 
 jobs:
   build:
@@ -51,11 +51,11 @@ jobs:
           cp bat/* release
         shell: bash
 
-      - name: Download Simple Command Runner
+      - name: Download Tuw
         run: |
-          curl -OL https://github.com/matyalatte/Simple-Command-Runner/releases/download/${{env.GUI_VERSION}}/SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
-          unzip -d SimpleCommandRunner SimpleCommandRunner-${{env.GUI_VERSION}}-${{ runner.os }}.zip
-          cp SimpleCommandRunner/SimpleCommandRunner.exe release_gui/GUI.exe
+          curl -OL https://github.com/matyalatte/tuw/releases/download/${{env.GUI_VERSION}}/Tuw-${{env.GUI_VERSION}}-${{ runner.os }}-x64.zip
+          unzip -d Tuw Tuw-${{env.GUI_VERSION}}-${{ runner.os }}-x64.zip
+          cp Tuw/Tuw.exe release_gui/GUI.exe
           cp gui_definition.json release_gui
         shell: bash
 
