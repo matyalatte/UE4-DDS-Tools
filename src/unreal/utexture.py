@@ -76,7 +76,7 @@ class Utexture:
         UnrealEngine/Engine/Source/Runtime/Engine/Private/TextureDerivedData.cpp
     """
 
-    verison: VersionInfo
+    version: VersionInfo
     is_light_map: bool
     dxgi_format: DXGI_FORMAT
 
@@ -124,7 +124,7 @@ class Utexture:
         start_offset = ar.tell()
         err_offset = min(ar.size - 7, start_offset + 1000)
         while (True):
-            """ Serach and skip to \x01\x00\x01\x00\x01\x00\x00\x00.
+            """ Search and skip to \x01\x00\x01\x00\x01\x00\x00\x00.
             \x01\x00 is StripFlags for UTexture
             \x01\x00 is StripFlags for UTexture2D (or Cube)
             \x01\x00\x00\x00 is bCooked for UTexture2D (or Cube)
@@ -291,7 +291,7 @@ class Utexture:
     def rewrite_offset_data(self):
         if self.version <= "4.15":
             return
-        # ubulk mipmaps have wierd offset data for old UE versions. (Fixed at 4.26)
+        # ubulk mipmaps have weird offset data for old UE versions. (Fixed at 4.26)
         f = self.uasset.get_io(ext="uexp", rb=False)
         uasset_size = self.uasset.get_size()
         uexp_size = self.uasset.get_uexp_size()

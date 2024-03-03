@@ -19,7 +19,7 @@ class VersionInfo:
     base_int: int
 
     def __init__(self, version: str, base_int: int = None):
-        """Constractor."""
+        """Constructor."""
         if version == "ff7r":
             base = "4.18"
             custom = version
