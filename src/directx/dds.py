@@ -29,10 +29,6 @@ class PF_FLAGS(IntEnum):
 
 UNCANONICAL_FOURCC = [
     # fourCC for uncanonical formats (ETC, PVRTC, ATITC, ASTC)
-    b"ETC",
-    b"ETC1",
-    b"ETC2",
-    b"ET2A",
     b"PTC2",
     b"PTC4",
     b"ATC",
@@ -93,6 +89,15 @@ class DDSPixelFormat(c.LittleEndianStructure):
             return DXGI_FORMAT.get_signed(detected_dxgi)
         else:
             return detected_dxgi
+
+    def update(self, new_dxgi):
+        if new_dxgi > DXGI_FORMAT.get_max_dx10():
+            # When dx10 doesn't support the specified dxgi format.
+            for cc_list, dxgi in FOURCC_TO_DXGI:
+                if new_dxgi == dxgi:
+                    self.fourCC = cc_list[0]
+        else:
+            self.fourCC = b"DX10"
 
     def is_bit_mask(self, bit_mask):
         for b1, b2 in zip(self.bit_mask, bit_mask):
@@ -233,7 +238,7 @@ class DX10Header(c.LittleEndianStructure):
     ]
 
     def get_dxgi(self):
-        if self.dxgi_format > DXGI_FORMAT.get_max():
+        if self.dxgi_format > DXGI_FORMAT.get_max_dx10():
             raise RuntimeError(f"Unsupported DXGI format detected. ({self.dxgi_format})")
         return DXGI_FORMAT(self.dxgi_format)
 
@@ -365,6 +370,7 @@ class DDSHeader(c.LittleEndianStructure):
         self.caps = DDS_CAPS.get_caps(has_mips, is_cube)
         self.caps2 = DDS_CAPS2.get_caps2(is_cube, is_3d)
         self.dx10_header.update(self.dxgi_format, is_cube, is_3d, array_size)
+        self.pixel_format.update(self.dxgi_format)
 
     def is_compressed(self):
         return DXGI_FORMAT.is_compressed(self.dxgi_format)

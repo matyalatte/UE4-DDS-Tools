@@ -143,13 +143,19 @@ class DXGI_FORMAT(IntEnum):
     ASTC_12X12_TYPELESS = 185
     ASTC_12X12_UNORM = 186
 
+    # only used in UE4-DDS-Tools
+    ETC_RGB = 1024
+    # ETC_RGBA = 1025 Idk if etc1 support alpha
+    ETC2_RGB = 1026
+    ETC2_RGBA = 1027
+
     @classmethod
     def is_valid_format(cls, fmt_name):
         return fmt_name in cls._member_names_
 
     @staticmethod
-    def get_max():
-        return 134
+    def get_max_dx10():
+        return DXGI_FORMAT.ASTC_12X12_UNORM
 
     @staticmethod
     def get_max_canonical():
@@ -179,7 +185,7 @@ class DXGI_FORMAT(IntEnum):
     @staticmethod
     def get_block_size(fmt):
         name = fmt.name
-        if "BC" in name:
+        if "BC" in name or "ETC" in name:
             return 4
         if "ASTC" not in name:
             return 1
@@ -197,7 +203,7 @@ class DXGI_FORMAT(IntEnum):
     @staticmethod
     def is_compressed(fmt):
         name = fmt.name
-        return "BC" in name or "ASTC" in name
+        return "BC" in name or "TC" in name
 
 
 # Used to get the size of a mipmap
@@ -322,16 +328,19 @@ DXGI_BYTE_PER_PIXEL = {
     DXGI_FORMAT.P208: 2,
     DXGI_FORMAT.V208: 2,
     DXGI_FORMAT.V408: 3,
-    DXGI_FORMAT.ASTC_4X4_TYPELESS: 8,
-    DXGI_FORMAT.ASTC_4X4_UNORM: 8,
-    DXGI_FORMAT.ASTC_6X6_TYPELESS: 128 / 36,
-    DXGI_FORMAT.ASTC_6X6_UNORM: 128 / 36,
-    DXGI_FORMAT.ASTC_8X8_TYPELESS: 2,
-    DXGI_FORMAT.ASTC_8X8_UNORM: 2,
-    DXGI_FORMAT.ASTC_10X10_TYPELESS: 1.28,
-    DXGI_FORMAT.ASTC_10X10_UNORM: 1.28,
-    DXGI_FORMAT.ASTC_12X12_TYPELESS: 128 / 144,
-    DXGI_FORMAT.ASTC_12X12_UNORM: 128 / 144
+    DXGI_FORMAT.ASTC_4X4_TYPELESS: 1,
+    DXGI_FORMAT.ASTC_4X4_UNORM: 1,
+    DXGI_FORMAT.ASTC_6X6_TYPELESS: 128 / 288,
+    DXGI_FORMAT.ASTC_6X6_UNORM: 128 / 288,
+    DXGI_FORMAT.ASTC_8X8_TYPELESS: 0.25,
+    DXGI_FORMAT.ASTC_8X8_UNORM: 0.25,
+    DXGI_FORMAT.ASTC_10X10_TYPELESS: 0.16,
+    DXGI_FORMAT.ASTC_10X10_UNORM: 0.16,
+    DXGI_FORMAT.ASTC_12X12_TYPELESS: 128 / 1152,
+    DXGI_FORMAT.ASTC_12X12_UNORM: 128 / 1152,
+    DXGI_FORMAT.ETC_RGB: 0.5,
+    DXGI_FORMAT.ETC2_RGB: 0.5,
+    DXGI_FORMAT.ETC2_RGBA: 1,
 }
 
 
@@ -360,7 +369,10 @@ FOURCC_TO_DXGI = [
     [[int_to_byte(113)], DXGI_FORMAT.R16G16B16A16_FLOAT],
     [[int_to_byte(114)], DXGI_FORMAT.R32_FLOAT],
     [[int_to_byte(115)], DXGI_FORMAT.R32G32_FLOAT],
-    [[int_to_byte(116)], DXGI_FORMAT.R32G32B32A32_FLOAT]
+    [[int_to_byte(116)], DXGI_FORMAT.R32G32B32A32_FLOAT],
+    [[b"ETC", b"ETC1"], DXGI_FORMAT.ETC_RGB],
+    [[b"ETC2"], DXGI_FORMAT.ETC2_RGB],
+    [[b"ETCA"], DXGI_FORMAT.ETC2_RGBA],
 ]
 
 

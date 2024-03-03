@@ -16,7 +16,7 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = "0.5.5"
+TOOL_VERSION = "0.5.6"
 
 # UE version: 4.0 ~ 5.3, ff7r, borderlands3
 UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(4)] + ["ff7r", "borderlands3"]
@@ -187,6 +187,9 @@ def inject(folder, file, args, texture_file=None):
         if textures[0].is_empty():
             src_files = [None]
         else:
+            splitted = file_base.split("-")
+            if len(splitted) >= 2 and splitted[-1] == "0":
+                file_base = "-".join(splitted[:-1])
             index2 = "-0" if textures[0].is_array or textures[0].is_3d else None
             src_files = [search_texture_file(file_base, ext_list, index2=index2)]
     else:
@@ -212,15 +215,16 @@ def inject(folder, file, args, texture_file=None):
 
         if args.force_uncompressed:
             tex.to_uncompressed()
-        elif "ASTC" in tex.dxgi_format.name:
-            print("Warning: DDS converter doesn't support ASTC. "
-                  "The texture will use an uncompressed format.")
-            tex.to_uncompressed()
 
         # Get a image as a DDS object
         if get_ext(src) == "dds":
             dds = DDS.load(src)
         else:
+            if tex.dxgi_format > DXGI_FORMAT.get_max_canonical():
+                print(f"Warning: DDS converter doesn't support {tex.dxgi_format.name}. "
+                      "The texture will use an uncompressed format.")
+                tex.to_uncompressed()
+
             with get_temp_dir(disable_tempfile=args.disable_tempfile) as temp_dir:
                 print(f"convert: {src}")
                 if tex.is_array or tex.is_3d:
@@ -299,8 +303,9 @@ def export(folder, file, args, texture_file=None):
         dds = tex.get_dds()
         if args.export_as == "dds":
             dds.save(file_name)
-        elif "ASTC" in dds.header.dxgi_format.name:
-            print("Warning: DDS converter doesn't support ASTC. The texture will be exported as DDS.")
+        elif dds.header.dxgi_format > DXGI_FORMAT.get_max_canonical():
+            print(f"Warning: DDS converter doesn't support {dds.header.dxgi_format.name}. "
+                  "The texture will be exported as DDS.")
             dds.save(file_name)
         else:
             # Convert if the export format is not DDS

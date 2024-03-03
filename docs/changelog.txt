@@ -1,3 +1,9 @@
+ver 0.5.6
+- Added support for ETC formats. (ETC1, ETC2_RGB, and ETC2_RGBA)
+- Fixed an error when injecting texture arrays.
+- Fixed an error when injecting ASTC textures.
+- Updated GUI to v0.6.3
+
 ver 0.5.5
 - Supported UE5.3
 
