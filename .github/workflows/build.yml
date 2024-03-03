@@ -8,7 +8,7 @@ on:
   
 env:
   ZIP_NAME: UE4-DDS-Tools
-  GUI_VERSION: v0.6.1
+  GUI_VERSION: v0.6.3
 
 jobs:
   build:
