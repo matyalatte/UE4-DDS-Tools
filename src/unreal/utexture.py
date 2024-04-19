@@ -228,7 +228,8 @@ class Utexture:
             self.has_uptnl = uptnl_map_num > 0
 
         if ar.version >= "4.23":
-            ar == (Uint32, 0, "bIsVirtual")
+            ar << (Uint32, self, "bIsVirtual")
+            ar.check(self.bIsVirtual, 0, "Virtual Textures are not supported. (bIsVirtual should be false.)")
 
         if ar.is_writing:
             if ar.version >= "5.0":
