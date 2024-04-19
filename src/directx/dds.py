@@ -138,11 +138,11 @@ class DDS_FLAGS(IntEnum):
 class DDS_CAPS(IntEnum):
     CUBEMAP = 0x8      # DDSCAPS_COMPLEX
     MIPMAP = 0x400008  # DDSCAPS_COMPLEX | DDSCAPS_MIPMAP
-    REQUIERD = 0x1000  # DDSCAPS_TEXTURE
+    REQUIRED = 0x1000  # DDSCAPS_TEXTURE
 
     @staticmethod
     def get_caps(has_mips, is_cube):
-        caps = DDS_CAPS.REQUIERD
+        caps = DDS_CAPS.REQUIRED
         if has_mips:
             caps |= DDS_CAPS.MIPMAP
         if is_cube:

@@ -173,7 +173,7 @@ class DXGI_FORMAT(IntEnum):
         }
 
         if num_type in new_num_types:
-            name = "_".join(splitted[:-1] + new_num_types[num_type])
+            name = "_".join(splitted[:-1] + [new_num_types[num_type]])
         else:
             return fmt
 

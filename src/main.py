@@ -38,7 +38,7 @@ def get_args():  # pragma: no cover
     parser.add_argument("--mode", default="inject", type=str,
                         help="valid, parse, inject, export, remove_mipmaps, check, convert, and copy are available.")
     parser.add_argument("--version", default=None, type=str,
-                        help="UE version. it will overwrite the argment in config.json.")
+                        help="UE version. it will overwrite the argument in config.json.")
     parser.add_argument("--export_as", default="dds", type=str,
                         help="format for export mode. dds, tga, png, jpg, and bmp are available.")
     parser.add_argument("--convert_to", default="tga", type=str,

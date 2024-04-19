@@ -92,7 +92,7 @@ This tool can convert textures between the following file formats.
 
 ## Download
 
-Dowload one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
+Download one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-tools/releases)
 
 - `UE4-DDS-tools-*-Batch.zip` is for batch file users.
 - `UE4-DDS-tools-*-GUI.zip` is for GUI users.
@@ -124,5 +124,5 @@ It can define a simple GUI with a json file.
 ## License
 
 * The files in this repository (including all submodules) are available under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
-* Released packeges contain [Tuw](https://github.com/matyalatte/tuw) (`GUI.exe`) for GUI. It is released under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
-* Released packeges contain [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is released under the [PSF license](https://docs.python.org/3/license.html).
+* Released packages contain [Tuw](https://github.com/matyalatte/tuw) (`GUI.exe`) for GUI. It is released under the [MIT license](https://github.com/matyalatte/UE4-DDS-Tools/blob/main/LICENSE).
+* Released packages contain [Windows embeddable package](https://www.python.org/downloads/windows/) for python. It is released under the [PSF license](https://docs.python.org/3/license.html).

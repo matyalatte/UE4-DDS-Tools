@@ -1,3 +1,5 @@
+- Fixed typos.
+
 ver 0.5.6
 - Added support for ETC formats. (ETC1, ETC2_RGB, and ETC2_RGBA)
 - Fixed an error when injecting texture arrays.
@@ -61,7 +63,7 @@ ver 0.4.4
 - Supported UE4.0 ~ 4.9.
 - Added "Skip non-texture assets" option.
 - Fixed an error when loading assets that have multiple textures.
-- Improved check mode (removed uneccessary versions from the check list)
+- Improved check mode (removed unnecessary versions from the check list)
 - Removed parse errors for unsupported pixel formats
 - Refined codes
 
