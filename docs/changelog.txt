@@ -1,3 +1,4 @@
+- Added support for UE5.4.
 - Fixed typos.
 
 ver 0.5.6

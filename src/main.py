@@ -18,8 +18,8 @@ from directx.texconv import Texconv, is_windows
 
 TOOL_VERSION = "0.5.6"
 
-# UE version: 4.0 ~ 5.3, ff7r, borderlands3
-UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(4)] + ["ff7r", "borderlands3"]
+# UE version: 4.0 ~ 5.4, ff7r, borderlands3
+UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(5)] + ["ff7r", "borderlands3"]
 
 # Supported file extensions.
 TEXTURES = ["dds", "tga", "hdr"]

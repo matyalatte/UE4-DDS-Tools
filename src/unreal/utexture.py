@@ -123,6 +123,13 @@ class Utexture:
         # We will skip them cause we don't need to edit them.
         start_offset = ar.tell()
         err_offset = min(ar.size - 7, start_offset + 1000)
+
+        if ar.version <= "5.3":
+            search_bin = b"\x01\x00\x01\x00\x01\x00\x00\x00"
+        else:
+            # The default value of StripFlags is five from UE5.4
+            search_bin = b"\x05\x00\x05\x00\x01\x00\x00\x00"
+
         while (True):
             """ Search and skip to \x01\x00\x01\x00\x01\x00\x00\x00.
             \x01\x00 is StripFlags for UTexture
@@ -132,12 +139,12 @@ class Utexture:
             Just searching x01 is not the best algorithm but fast enough.
             Because "found 01" means "found strip flags" for most texture assets.
             """
-            while (ar.read(1) != b"\x01"):
+            while (ar.read(1)[0] != search_bin[0]):
                 if (ar.tell() >= err_offset):
                     raise RuntimeError("Parse Failed. Make sure you specified UE4 version correctly.")
 
-            if ar.read(7) == b"\x00\x01\x00\x01\x00\x00\x00":
-                # Found \x01\x00\x01\x00\x01\x00\x00\x00
+            if ar.read(7) == search_bin[1:]:
+                # Found search_bin
                 break
             else:
                 ar.seek(-7, 1)
