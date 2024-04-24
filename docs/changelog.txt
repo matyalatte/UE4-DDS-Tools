@@ -1,3 +1,4 @@
+- Supported ucas/utoc assets for UE5
 - Added support for UE5.4.
 - Fixed typos.
 

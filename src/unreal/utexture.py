@@ -141,7 +141,7 @@ class Utexture:
             """
             while (ar.read(1)[0] != search_bin[0]):
                 if (ar.tell() >= err_offset):
-                    raise RuntimeError("Parse Failed. Make sure you specified UE4 version correctly.")
+                    ar.raise_error()
 
             if ar.read(7) == search_bin[1:]:
                 # Found search_bin
@@ -154,7 +154,10 @@ class Utexture:
 
     def __serialize_uexp(self, ar: ArchiveBase, ubulk_start_offset: int = 0, uptnl_start_offset: int = 0):
         start_offset = ar.tell()
-        uasset_size = self.uasset.get_size()
+        if ar.is_ucas and (ar.version <= "5.1"):
+            uasset_size = self.uasset.header.cooked_header_size
+        else:
+            uasset_size = self.uasset.get_size()
         if ar.is_reading:
             prop_size = self.__calculate_prop_size(ar)
         else:
@@ -396,7 +399,7 @@ class Utexture:
         self.mipmaps = [Umipmap() for i in range(len(dds.mipmap_size_list))]
         offset = 0
         for size, mip, i in zip(dds.mipmap_size_list, self.mipmaps, range(len(self.mipmaps))):
-            mip.init_data_resource(self.version)
+            mip.init_data_resource(self.uasset)
             # get a mip data from slices
             data = b""
             bin_size = int(size[0] * size[1] * self.byte_per_pixel)

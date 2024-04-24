@@ -22,6 +22,7 @@ class ArchiveBase:
     io: IOBase
     is_reading = False
     is_writing = False
+    is_ucas = False
 
     def __init__(self, io: IOBase, endian="little", context: dict = {}):
         self.io = io
@@ -65,13 +66,35 @@ class ArchiveBase:
     def close(self):
         self.io.close()
 
+    def raise_error(self, msg="Parse failed. Make sure you specified UE version correctly."):
+        if (hasattr(self, "uasset")):
+            msg += " (" + self.uasset.file_name + ")"
+        raise RuntimeError(msg)
+
     def check(self, actual, expected, msg="Parse failed. Make sure you specified UE version correctly."):
         if actual == expected:
             return
         print(f"offset: {self.tell()}")
         print(f"actual: {actual}")
         print(f"expected: {expected}")
-        raise RuntimeError(msg)
+        self.raise_error(msg)
+
+    def check_buffer_size(self, size):
+        if self.tell() + size > self.size:
+            raise RuntimeError(
+                "There is no buffer that has specified size."
+                f" (Offset: {self.tell()}, Size: {size})"
+            )
+
+    def update_with_current_offset(self, obj, attr_name):
+        if self.is_reading:
+            # Checks obj.attr_name is the same as the current offset
+            current_offs = self.tell()
+            serialized_offs = getattr(obj, attr_name)
+            self.check(serialized_offs, current_offs)
+        else:
+            # Update obj.attr_name with the current offset
+            setattr(obj, attr_name, self.tell())
 
 
 class ArchiveRead(ArchiveBase):
@@ -121,11 +144,7 @@ class Buffer(Bytes):
     @staticmethod
     def read(ar: ArchiveBase) -> bytes:
         size = ar.args[0]
-        if ar.tell() + size > ar.size:
-            raise RuntimeError(
-                "There is no buffer that has specified size."
-                f" (Offset: {ar.tell()}, Size: {size})"
-            )
+        ar.check_buffer_size(size)
         return ar.read(size)
 
 
@@ -232,6 +251,26 @@ class String:
         encode = "utf-16-le" if utf16 else "ascii"
         str_byte = val.encode(encode)
         ar.write(str_byte + b"\x00" * (1 + utf16))
+
+
+class StringWithLen:
+    @staticmethod
+    def get_args(ar: ArchiveBase):
+        num = ar.args[0]
+        utf16 = ar.args[1]
+        encode = "utf-16-le" if utf16 else "ascii"
+        return num, utf16, encode
+
+    @staticmethod
+    def read(ar: ArchiveBase) -> str:
+        num, utf16, encode = StringWithLen.get_args(ar)
+        string = ar.read(num * (1 + utf16)).decode(encode)
+        return string
+
+    @staticmethod
+    def write(ar: ArchiveBase, val: str):
+        _, utf16, encode = StringWithLen.get_args(ar)
+        ar.write(val.encode(encode))
 
 
 class SerializableBase:

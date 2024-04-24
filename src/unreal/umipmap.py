@@ -1,5 +1,5 @@
 """Mipmap class for texture asset"""
-from .data_resource import LegacyDataResource, UassetDataResource
+from .data_resource import LegacyDataResource, UassetDataResource, BulkDataMapEntry
 from .archive import (ArchiveBase, Int32, Uint32, Uint16, Buffer,
                       SerializableBase)
 
@@ -17,9 +17,12 @@ class Umipmap(SerializableBase):
         self.depth = 1
         self.data_resource = None
 
-    def init_data_resource(self, version):
-        if version >= "5.2":
-            self.data_resource = UassetDataResource()
+    def init_data_resource(self, uasset):
+        if uasset.version >= "5.2":
+            if uasset.is_ucas:
+                self.data_resource = BulkDataMapEntry()
+            else:
+                self.data_resource = UassetDataResource()
         else:
             self.data_resource = LegacyDataResource()
 
