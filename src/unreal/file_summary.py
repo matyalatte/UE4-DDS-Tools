@@ -47,6 +47,9 @@ class FileSummaryBase(SerializableBase):
     def serialize_exports(self, ar: ArchiveBase, exports: list[ExportBase]) -> list[ExportBase]:
         pass
 
+    def seek_to_name_map(self, ar: ArchiveBase):
+        ar.seek(self.name_map_offset)
+
     def skip_exports(self, ar: ArchiveBase, count: int):
         pass
 
@@ -61,6 +64,9 @@ class FileSummaryBase(SerializableBase):
 
     def update_package_source(self, file_name=None, is_official=True):
         pass
+
+    def inc_file_size(self, diff: int):
+        self.uasset_size += diff
 
 
 class UassetFileSummary(FileSummaryBase):
@@ -103,7 +109,7 @@ class UassetFileSummary(FileSummaryBase):
 
         # Name table
         ar << (Int32, self, "name_count")
-        ar << (Int32, self, "name_offset")
+        ar << (Int32, self, "name_map_offset")
 
         if ar.version >= "5.1":
             # SoftObjectPaths
@@ -286,7 +292,6 @@ class ZenPackageSummary(FileSummaryBase):
     def serialize(self, ar: ArchiveBase):
         super().serialize(ar)
 
-        # TODO: update offsets and cooked_header_size when writing
         ar << (Uint32, self, "has_version_info")
         ar << (Uint32, self, "uasset_size")
         ar << (Uint32, self, "package_name_id")
@@ -305,13 +310,13 @@ class ZenPackageSummary(FileSummaryBase):
             ar << (Int32, self, "graph_data_offset")
         if self.has_version_info:
             self.serialize_version_info(ar)
-        self.name_offset = ar.tell()
+        self.name_map_offset = ar.tell()
 
     def print(self):
         print("File Summary")
         print(f"  file size: {self.uasset_size}")
         print(f"  cooked header size: {self.cooked_header_size}")
-        print(f"  name directory offset: {self.name_offset}")
+        print(f"  name directory offset: {self.name_map_offset}")
         print(f"  import directory offset: {self.import_offset}")
         print(f"  export directory offset: {self.export_offset}")
         print(f"  unversioned: {self.is_unversioned()}")
@@ -319,15 +324,12 @@ class ZenPackageSummary(FileSummaryBase):
     def serialize_name_map(self, ar: ArchiveBase, name_list: list[ZenName]) -> list[ZenName]:
         if ar.is_writing:
             self.name_count = len(name_list)
-            new_name_buffer_size = sum(len(str(n)) for n in name_list)
-            # update cooked_header_size when changing pixel format
-            self.cooked_header_size += new_name_buffer_size - self.name_buffer_size
-            self.name_buffer_size = new_name_buffer_size
+            self.name_map_size = sum(len(str(n)) for n in name_list)
         ar << (Uint32, self, "name_count")
-        ar << (Uint32, self, "name_buffer_size")
+        ar << (Uint32, self, "name_map_size")
         ar == (Uint64, 0xC1640000, "hash_version")
         if ar.is_reading:
-            ar.check_buffer_size(self.name_buffer_size)
+            ar.check_buffer_size(self.name_map_size)
             name_list = [ZenName() for i in range(self.name_count)]
         list(map(lambda x: x.serialize_hash(ar), name_list))
         list(map(lambda x: x.serialize_head(ar), name_list))
@@ -406,3 +408,74 @@ class ZenPackageSummary(FileSummaryBase):
             ar << (Buffer, self, "export_bundle_entries", export_bundle_entries_size)
             ar.update_with_current_offset(self, "graph_data_offset")
             ar << (Buffer, self, "graph_data", graph_data_size)
+
+    def inc_file_size(self, diff: int):
+        self.uasset_size += diff
+        self.cooked_header_size += diff
+
+
+class ZenPackageSummary4(ZenPackageSummary):
+    """Zen package summary for UE4 (FPackageSummary)
+
+    Notes:
+        UnrealEngine/Engine/Source/Runtime/CoreUObject/Public/Serialization/AsyncLoading2.h
+    """
+
+    def serialize(self, ar: ArchiveBase):
+        FileSummaryBase.serialize(self, ar)
+
+        ar << (Uint32, self, "name_id")
+        ar << (Uint32, self, "name_number")
+        ar << (Uint32, self, "source_name_id")
+        ar << (Uint32, self, "source_name_number")
+        ar << (Uint32, self, "pkg_flags")
+        ar << (Uint32, self, "cooked_header_size")  # uasset_size when using UassetFileSummary
+        ar << (Int32, self, "name_map_offset")
+        ar << (Int32, self, "name_map_size")
+        ar << (Int32, self, "name_hashes_offset")
+        ar << (Int32, self, "name_hashes_size")
+        ar << (Int32, self, "import_offset")
+        ar << (Int32, self, "export_offset")
+        ar << (Int32, self, "export_bundle_entries_offset")
+        ar << (Int32, self, "graph_data_offset")
+        ar << (Int32, self, "graph_data_size")
+        ar == (Int32, 0, "pad")
+        self.uasset_size = self.graph_data_offset + self.graph_data_size
+
+    def print(self):
+        print("File Summary")
+        print(f"  file size: {self.uasset_size}")
+        print(f"  cooked header size: {self.cooked_header_size}")
+        print(f"  name directory offset: {self.name_map_offset}")
+        print(f"  name hashes offset: {self.name_hashes_offset}")
+        print(f"  name hashes size: {self.name_hashes_size}")
+        print(f"  import directory offset: {self.import_offset}")
+        print(f"  export directory offset: {self.export_offset}")
+        print(f"  unversioned: {self.is_unversioned()}")
+
+    def serialize_name_map(self, ar: ArchiveBase, name_list: list[ZenName]) -> list[ZenName]:
+        ar.update_with_current_offset(self, "name_map_offset")
+        if ar.is_reading:
+            self.name_count = (self.name_hashes_size - 8) // 8
+            ar.check_buffer_size(self.name_map_size)
+            name_list = [ZenName() for i in range(self.name_count)]
+
+        list(map(lambda x: x.serialize_head_and_string(ar), name_list))
+
+        ar.update_with_current_offset(self, "name_map_size", base=self.name_map_offset)
+        ar.align(8)
+
+        ar.update_with_current_offset(self, "name_hashes_offset")
+        ar == (Uint64, 0xC1640000, "hash_version")
+        list(map(lambda x: x.serialize_hash(ar), name_list))
+
+        ar.update_with_current_offset(self, "name_hashes_size", base=self.name_hashes_offset)
+        ar.check(self.name_hashes_size, len(name_list) * 8 + 8)
+        return name_list
+
+    def serialize_others(self, ar: ArchiveBase):
+        export_bundle_entries_size = self.graph_data_offset - self.export_bundle_entries_offset
+        ar.update_with_current_offset(self, "export_bundle_entries_offset")
+        ar << (Buffer, self, "export_bundle_entries", export_bundle_entries_size)
+        ar.update_with_current_offset(self, "graph_data_offset")
+        ar << (Buffer, self, "graph_data", self.graph_data_size)

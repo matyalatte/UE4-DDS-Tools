@@ -172,6 +172,7 @@ class Utexture:
         ar << (Uint64, self, "pixel_format_name_id")
         self.skip_offset_location = ar.tell()  # offset to self.skip_offset
         ar << (Uint32, self, "skip_offset")  # Offset to the end of this object
+
         if ar.version >= "4.20":
             ar == (Uint32, 0, "?")
         if ar.version >= "5.0":

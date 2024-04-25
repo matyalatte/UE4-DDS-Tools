@@ -10,7 +10,7 @@ from .version import VersionInfo
 from .archive import (ArchiveBase, ArchiveRead, ArchiveWrite,
                       Int32, Int32Array, Bytes, Buffer,
                       SerializableBase)
-from .file_summary import (UassetFileSummary, ZenPackageSummary)
+from .file_summary import (UassetFileSummary, ZenPackageSummary, ZenPackageSummary4)
 
 
 UASSET_EXT = ["uasset", "uexp", "ubulk", "uptnl"]
@@ -71,21 +71,23 @@ class Uasset:
         # read header
         self.check_tag(ar)
         if ar.is_reading:
-            if ar.is_ucas:
+            if not ar.is_ucas:
+                ar << (UassetFileSummary, self, "header")
+            elif ar.version >= "5.0":
                 ar << (ZenPackageSummary, self, "header")
             else:
-                ar << (UassetFileSummary, self, "header")
+                ar << (ZenPackageSummary4, self, "header")
             if ar.verbose:
                 self.header.print()
         else:
-            ar.seek(self.header.name_offset)
+            self.header.seek_to_name_map(ar)
 
         # read name map
         self.name_list = self.header.serialize_name_map(ar, self.name_list)
         if ar.verbose:
             self.print_name_map()
 
-        if ar.is_ucas:
+        if ar.is_ucas and ar.version >= "5.0":
             if ar.version >= "5.2":
                 # read bulk data map entries
                 self.data_resources = self.header.serialize_data_resources(ar, self.data_resources)
@@ -187,17 +189,16 @@ class Uasset:
             ar.is_ucas = False
             self.context["is_ucas"] = False
             self.is_ucas = False
-        elif self.tag == b"\x00\x00\x00\x00" or self.tag == b"\x01\x00\x00\x00":
+        else:
             if ar.version <= "4.24":
-                raise RuntimeError(f"Invalid tag detected. ({self.tag})")
-            if ar.version <= "4.27":
-                raise RuntimeError(f"Ucas assets for this UE version are not supported yet. ({ar.version})")
+                raise ar.raise_error(f"Invalid tag detected. ({self.tag})")
+            elif ar.version >= "5.0":
+                if self.tag != b"\x00\x00\x00\x00" and self.tag != b"\x01\x00\x00\x00":
+                    raise ar.raise_error(f"Invalid tag detected. ({self.tag})")
             ar.endian = "little"
             ar.is_ucas = True
             self.context["is_ucas"] = True
             self.is_ucas = True
-        else:
-            raise RuntimeError(f"Invalid tag detected. ({self.tag})")
 
     def read_export_objects(self, verbose=False):
         uexp_io = self.get_io(ext="uexp", rb=True)
@@ -257,7 +258,8 @@ class Uasset:
             return (len(string) + 1) * (1 + is_utf16)
 
         # Update file size
-        self.header.uasset_size += get_size(new_name) - get_size(old_name)
+        diff = get_size(new_name) - get_size(old_name)
+        self.header.inc_file_size(diff)
 
     def get_main_export(self) -> ExportBase:
         main_list = [exp for exp in self.exports if (exp.is_public() and not exp.is_base())]

@@ -221,6 +221,10 @@ class ZenName(NameBase):
         is_utf16 = (self.head[0] & 0x80) > 0
         ar << (StringWithLen, self, "name", length, is_utf16)
 
+    def serialize_head_and_string(self, ar: ArchiveBase):
+        self.serialize_head(ar)
+        self.serialize_string(ar)
+
     def update(self, new_name, update_hash=False):
         length = len(new_name)
         is_utf16 = not new_name.isascii()
@@ -281,7 +285,11 @@ class ZenImport(ImportBase):
         self.type = self.type_and_id >> ZenImport.INDEX_BITS
 
     def name_import(self, imports: list[ImportBase], name_list: list[ZenName]) -> str:
-        if (self.is_script_object() and self.id in SCRIPT_OBJECTS):
+        if self.is_invalid():
+            self.name = "Invalid"
+            self.class_name = "None"
+            self.package_name = "None"
+        elif self.is_script_object() and self.id in SCRIPT_OBJECTS:
             # self.id is a city hash generated from a object path
             self.name, self.class_name, self.package_name = SCRIPT_OBJECTS[self.id]
         else:
@@ -317,8 +325,11 @@ class ZenImport(ImportBase):
     def print(self, padding=2):
         pad = " " * padding
         print(f"{pad}{self.name}")
-        print(f"{pad}  type: {self.type}")
-        print(f"{pad}  id: {hex(self.id)}")
+        if self.is_invalid():
+            print(f"{pad}  type: Invalid")
+        else:
+            print(f"{pad}  type: {self.type}")
+            print(f"{pad}  id: {hex(self.id)}")
         print(f"{pad}  class: {self.class_name}")
         print(f"{pad}  package_name: {self.package_name}")
 

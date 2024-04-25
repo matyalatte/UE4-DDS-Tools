@@ -66,6 +66,10 @@ class ArchiveBase:
     def close(self):
         self.io.close()
 
+    def align(self, base: int):
+        pad = (base - self.tell() % base) % base
+        self == (Bytes, b"\x00" * pad, "pad", pad)
+
     def raise_error(self, msg="Parse failed. Make sure you specified UE version correctly."):
         if (hasattr(self, "uasset")):
             msg += " (" + self.uasset.file_name + ")"
@@ -86,15 +90,15 @@ class ArchiveBase:
                 f" (Offset: {self.tell()}, Size: {size})"
             )
 
-    def update_with_current_offset(self, obj, attr_name):
+    def update_with_current_offset(self, obj, attr_name, base=0):
         if self.is_reading:
             # Checks obj.attr_name is the same as the current offset
-            current_offs = self.tell()
+            current_offs = self.tell() - base
             serialized_offs = getattr(obj, attr_name)
             self.check(serialized_offs, current_offs)
         else:
             # Update obj.attr_name with the current offset
-            setattr(obj, attr_name, self.tell())
+            setattr(obj, attr_name, self.tell() - base)
 
 
 class ArchiveRead(ArchiveBase):
