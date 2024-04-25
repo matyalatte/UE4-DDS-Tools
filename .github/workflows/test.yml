@@ -1,11 +1,11 @@
 name: test
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-  
+
 env:
   PYTHON_VERSION: 3.10.11
 
@@ -29,10 +29,12 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install pytest
-        run: pip install flake8 pytest pytest-cov
+        run: pip install flake8 codespell pytest pytest-cov
 
       - name: Linting
-        run: flake8 --max-line-length 119
+        run: |
+          flake8 --max-line-length 119
+          codespell -L "splitted,ue" -S ".git,.pytest_cache,external,htmlcov,python,tmp"
 
       - name: Test
         env:
