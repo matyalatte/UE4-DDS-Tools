@@ -49,7 +49,7 @@ class Uasset:
             self.io_dict[k] = None
             self.bin_dict[k] = None
         self.file_name, ext = os.path.splitext(file_path)
-        print(ext)
+
         if not ext or ext[1:] not in UASSET_EXT:
             raise RuntimeError(f"Not Uasset. ({file_path})")
         uasset_file = self.file_name + ".uasset"
