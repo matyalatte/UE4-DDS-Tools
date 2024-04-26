@@ -26,7 +26,7 @@ jobs:
         shell: bash
         
       - uses: actions/checkout@v3
-      - run: git submodule update --init --recursive external/Texconv-Custom-DLL
+      - run: git submodule update --init --recursive
       
       - name: Download embeddable python
         run: |
@@ -51,13 +51,24 @@ jobs:
           cp bat/* release
         shell: bash
 
-      - name: Download Tuw
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Meson
+        run: pip install meson
+
+      - name: Prepare MSVC for Windows
+        if: runner.os == 'Windows'
+        uses: bus1/cabuild/action/msdevshell@v1
+        with:
+          architecture: x64
+
+      - name: Build Tuw
         run: |
-          curl -OL https://github.com/matyalatte/tuw/releases/download/${{env.GUI_VERSION}}/Tuw-${{env.GUI_VERSION}}-${{ runner.os }}-x64.zip
-          unzip -d Tuw Tuw-${{env.GUI_VERSION}}-${{ runner.os }}-x64.zip
-          cp Tuw/Tuw.exe release_gui/GUI.exe
+          external/tuw/batch_files/build.bat
+          cp external/tuw/build/Release/Tuw.exe release_gui/GUI.exe
           cp gui_definition.json release_gui
-        shell: bash
 
       - name: Archive Release
         uses: thedoctor0/zip-release@master
