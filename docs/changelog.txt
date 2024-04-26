@@ -1,5 +1,6 @@
 - Supported ucas/utoc assets.
 - Added support for UE5.4.
+- Updated DirectXTex to the March 2024 release.
 - Fixed typos.
 
 ver 0.5.6

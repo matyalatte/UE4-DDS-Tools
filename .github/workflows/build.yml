@@ -37,7 +37,7 @@ jobs:
 
       - name: build dll
         run: |
-          external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
+          external/Texconv-Custom-DLL/batch_files/build_without_vcruntime.bat
           mkdir -p release/src/directx
           cp external/Texconv-Custom-DLL/texconv.dll release/src/directx
 

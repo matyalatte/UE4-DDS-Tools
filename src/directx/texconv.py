@@ -193,8 +193,7 @@ class Texconv:
         if out not in [".", ""] and not os.path.exists(out):
             mkdir(out)
 
-        args += ["-y"]
-        args += [os.path.normpath(file)]
+        args += ["-y", "--", os.path.normpath(file)]
 
         args_p = [ctypes.c_wchar_p(arg) for arg in args]
         args_p = (ctypes.c_wchar_p*len(args_p))(*args_p)
@@ -227,7 +226,7 @@ class Texconv:
         out = os.path.dirname(new_file)
         if out not in [".", ""] and not os.path.exists(out):
             mkdir(out)
-        args += ["-y", "-o", new_file, file]
+        args += ["-y", "-o", new_file, "--", file]
 
         args_p = [ctypes.c_wchar_p(arg) for arg in args]
         args_p = (ctypes.c_wchar_p*len(args_p))(*args_p)
