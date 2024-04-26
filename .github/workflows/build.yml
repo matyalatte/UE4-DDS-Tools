@@ -5,7 +5,7 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-  
+
 env:
   ZIP_NAME: UE4-DDS-Tools
   GUI_VERSION: v0.6.3
@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-    
+
       - name: Check tag
         run: |
           if [[ ${{ github.ref }} == refs/tags/v* ]]; then
@@ -24,10 +24,10 @@ jobs:
           fi
           echo "TAG=$TAG" >> "$GITHUB_ENV"
         shell: bash
-        
-      - uses: actions/checkout@v3
+
+      - uses: actions/checkout@v4
       - run: git submodule update --init --recursive
-      
+
       - name: Download embeddable python
         run: |
           mkdir -p release
@@ -88,7 +88,7 @@ jobs:
 
       - name: Create Release Draft
         id: create-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: ${{ env.TAG }}
