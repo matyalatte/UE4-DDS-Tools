@@ -33,7 +33,7 @@ jobs:
 
       - name: Linting
         run: |
-          flake8 --max-line-length 119
+          flake8 --max-line-length 119 --exclude ".git,.pytest_cache,external,htmlcov,python,tmp"
           codespell -L "splitted,ue" -S ".git,.pytest_cache,external,htmlcov,python,tmp"
 
       - name: Test
