@@ -214,7 +214,8 @@ class Uasset:
         self.close_all_io(rb=True)
 
     def write_export_objects(self):
-        self.data_resources.clear()
+        if self.has_textures():
+            self.data_resources.clear()
         uexp_io = self.get_io(ext="uexp", rb=False)
         for exp in self.exports:
             exp.object.serialize(uexp_io)

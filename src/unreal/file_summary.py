@@ -242,9 +242,16 @@ class UassetFileSummary(FileSummaryBase):
 
     def serialize_data_resources(self, ar: ArchiveBase,
                                  data_resources: list[UassetDataResource]) -> list[UassetDataResource]:
-        ar.update_with_current_offset(self, "data_resource_offset")
-        if ar.is_writing:
+        if ar.is_reading:
+            if self.data_resource_offset == -1:
+                return []
+            ar.update_with_current_offset(self, "data_resource_offset")
+        else:
+            if len(data_resources) == 0:
+                self.data_resource_offset = -1
+                return []
             self.data_resource_count = len(data_resources)
+
         ar == (Int32, 1, "deta_resource_version")
         ar << (Int32, self, "data_resource_count")
 

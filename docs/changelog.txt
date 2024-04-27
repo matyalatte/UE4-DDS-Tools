@@ -5,6 +5,7 @@ ver 0.6.0
 - Updated GUI to v0.6.4
 - Fixed typos.
 - Removed unused python libraries.
+- Fixed an error when reading non-texture assets for UE5.2 or later.
 
 ver 0.5.6
 - Added support for ETC formats. (ETC1, ETC2_RGB, and ETC2_RGBA)
