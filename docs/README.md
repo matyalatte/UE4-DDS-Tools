@@ -97,6 +97,14 @@ Download one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-
 - `UE4-DDS-tools-*-Batch.zip` is for batch file users.
 - `UE4-DDS-tools-*-GUI.zip` is for GUI users.
 
+> `GUI.exe` only works on Windows10 or later.  
+> If you use windows 8 or older, you can copy an executable from [Tuw-*-Windows-x64.zip](https://github.com/matyalatte/tuw/releases).
+
+> Released packages only work on Windows.
+> See here if you use macOS or Linux.  
+> [For Unix Systems · matyalatte/UE4-DDS-Tools Wiki](https://github.com/matyalatte/UE4-DDS-Tools/wiki/For-Unix-Systems)
+
+
 ## Getting Started
 
 - [For GUI users](https://github.com/matyalatte/UE4-DDS-Tools/wiki/How-to-Use)

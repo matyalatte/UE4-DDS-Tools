@@ -66,8 +66,8 @@ jobs:
 
       - name: Build Tuw
         run: |
-          external/tuw/batch_files/build.bat
-          cp external/tuw/build/Release/Tuw.exe release_gui/GUI.exe
+          external/tuw/batch_files/build_with_ucrt.bat
+          cp external/tuw/build/ReleaseUCRT/Tuw.exe release_gui/GUI.exe
           cp gui_definition.json release_gui
 
       - name: Archive Release
