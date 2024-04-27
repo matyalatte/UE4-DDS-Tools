@@ -1,6 +1,7 @@
 from io import IOBase
 import os
 import tempfile
+import sys
 
 
 def mkdir(dir):
@@ -103,3 +104,12 @@ def get_file_list_rec(folder: str) -> list[str]:
         else:
             file_list.append(file)
     return file_list
+
+
+def check_python_version(major, minor):
+    sys_major = sys.version_info.major
+    sys_minor = sys.version_info.minor
+    if sys_major > major or (sys_major == major and sys_minor >= minor):
+        return
+    error_msg = f"Python{major}.{minor} or later required. (Running {sys_major}.{sys_minor})"
+    raise RuntimeError(error_msg)

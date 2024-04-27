@@ -10,7 +10,8 @@ import functools
 
 # my scripts
 from util import (compare, get_ext, get_temp_dir,
-                  get_file_list, get_base_folder, remove_quotes)
+                  get_file_list, get_base_folder, remove_quotes,
+                  check_python_version)
 from unreal.uasset import Uasset, UASSET_EXT
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
@@ -574,6 +575,9 @@ if __name__ == "__main__":  # pragma: no cover
     start_time = time.time()
 
     print(f"UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte")
+
+    # ensure that the python version is 3.10 or later
+    check_python_version(3, 10)
 
     args = get_args()
     config = get_config()

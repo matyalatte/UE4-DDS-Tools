@@ -25,13 +25,19 @@ del pyexpat.pyd unicodedata.pyd winsound.pyd
 REM Remove unnecessary files from pythonXXX.zip
 powershell Expand-Archive -Force -Path python%PYTHON_VER_SHORT%.zip
 cd python%PYTHON_VER_SHORT%
-rmdir /s /q curses dbm distutils email html http lib2to3 msilib
+rmdir /s /q asyncio curses dbm distutils email html http lib2to3 msilib
 rmdir /s /q pydoc_data site-packages sqlite3 tomllib unittest urllib
 rmdir /s /q wsgiref xml xmlrpc zoneinfo
-del ast.pyc bz2.pyc calendar.pyc csv.pyc doctest.pyc ftplib.pyc gzip.pyc
-del imaplib.pyc ipaddress.pyc mailbox.pyc nntplib.pyc nturl2path.pyc
-del optparse.pyc pdb.pyc pickletools.pyc pydoc.pyc
-del smtpd.pyc smtplib.pyc ssl.pyc tarfile.pyc
+del _aix_support.pyc _compression.pyc _markupbase.pyc _osx_support.pyc _pydecimal.pyc _strptime.pyc
+del aifc.pyc ast.pyc asynchat.pyc asyncore.pyc base64.pyc bz2.pyc
+del calendar.pyc cgi.pyc cgitb.pyc configparser.pyc cProfile.pyc csv.pyc
+del datetime.pyc difflib.pyc dis.pyc doctest.pyc fileinput.pyc fractions.pyc ftplib.pyc gzip.pyc
+del getopt.pyc graphlib.pyc hashlib.pyc hmac.pyc imaplib.pyc imghdr.pyc ipaddress.pyc lzma.pyc
+del mailbox.pyc mailcap.pyc netrc.pyc nntplib.pyc nturl2path.pyc
+del opcode.pyc optparse.pyc pdb.pyc pickletools.pyc plistlib.pyc poplib.pyc pprint.pyc profile.pyc pstats.pyc pydoc.pyc quopri.pyc
+del rlcompleter.pyc sched.pyc shelve.pyc shlex.pyc smtpd.pyc smtplib.pyc sndhdr.pyc socketserver.pyc ssl.pyc statistics.pyc sunau.pyc symtable.pyc
+del tarfile.pyc telnetlib.pyc timeit.pyc tty.pyc
+del uuid.pyc wave.pyc webbrowser.pyc xdrlib.pyc zipapp.pyc zipfile.pyc zipimport.pyc
 powershell Compress-Archive -Force -Path * -Destination ../python%PYTHON_VER_SHORT%.zip
 cd ..
 rmdir /s /q python%PYTHON_VER_SHORT%

@@ -3,6 +3,7 @@ ver 0.6.0
 - Added support for UE5.4.
 - Updated DirectXTex to the March 2024 release.
 - Fixed typos.
+- Removed unused python libraries.
 
 ver 0.5.6
 - Added support for ETC formats. (ETC1, ETC2_RGB, and ETC2_RGBA)
