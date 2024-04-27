@@ -336,7 +336,7 @@ class ZenPackageSummary(FileSummaryBase):
         list(map(lambda x: x.serialize_string(ar), name_list))
         if ar.is_writing:
             self.pad_size = (8 - (ar.tell() % 8)) % 8
-        if ar.version >= "5.2":
+        if ar.version >= "5.4":
             ar << (Uint64, self, "pad_size")
             ar == (Buffer, b"\x00" * self.pad_size, "pad", self.pad_size)
         return name_list

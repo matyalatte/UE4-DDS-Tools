@@ -155,7 +155,7 @@ class Uasset:
             # write exports
             ar.seek(self.header.export_offset)
             if self.is_ucas:
-                if ar.version >= "5.2":
+                if ar.version >= "5.3":
                     offset = 0
                 else:
                     offset = self.header.cooked_header_size
@@ -321,7 +321,7 @@ class Uasset:
         ar = self.io_dict[ext]
         if ext == "uexp":
             self.uexp_size = ar.tell()
-            if self.has_uexp() and not self.is_ucas:
+            if (self.has_uexp() and not ar.is_ucas) or ar.version == "5.3":
                 if rb:
                     ar.check(ar.read(4), Uasset.TAG)
                 else:
