@@ -123,6 +123,13 @@ class Utexture:
         # We will skip them cause we don't need to edit them.
         start_offset = ar.tell()
         err_offset = min(ar.size - 7, start_offset + 1000)
+
+        if ar.version <= "5.3":
+            search_bin = b"\x01\x00\x01\x00\x01\x00\x00\x00"
+        else:
+            # The default value of StripFlags is five from UE5.4
+            search_bin = b"\x05\x00\x05\x00\x01\x00\x00\x00"
+
         while (True):
             """ Search and skip to \x01\x00\x01\x00\x01\x00\x00\x00.
             \x01\x00 is StripFlags for UTexture
@@ -132,12 +139,12 @@ class Utexture:
             Just searching x01 is not the best algorithm but fast enough.
             Because "found 01" means "found strip flags" for most texture assets.
             """
-            while (ar.read(1) != b"\x01"):
+            while (ar.read(1)[0] != search_bin[0]):
                 if (ar.tell() >= err_offset):
-                    raise RuntimeError("Parse Failed. Make sure you specified UE4 version correctly.")
+                    ar.raise_error()
 
-            if ar.read(7) == b"\x00\x01\x00\x01\x00\x00\x00":
-                # Found \x01\x00\x01\x00\x01\x00\x00\x00
+            if ar.read(7) == search_bin[1:]:
+                # Found search_bin
                 break
             else:
                 ar.seek(-7, 1)
@@ -147,7 +154,10 @@ class Utexture:
 
     def __serialize_uexp(self, ar: ArchiveBase, ubulk_start_offset: int = 0, uptnl_start_offset: int = 0):
         start_offset = ar.tell()
-        uasset_size = self.uasset.get_size()
+        if ar.is_ucas and (ar.version <= "5.1"):
+            uasset_size = self.uasset.header.cooked_header_size
+        else:
+            uasset_size = self.uasset.get_size()
         if ar.is_reading:
             prop_size = self.__calculate_prop_size(ar)
         else:
@@ -162,6 +172,7 @@ class Utexture:
         ar << (Uint64, self, "pixel_format_name_id")
         self.skip_offset_location = ar.tell()  # offset to self.skip_offset
         ar << (Uint32, self, "skip_offset")  # Offset to the end of this object
+
         if ar.version >= "4.20":
             ar == (Uint32, 0, "?")
         if ar.version >= "5.0":
@@ -389,7 +400,7 @@ class Utexture:
         self.mipmaps = [Umipmap() for i in range(len(dds.mipmap_size_list))]
         offset = 0
         for size, mip, i in zip(dds.mipmap_size_list, self.mipmaps, range(len(self.mipmaps))):
-            mip.init_data_resource(self.version)
+            mip.init_data_resource(self.uasset)
             # get a mip data from slices
             data = b""
             bin_size = int(size[0] * size[1] * self.byte_per_pixel)

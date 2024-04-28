@@ -4,3 +4,6 @@
 [submodule "external/Matya-Uasset-Samples"]
 	path = external/Matya-Uasset-Samples
 	url = https://github.com/matyalatte/Matya-Uasset-Samples.git
+[submodule "external/tuw"]
+	path = external/tuw
+	url = https://github.com/matyalatte/tuw.git

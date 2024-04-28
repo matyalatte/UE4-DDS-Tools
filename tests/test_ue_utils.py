@@ -1,6 +1,6 @@
 """Tests for crc.py and version.py"""
 import pytest
-from unreal.crc import generate_hash, strcrc_deprecated
+from unreal.crc import strcrc, strcrc_deprecated
 from unreal.version import VersionInfo
 
 test_cases = {
@@ -19,7 +19,7 @@ test_cases = {
 
 @pytest.mark.parametrize("name, true_hash", test_cases["name_hash"])
 def test_name_hash(name, true_hash):
-    name_hash = generate_hash(name)
+    name_hash = strcrc(name)
     assert name_hash == true_hash
 
 

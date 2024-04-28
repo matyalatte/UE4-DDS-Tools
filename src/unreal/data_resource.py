@@ -196,3 +196,46 @@ class UassetDataResource(SerializableBase, DataResourceBase):
         print(pad + f"  data size: {self.data_size}")
         print(pad + f"  outer index: {self.outer_index}")
         print(pad + f"  legacy bulk data flags: {self.bulk_flags}")
+
+
+class BulkDataMapEntry(SerializableBase, DataResourceBase):
+    """data resource for ucas assets. (FBulkDataMapEntry)
+
+    Notes:
+        UnrealEngine/Engine/Source/Runtime/CoreUObject/Public/Serialization/AsyncLoading2.h
+        The latest UE version will write the meta data in .uasset.
+    """
+    def __init__(self):
+        super().__init__()
+        self.flags = 0
+        self.duplicated_offset = -1
+
+    def serialize(self, ar: ArchiveBase):
+        if ar.is_writing:
+            if not ar.valid:
+                self.update_bulk_flags(ar)
+
+        ar << (Int64, self, "offset")
+        ar << (Int64, self, "duplicated_offset")
+        ar << (Int64, self, "data_size")
+        ar << (Uint32, self, "bulk_flags")
+        ar == (Uint32, 0, "pad")
+
+        if ar.is_reading:
+            self.unpack_bulk_flags(ar)
+
+    def update(self, data_size: int, has_uexp_bulk: bool):
+        super().update(data_size, has_uexp_bulk)
+        self.has_64bit_size = True
+
+    def print(self, padding=2):
+        pad = " " * padding
+        print(pad + "DataResource")
+        print(pad + f"  serial offset: {self.offset}")
+        print(pad + f"  duplicated serial offset: {self.duplicated_offset}")
+        print(pad + f"  data size: {self.data_size}")
+        print(pad + f"  flags: {self.bulk_flags}")
+
+    @staticmethod
+    def get_struct_size(ar: ArchiveBase) -> int:
+        return 32

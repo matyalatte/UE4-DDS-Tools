@@ -168,7 +168,7 @@ def memcrc(string):
     return ~crc & 0xFFFFFFFF
 
 
-def generate_hash(string):
+def strcrc(string):
     """Generate hash from a string.
 
     Args:

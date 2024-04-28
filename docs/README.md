@@ -2,7 +2,7 @@
 ![test](https://github.com/matyalatte/UE4-DDS-tools/actions/workflows/test.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# UE4-DDS-Tools ver0.5.6
+# UE4-DDS-Tools ver0.6.0
 
 Texture modding tools for UE games.  
 You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.  
@@ -16,7 +16,7 @@ You can inject texture files (.dds, .tga, .hdr, etc.) into UE assets.
 
 ## Supported UE versions
 
-- UE5.0 ~ 5.3
+- UE5.0 ~ 5.4
 - UE4.0 ~ 4.27
 - FF7R
 - Borderlands3
@@ -96,6 +96,14 @@ Download one of the zip files from [here](https://github.com/matyalatte/UE4-DDS-
 
 - `UE4-DDS-tools-*-Batch.zip` is for batch file users.
 - `UE4-DDS-tools-*-GUI.zip` is for GUI users.
+
+> `GUI.exe` only works on Windows10 or later.  
+> If you use windows 8 or older, you can copy an executable from [Tuw-*-Windows-x64.zip](https://github.com/matyalatte/tuw/releases).
+
+> Released packages only work on Windows.
+> See here if you use macOS or Linux.  
+> [For Unix Systems · matyalatte/UE4-DDS-Tools Wiki](https://github.com/matyalatte/UE4-DDS-Tools/wiki/For-Unix-Systems)
+
 
 ## Getting Started
 

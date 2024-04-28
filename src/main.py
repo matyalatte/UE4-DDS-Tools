@@ -10,16 +10,17 @@ import functools
 
 # my scripts
 from util import (compare, get_ext, get_temp_dir,
-                  get_file_list, get_base_folder, remove_quotes)
+                  get_file_list, get_base_folder, remove_quotes,
+                  check_python_version)
 from unreal.uasset import Uasset, UASSET_EXT
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv, is_windows
 
-TOOL_VERSION = "0.5.6"
+TOOL_VERSION = "0.6.0"
 
-# UE version: 4.0 ~ 5.3, ff7r, borderlands3
-UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(4)] + ["ff7r", "borderlands3"]
+# UE version: 4.0 ~ 5.4, ff7r, borderlands3
+UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(5)] + ["ff7r", "borderlands3"]
 
 # Supported file extensions.
 TEXTURES = ["dds", "tga", "hdr"]
@@ -346,7 +347,7 @@ def copy(folder, file, args, texture_file=None):
 
 # UE version for textures
 UTEX_VERSIONS = [
-    "5.3", "5.2", "5.1", "5.0",
+    "5.4", "5.3", "5.2", "5.1", "5.0",
     "4.26 ~ 4.27", "4.24 ~ 4.25", "4.23", "4.20 ~ 4.22",
     "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
     "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
@@ -574,6 +575,9 @@ if __name__ == "__main__":  # pragma: no cover
     start_time = time.time()
 
     print(f"UE4 DDS Tools ver{TOOL_VERSION} by Matyalatte")
+
+    # ensure that the python version is 3.10 or later
+    check_python_version(3, 10)
 
     args = get_args()
     config = get_config()

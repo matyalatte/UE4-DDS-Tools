@@ -1,11 +1,11 @@
 name: test
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-  
+
 env:
   PYTHON_VERSION: 3.10.11
 
@@ -14,25 +14,27 @@ jobs:
     runs-on: windows-2022
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: build dll
         run: |
-          external/Texconv-Custom-DLL/batch_files/build_wic_support.bat
+          external/Texconv-Custom-DLL/batch_files/build_without_vcruntime.bat
           cp external/Texconv-Custom-DLL/texconv.dll src/directx
 
       - name: Set up Python v${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install pytest
-        run: pip install flake8 pytest pytest-cov
+        run: pip install flake8 codespell pytest pytest-cov
 
       - name: Linting
-        run: flake8 --max-line-length 119
+        run: |
+          flake8 --max-line-length 119 --exclude ".git,.pytest_cache,external,htmlcov,python,tmp"
+          codespell -L "splitted,ue" -S ".git,.pytest_cache,external,htmlcov,python,tmp"
 
       - name: Test
         env:

@@ -1,5 +1,5 @@
 {
-    "recommended": "0.6.3",
+    "recommended": "0.6.4",
     "minimum_required": "0.5.0",
     "gui": [
         {
@@ -35,6 +35,7 @@
                     "type": "choice",
                     "label": "UE version",
                     "items": [
+                        { "label": "5.4" },
                         { "label": "5.3" },
                         { "label": "5.2" },
                         { "label": "5.1" },
@@ -139,6 +140,7 @@
                     "type": "choice",
                     "label": "UE version",
                     "items": [
+                        { "label": "5.4" },
                         { "label": "5.3" },
                         { "label": "5.2" },
                         { "label": "5.1" },
