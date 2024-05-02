@@ -57,6 +57,7 @@ class Uasset:
 
         self.version = VersionInfo(version)
         self.context = {"version": self.version, "verbose": verbose, "valid": False, "uasset": self}
+        self.has_end_tag = True
         ar = ArchiveRead(open(uasset_file, "rb"), context=self.context)
         self.serialize(ar)
         ar.close()
@@ -322,9 +323,12 @@ class Uasset:
         ar = self.io_dict[ext]
         if ext == "uexp":
             self.uexp_size = ar.tell()
-            if (self.has_uexp() and not ar.is_ucas) or ar.version == "5.3":
+            if self.has_end_tag and ((self.has_uexp() and not ar.is_ucas) or ar.version >= "5.3"):
                 if rb:
-                    ar.check(ar.read(4), Uasset.TAG)
+                    if ar.is_eof():
+                        self.has_end_tag = False
+                    else:
+                        ar.check(ar.read(4), Uasset.TAG)
                 else:
                     ar.write(Uasset.TAG)
         else:
