@@ -70,7 +70,7 @@ def compare(file1: str, file2: str):
     f2.close()
 
     if f1_size == f2_size and f1_bin == f2_bin:
-        print("Same data!")
+        print("They have the same data!")
         return
 
     i = 0
@@ -79,7 +79,7 @@ def compare(file1: str, file2: str):
             break
         i += 1
 
-    raise RuntimeError(f"Not same :{i}")
+    raise RuntimeError(f"Not the same :{i} ({file1})")
 
 
 def remove_quotes(string: str) -> str:
