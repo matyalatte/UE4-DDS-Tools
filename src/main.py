@@ -11,11 +11,11 @@ import functools
 # my scripts
 from util import (compare, get_ext, get_temp_dir,
                   get_file_list, get_base_folder, remove_quotes,
-                  check_python_version)
+                  check_python_version, is_windows)
 from unreal.uasset import Uasset, UASSET_EXT
 from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
-from directx.texconv import Texconv, is_windows
+from directx.texconv import Texconv
 
 TOOL_VERSION = "0.6.0"
 
@@ -457,6 +457,9 @@ def fix_args(args, config):
     if args.max_workers is not None and args.max_workers <= 0:
         args.max_workers = None
 
+    if args.export_as == "hdr":
+        args.export_as = "tga"
+
 
 def print_args(args):
     mode = args.mode
@@ -488,11 +491,13 @@ def check_args(args):
     mode = args.mode
     if os.path.isfile(args.save_folder):
         raise RuntimeError(f"Output path is not a folder. ({args.save_folder})")
+    if args.file == "":
+        raise RuntimeError("Specify a uasset file.")
     if not os.path.exists(args.file):
         raise RuntimeError(f"Path not found. ({args.file})")
     if mode == "inject":
         if args.texture is None or args.texture == "":
-            raise RuntimeError("Specify texture file.")
+            raise RuntimeError("Specify a texture file.")
         if os.path.isdir(args.file):
             if not os.path.isdir(args.texture):
                 raise RuntimeError(
@@ -506,7 +511,7 @@ def check_args(args):
         raise RuntimeError(f"Unsupported mode. ({mode})")
     if mode != "check" and args.version not in UE_VERSIONS:
         raise RuntimeError(f"Unsupported version. ({args.version})")
-    if args.export_as not in ["tga", "png", "dds", "jpg", "bmp"]:
+    if args.export_as not in TEXTURES:
         raise RuntimeError(f"Unsupported format to export. ({args.export_as})")
     if args.image_filter.lower() not in IMAGE_FILTERS:
         raise RuntimeError(f"Unsupported image filter. ({args.image_filter})")

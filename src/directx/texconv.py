@@ -6,29 +6,12 @@ Notes:
 """
 import ctypes
 import os
-import platform
 import shutil
 import tempfile
 
 from .dds import DDS, DDSHeader, is_hdr
 from .dxgi_format import DXGI_FORMAT
-from util import mkdir
-
-
-def get_os_name():
-    return platform.system()
-
-
-def is_windows():
-    return get_os_name() == "Windows"
-
-
-def is_linux():
-    return get_os_name() == "Linux"
-
-
-def is_mac():
-    return get_os_name() == "Darwin"
+from util import mkdir, get_os_name, is_windows, is_mac, is_linux
 
 
 class Texconv:

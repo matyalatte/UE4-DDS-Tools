@@ -1,11 +1,28 @@
 from io import IOBase
 import os
+import platform
 import tempfile
 import sys
 
 
 def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
+
+
+def get_os_name():
+    return platform.system()
+
+
+def is_windows():
+    return get_os_name() == "Windows"
+
+
+def is_linux():
+    return get_os_name() == "Linux"
+
+
+def is_mac():
+    return get_os_name() == "Darwin"
 
 
 class NonTempDir:
