@@ -71,7 +71,7 @@ def hash_len_0to16(binary: bytes) -> int:
     if length > 0:
         a = binary[0]
         b = binary[length >> 1]
-        c = binary[:-1]
+        c = binary[-1]
         y = (a + (b << 8)) & MASK_32
         z = (length + (c << 2)) & MASK_32
         return (shift_mix(y * k2 ^ z * k0) * k2) & MASK_64
