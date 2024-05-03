@@ -10,6 +10,11 @@ Notes:
         <, <=, >, >=: Comparison operators for base_int.
 """
 
+BASE_VERSIONS = {
+    "ff7r": "4.18",
+    "borderlands3": "4.22",
+}
+
 
 class VersionInfo:
     """Class for version info."""
@@ -20,11 +25,8 @@ class VersionInfo:
 
     def __init__(self, version: str, base_int: int = None):
         """Constructor."""
-        if version == "ff7r":
-            base = "4.18"
-            custom = version
-        elif version == "borderlands3":
-            base = "4.22"
+        if version in BASE_VERSIONS:
+            base = BASE_VERSIONS[version]
             custom = version
         else:
             base = version

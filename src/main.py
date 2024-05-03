@@ -22,6 +22,15 @@ TOOL_VERSION = "0.6.0"
 # UE version: 4.0 ~ 5.4, ff7r, borderlands3
 UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(5)] + ["ff7r", "borderlands3"]
 
+# UE version for textures
+UTEX_VERSIONS = [
+    "5.4", "5.3", "5.2", "5.1", "5.0",
+    "4.26 ~ 4.27", "4.24 ~ 4.25", "4.23", "4.20 ~ 4.22",
+    "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
+    "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
+    "ff7r", "borderlands3"
+]
+
 # Supported file extensions.
 TEXTURES = ["dds", "tga", "hdr"]
 if is_windows():
@@ -343,16 +352,6 @@ def copy(folder, file, args, texture_file=None):
         return
     new_file = os.path.join(args.save_folder, file)
     asset.save(new_file)
-
-
-# UE version for textures
-UTEX_VERSIONS = [
-    "5.4", "5.3", "5.2", "5.1", "5.0",
-    "4.26 ~ 4.27", "4.24 ~ 4.25", "4.23", "4.20 ~ 4.22",
-    "4.16 ~ 4.19", "4.15", "4.14", "4.12 ~ 4.13", "4.11", "4.10",
-    "4.9", "4.8", "4.7", "4.4 ~ 4.6", "4.3", "4.0 ~ 4.2",
-    "ff7r", "borderlands3"
-]
 
 
 @stdout_wrapper
