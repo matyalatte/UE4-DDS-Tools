@@ -1,3 +1,4 @@
+- Added support for non-2D textures with mipmaps.
 - Fixed errors when reading some ucas/utoc assets from UE5.4 games
 - Fixed some error messages about input paths.
 

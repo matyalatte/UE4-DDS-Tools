@@ -331,8 +331,6 @@ class DDSHeader(c.LittleEndianStructure):
             raise RuntimeError("Not DDS file.")
         if head.dx10_header.resource_dimension == 2:
             raise RuntimeError("1D textures are unsupported.")
-        if (head.is_array() or head.is_3d()) and head.has_mips():
-            raise RuntimeError(f"Loaded {head.get_texture_type()} texture has mipmaps. This is unexpected.")
 
         return head
 

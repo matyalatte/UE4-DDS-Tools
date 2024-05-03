@@ -115,8 +115,6 @@ class Utexture:
 
         if uexp_io.is_reading:
             self.print(uexp_io.verbose)
-            if (self.is_3d or self.is_array) and len(self.mipmaps) > 1:
-                raise RuntimeError(f"Loaded {self.get_texture_type()} texture has mipmaps. This is unexpected.")
 
     def __calculate_prop_size(self, ar: ArchiveBase):
         # Each UObject has some properties (Imported size, GUID, etc.) before the strip flags.
@@ -392,7 +390,7 @@ class Utexture:
         old_size = self.get_max_size()
         old_mipmap_num = len(self.mipmaps)
         old_depth = self.get_depth()
-        new_depth = dds.header.depth
+        new_depth = dds.header.get_num_slices()
 
         # inject
         uexp_width, uexp_height = self.get_max_uexp_size()
