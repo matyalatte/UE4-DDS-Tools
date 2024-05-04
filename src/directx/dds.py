@@ -316,6 +316,7 @@ class DDSHeader(c.LittleEndianStructure):
         head = DDSHeader()
         f.readinto(head)
         head.mipmap_num += head.mipmap_num == 0
+        head.depth += head.depth == 0
 
         # DXT10 header
         if head.pixel_format.is_dx10():
@@ -518,7 +519,7 @@ class DDS:
             dds.print(verbose)
 
             if f.tell() != end_offset:
-                raise RuntimeError("Parse failed. (Not the end of the file.)")
+                raise RuntimeError(f"Parse failed. (Not the end of the file. Offset: {f.tell()})")
 
         return dds
 
