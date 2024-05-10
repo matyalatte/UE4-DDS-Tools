@@ -17,7 +17,7 @@ from directx.dds import DDS
 from directx.dxgi_format import DXGI_FORMAT
 from directx.texconv import Texconv
 
-TOOL_VERSION = "0.6.0"
+TOOL_VERSION = "0.6.1"
 
 # UE version: 4.0 ~ 5.4, ff7r, borderlands3
 UE_VERSIONS = ["4." + str(i) for i in range(28)] + ["5." + str(i) for i in range(5)] + ["ff7r", "borderlands3"]
