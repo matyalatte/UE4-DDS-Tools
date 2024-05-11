@@ -56,11 +56,24 @@ class Uasset:
         print("load: " + uasset_file)
 
         self.version = VersionInfo(version)
-        self.context = {"version": self.version, "verbose": verbose, "valid": False, "uasset": self}
-        ar = ArchiveRead(open(uasset_file, "rb"), context=self.context)
+        self.context_verbose = verbose
+        self.context_valid = False
+        self.is_ucas = False
+        self.has_end_tag = True
+        ar = ArchiveRead(open(uasset_file, "rb"), context=self.get_ar_context())
         self.serialize(ar)
         ar.close()
         self.read_export_objects(verbose=verbose)
+
+    def get_ar_context(self):
+        context = {
+            "version": self.version,
+            "verbose": self.context_verbose,
+            "valid": self.context_valid,
+            "is_ucas": self.is_ucas,
+            "uasset": self
+        }
+        return context
 
     def print_name_map(self):
         print("Names")
@@ -181,13 +194,9 @@ class Uasset:
             ar.seek(0)
         if self.tag == Uasset.TAG:
             ar.endian = "little"
-            ar.is_ucas = False
-            self.context["is_ucas"] = False
             self.is_ucas = False
         elif self.tag == Uasset.TAG_SWAPPED:
             ar.endian = "big"
-            ar.is_ucas = False
-            self.context["is_ucas"] = False
             self.is_ucas = False
         else:
             if ar.version <= "4.24":
@@ -196,9 +205,8 @@ class Uasset:
                 if self.tag != b"\x00\x00\x00\x00" and self.tag != b"\x01\x00\x00\x00":
                     raise ar.raise_error(f"Invalid tag detected. ({self.tag})")
             ar.endian = "little"
-            ar.is_ucas = True
-            self.context["is_ucas"] = True
             self.is_ucas = True
+        ar.update_context(self.get_ar_context())
 
     def read_export_objects(self, verbose=False):
         uexp_io = self.get_io(ext="uexp", rb=True)
@@ -239,11 +247,11 @@ class Uasset:
         uasset_file = self.file_name + ".uasset"
         print("save :" + uasset_file)
 
-        self.context["verbose"] = False
-        self.context["valid"] = valid
+        self.context_verbose = False
+        self.context_valid = valid
         self.write_export_objects()
 
-        ar = ArchiveWrite(open(uasset_file, "wb"), context=self.context)
+        ar = ArchiveWrite(open(uasset_file, "wb"), context=self.get_ar_context())
 
         self.serialize(ar)
 
@@ -307,9 +315,9 @@ class Uasset:
             opened_io = open(file, "rb" if rb else "wb")
 
         if rb:
-            return ArchiveRead(opened_io, context=self.context)
+            return ArchiveRead(opened_io, context=self.get_ar_context())
         else:
-            return ArchiveWrite(opened_io, context=self.context)
+            return ArchiveWrite(opened_io, context=self.get_ar_context())
 
     def get_io(self, ext="uexp", rb=True) -> IOBase:
         if ext not in self.io_dict or self.io_dict[ext] is None:
@@ -322,9 +330,12 @@ class Uasset:
         ar = self.io_dict[ext]
         if ext == "uexp":
             self.uexp_size = ar.tell()
-            if (self.has_uexp() and not ar.is_ucas) or ar.version == "5.3":
+            if self.has_end_tag and ((self.has_uexp() and not ar.is_ucas) or ar.version >= "5.3"):
                 if rb:
-                    ar.check(ar.read(4), Uasset.TAG)
+                    if ar.is_eof():
+                        self.has_end_tag = False
+                    else:
+                        ar.check(ar.read(4), Uasset.TAG)
                 else:
                     ar.write(Uasset.TAG)
         else:

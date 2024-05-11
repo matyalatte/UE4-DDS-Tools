@@ -21,7 +21,16 @@
                     "label": "Texture file (dds, tga, hdr, png, jpg, or bmp)",
                     "extension": "any files | *",
                     "add_quotes": true,
-                    "empty_message": "Drop an image here!"
+                    "empty_message": "Drop an image here!",
+                    "platforms": [ "win" ]
+                },
+                {
+                    "type": "file",
+                    "label": "Texture file (dds, tga, or hdr)",
+                    "extension": "any files | *",
+                    "add_quotes": true,
+                    "empty_message": "Drop an image here!",
+                    "platforms": [ "mac", "linux" ]
                 },
                 {
                     "type": "folder",

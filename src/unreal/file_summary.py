@@ -341,11 +341,15 @@ class ZenPackageSummary(FileSummaryBase):
         list(map(lambda x: x.serialize_hash(ar), name_list))
         list(map(lambda x: x.serialize_head(ar), name_list))
         list(map(lambda x: x.serialize_string(ar), name_list))
-        if ar.is_writing:
-            self.pad_size = (8 - (ar.tell() % 8)) % 8
         if ar.version >= "5.4":
+            if ar.is_writing and self.align_name_map:
+                self.pad_size = (8 - (ar.tell() % 8)) % 8
             ar << (Uint64, self, "pad_size")
             ar == (Buffer, b"\x00" * self.pad_size, "pad", self.pad_size)
+            if ar.is_reading:
+                # Some assets don't use alignment somehow.
+                self.align_name_map = ar.tell() % 8 == 0
+
         return name_list
 
     def serialize_data_resources(self, ar: ArchiveBase,

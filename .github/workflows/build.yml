@@ -70,6 +70,18 @@ jobs:
           cp external/tuw/build/ReleaseUCRT/Tuw.exe release_gui/GUI.exe
           cp gui_definition.json release_gui
 
+      - name: Upload as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}-${{ env.TAG }}-Batch.zip
+          path: release
+
+      - name: Upload as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}-${{ env.TAG }}-GUI.zip
+          path: release_gui
+
       - name: Archive Release
         uses: thedoctor0/zip-release@master
         with:

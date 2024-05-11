@@ -1,11 +1,28 @@
 from io import IOBase
 import os
+import platform
 import tempfile
 import sys
 
 
 def mkdir(dir):
     os.makedirs(dir, exist_ok=True)
+
+
+def get_os_name():
+    return platform.system()
+
+
+def is_windows():
+    return get_os_name() == "Windows"
+
+
+def is_linux():
+    return get_os_name() == "Linux"
+
+
+def is_mac():
+    return get_os_name() == "Darwin"
 
 
 class NonTempDir:
@@ -53,7 +70,7 @@ def compare(file1: str, file2: str):
     f2.close()
 
     if f1_size == f2_size and f1_bin == f2_bin:
-        print("Same data!")
+        print("They have the same data!")
         return
 
     i = 0
@@ -62,7 +79,7 @@ def compare(file1: str, file2: str):
             break
         i += 1
 
-    raise RuntimeError(f"Not same :{i}")
+    raise RuntimeError(f"Not the same :{i} ({file1})")
 
 
 def remove_quotes(string: str) -> str:

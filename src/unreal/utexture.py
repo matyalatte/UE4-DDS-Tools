@@ -115,20 +115,12 @@ class Utexture:
 
         if uexp_io.is_reading:
             self.print(uexp_io.verbose)
-            if (self.is_3d or self.is_array) and len(self.mipmaps) > 1:
-                raise RuntimeError(f"Loaded {self.get_texture_type()} texture has mipmaps. This is unexpected.")
 
     def __calculate_prop_size(self, ar: ArchiveBase):
         # Each UObject has some properties (Imported size, GUID, etc.) before the strip flags.
         # We will skip them cause we don't need to edit them.
         start_offset = ar.tell()
         err_offset = min(ar.size - 7, start_offset + 1000)
-
-        if ar.version <= "5.3":
-            search_bin = b"\x01\x00\x01\x00\x01\x00\x00\x00"
-        else:
-            # The default value of StripFlags is five from UE5.4
-            search_bin = b"\x05\x00\x05\x00\x01\x00\x00\x00"
 
         while (True):
             """ Search and skip to \x01\x00\x01\x00\x01\x00\x00\x00.
@@ -139,12 +131,18 @@ class Utexture:
             Just searching x01 is not the best algorithm but fast enough.
             Because "found 01" means "found strip flags" for most texture assets.
             """
-            while (ar.read(1)[0] != search_bin[0]):
+            b = ar.read(1)
+            while (b != b"\x01" and b != b"\x05"):
                 if (ar.tell() >= err_offset):
                     ar.raise_error()
+                b = ar.read(1)
 
-            if ar.read(7) == search_bin[1:]:
-                # Found search_bin
+            b2 = ar.read(7)
+            if b == b"\x01" and b2 == b"\x00\x01\x00\x01\x00\x00\x00":
+                # Found
+                break
+            elif b == b"\x05" and b2 == b"\x00\x05\x00\x01\x00\x00\x00":
+                # The default value of StripFlags is five from UE5.4
                 break
             else:
                 ar.seek(-7, 1)
@@ -392,7 +390,7 @@ class Utexture:
         old_size = self.get_max_size()
         old_mipmap_num = len(self.mipmaps)
         old_depth = self.get_depth()
-        new_depth = dds.header.depth
+        new_depth = dds.header.get_num_slices()
 
         # inject
         uexp_width, uexp_height = self.get_max_uexp_size()

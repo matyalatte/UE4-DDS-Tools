@@ -1,3 +1,9 @@
+ver 0.6.1
+- Added support for non-2D textures with mipmaps.
+- Fixed errors when reading some ucas/utoc assets from UE5.4 games
+- Fixed some error messages about input paths.
+- Fixed errors when reading some broken dds files.
+
 ver 0.6.0
 - Supported ucas/utoc assets.
 - Added support for UE5.4.

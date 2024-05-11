@@ -28,14 +28,18 @@ class ArchiveBase:
         self.io = io
         self.size = get_size(io)
         self.endian = endian
-        for key, val in context.items():
-            setattr(self, key, val)
+
+        self.update_context(context)
 
         if isinstance(io, BytesIO):
             self.name = "BytesIO"
         else:
             self.name = io.name
         self.args = None
+
+    def update_context(self, context: dict = {}):
+        for key, val in context.items():
+            setattr(self, key, val)
 
     def __lshift__(self, val: tuple):  # pragma: no cover
         """Read or write attributes.
@@ -99,6 +103,9 @@ class ArchiveBase:
         else:
             # Update obj.attr_name with the current offset
             setattr(obj, attr_name, self.tell() - base)
+
+    def is_eof(self):
+        return self.tell() == self.size
 
 
 class ArchiveRead(ArchiveBase):
