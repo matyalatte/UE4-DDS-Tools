@@ -332,29 +332,13 @@ class Utexture:
             self.dxgi_format, self.is_cube, self.get_array_size()
         )
 
-        # calculate binary size
-        def cail(val, unit):
-            remain = val % unit
-            val += (unit - remain) * (remain != 0)
-            return val
-
-        bin_sizes = []
-        block_size = self.get_block_size()
-        for mip in self.mipmaps:
-            if not self.is_compressed():
-                bin_sizes.append(int(mip.width * mip.height * self.byte_per_pixel))
-                continue
-            # mipmap sizes should be multiples of block_size
-            width = cail(mip.width, block_size)
-            height = cail(mip.height, block_size)
-            bin_sizes.append(int(width * height * self.byte_per_pixel))
-
         # mip list to slice list
         slice_bin_list = []
         mipmap_size_list = []
         for i in range(self.num_slices):
             data = b""
-            for mip, size in zip(self.mipmaps, bin_sizes):
+            for mip in self.mipmaps:
+                size = len(mip.data) // self.num_slices
                 offset = size * i
                 data = b"".join([data, mip.data[offset: offset + size]])
             slice_bin_list.append(data)
